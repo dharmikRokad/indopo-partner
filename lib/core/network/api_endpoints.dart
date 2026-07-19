@@ -1,0 +1,11 @@
+class ApiEndpoints {
+  // Base API URL — update this to your production backend URL
+  static const String baseUrl = 'https://indopo-beta.onrender.com/api';
+
+  static const String login = '/partner-auth/login';
+  static const String changePassword = '/partner-auth/change-password';
+  static const String deactivate = '/partner-auth/deactivate';
+  static const String availability = '/partner-auth/availability';
+  static const String profile = '/partner-auth/profile';
+  static const String refreshToken = '/auth/refresh-token';
+}

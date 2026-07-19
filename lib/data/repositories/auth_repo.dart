@@ -1,0 +1,131 @@
+import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
+import '../../core/network/token_manager.dart';
+import '../../core/network_copy/local_storage.dart';
+import '../../core/services/push_notification_service.dart';
+import '../models/partner_model.dart';
+import '../models/partner_type.dart';
+
+class AuthRepository {
+  final ApiClient _apiClient;
+  final LocalStorage _localStorage;
+
+  AuthRepository(this._apiClient, this._localStorage);
+
+  Future<PartnerModel?> checkActiveSession() async {
+    await TokenManager.instance.init();
+    final token = TokenManager.instance.token;
+    if (token == null || token.isEmpty) return null;
+
+    try {
+      final response = await _apiClient.get(ApiEndpoints.profile);
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        return PartnerModel.fromApiJson(resData);
+      }
+    } catch (e) {
+      print('[AuthRepository] checkActiveSession error: $e');
+      await logout();
+    }
+    return null;
+  }
+
+  Future<PartnerModel> login({
+    required String email,
+    required String password,
+    required PartnerType selectedRole,
+  }) async {
+    // Save selected role first
+    await _localStorage.saveSelectedRole(selectedRole.key);
+
+    final fcmToken = PushNotificationService.instance.fcmToken;
+
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.login,
+        data: {
+          'email': email,
+          'password': password,
+          if (fcmToken != null) 'fcmToken': fcmToken,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        final accessToken = resData['accessToken'] as String;
+        final refreshToken = resData['refreshToken'] as String;
+        final partnerJson = resData['partner'] as Map<String, dynamic>;
+
+        final partner = PartnerModel.fromApiJson(partnerJson);
+
+        // Role validation check
+        if (partner.role != selectedRole) {
+          throw Exception('Credentials do not match the selected role');
+        }
+
+        // Save tokens
+        await TokenManager.instance.saveToken(
+          token: accessToken,
+          email: email,
+          rememberMe: true,
+        );
+        await TokenManager.instance.saveRefreshToken(refreshToken);
+
+        return partner;
+      } else {
+        throw Exception(response.data?['message'] ?? 'Login failed');
+      }
+    } catch (e) {
+      print('[AuthRepository] login error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> logout() async {
+    await TokenManager.instance.clearToken();
+    await _localStorage.clearSelectedRole();
+  }
+
+  Future<void> changePassword(String newPassword) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.changePassword,
+        data: {'newPassword': newPassword},
+      );
+      if (response.statusCode != 200) {
+        throw Exception(response.data?['message'] ?? 'Failed to change password');
+      }
+    } catch (e) {
+      print('[AuthRepository] changePassword error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deactivateAccount() async {
+    try {
+      final response = await _apiClient.delete(ApiEndpoints.deactivate);
+      if (response.statusCode != 200) {
+        throw Exception(response.data?['message'] ?? 'Failed to deactivate account');
+      }
+      await logout();
+    } catch (e) {
+      print('[AuthRepository] deactivateAccount error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateAvailability(bool isAvailable) async {
+    try {
+      final response = await _apiClient.patch(
+        ApiEndpoints.availability,
+        data: {'isAvailable': isAvailable},
+      );
+      if (response.statusCode != 200) {
+        throw Exception(response.data?['message'] ?? 'Failed to update availability');
+      }
+    } catch (e) {
+      print('[AuthRepository] updateAvailability error: $e');
+      rethrow;
+    }
+  }
+}
