@@ -14,6 +14,7 @@ class PartnerModel {
   final double? lat;
   final double? long;
   final String? orgAddress;
+  final bool isAvailable;
 
   PartnerModel({
     required this.id,
@@ -28,6 +29,7 @@ class PartnerModel {
     this.lat,
     this.long,
     this.orgAddress,
+    this.isAvailable = true,
   });
 
   factory PartnerModel.fromJson(Map<String, dynamic> json) {
@@ -56,6 +58,8 @@ class PartnerModel {
       lat: (json['lat'] as num?)?.toDouble(),
       long: (json['long'] as num?)?.toDouble(),
       orgAddress: orgAddressStr,
+      isAvailable:
+          json['isAvailable'] as bool? ?? json['is_available'] as bool? ?? true,
     );
   }
 
@@ -85,7 +89,7 @@ class PartnerModel {
             '';
         details['reg_number'] = docProfile['licenseNumber'] ?? '';
         details['consultation_fee'] = docProfile['consultationFee'] is String
-            ? double.parse(docProfile['consultationFee'] ?? '0')
+            ? double.parse(docProfile['consultationFee'])
             : (docProfile['consultationFee'] as num?)?.toDouble() ?? 0.0;
       }
     } else if (role == PartnerType.medical) {
@@ -130,12 +134,13 @@ class PartnerModel {
         (json['workingDays'] as List?)?.map((e) => e.toString()).toList(),
       ),
       lat: json['lat'] is String
-          ? double.parse(json['lat'] ?? '0')
+          ? double.parse(json['lat'])
           : (json['lat'] as num?)?.toDouble(),
       long: json['long'] is String
-          ? double.parse(json['long'] ?? '0')
+          ? double.parse(json['long'])
           : (json['long'] as num?)?.toDouble(),
       orgAddress: orgAddressStr,
+      isAvailable: json['isAvailable'] as bool? ?? true,
     );
   }
 
@@ -153,6 +158,7 @@ class PartnerModel {
       'lat': lat,
       'long': long,
       'orgAddress': orgAddress,
+      'isAvailable': isAvailable,
     };
   }
 
@@ -169,6 +175,7 @@ class PartnerModel {
     double? lat,
     double? long,
     String? orgAddress,
+    bool? isAvailable,
   }) {
     return PartnerModel(
       id: id ?? this.id,
@@ -183,6 +190,7 @@ class PartnerModel {
       lat: lat ?? this.lat,
       long: long ?? this.long,
       orgAddress: orgAddress ?? this.orgAddress,
+      isAvailable: isAvailable ?? this.isAvailable,
     );
   }
 

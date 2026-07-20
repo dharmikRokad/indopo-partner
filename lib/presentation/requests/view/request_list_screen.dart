@@ -87,9 +87,10 @@ class _RequestListContentState extends State<_RequestListContent>
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
+    final authState = context.watch<AuthBloc>().state;
     String partnerName = 'Partner';
     String roleBadge = '🩺 Doctor';
+    bool isAvailable = false;
 
     if (authState is AuthSuccess) {
       final p = authState.partner;
@@ -99,6 +100,7 @@ class _RequestListContentState extends State<_RequestListContent>
           p.details['center_name'] ??
           p.email;
       roleBadge = '${p.role.icon} ${p.role.displayName}';
+      isAvailable = p.isAvailable;
     }
 
     return BlocBuilder<RequestListBloc, RequestListState>(
@@ -130,6 +132,29 @@ class _RequestListContentState extends State<_RequestListContent>
               ],
             ),
             actions: [
+              Row(
+                children: [
+                  Text(
+                    isAvailable ? 'Active' : 'Away',
+                    style: TextStyles.labelRegular.copyWith(
+                      fontSize: 12,
+                      color: isAvailable ? Colors.green : AppColors.textMuted,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Switch(
+                    value: isAvailable,
+                    activeThumbColor: Colors.green,
+                    activeTrackColor: Colors.green.withValues(alpha: 0.3),
+                    inactiveThumbColor: AppColors.textMuted,
+                    inactiveTrackColor: AppColors.surface,
+                    onChanged: (val) {
+                      context.read<AuthBloc>().add(AvailabilityToggled(val));
+                    },
+                  ),
+                ],
+              ),
               IconButton(
                 icon: const Icon(Icons.logout_rounded, color: AppColors.error),
                 onPressed: () {

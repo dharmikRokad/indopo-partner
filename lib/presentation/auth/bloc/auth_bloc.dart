@@ -20,6 +20,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RoleSelected>(_onRoleSelected);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
+    on<AvailabilityToggled>(_onAvailabilityToggled);
   }
 
   void _onPartnerUpdated(
@@ -98,5 +99,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthInitial());
     await _authRepository.logout();
     emit(const Unauthenticated());
+  }
+
+  Future<void> _onAvailabilityToggled(
+    AvailabilityToggled event,
+    Emitter<AuthState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is AuthSuccess) {
+      final oldPartner = currentState.partner;
+      try {
+        // Optimistically update the UI status first
+        emit(AuthSuccess(oldPartner.copyWith(isAvailable: event.isAvailable)));
+        await _authRepository.updateAvailability(event.isAvailable);
+      } catch (e) {
+        // Revert on error
+        print('[AuthBloc] Failed to update availability: $e');
+        emit(AuthSuccess(oldPartner));
+      }
+    }
   }
 }

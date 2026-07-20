@@ -43,3 +43,12 @@ class LoginSubmitted extends AuthEvent {
 }
 
 class LogoutRequested extends AuthEvent {}
+
+class AvailabilityToggled extends AuthEvent {
+  final bool isAvailable;
+
+  const AvailabilityToggled(this.isAvailable);
+
+  @override
+  List<Object?> get props => [isAvailable];
+}
