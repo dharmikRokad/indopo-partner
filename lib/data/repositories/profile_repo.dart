@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../models/partner_model.dart';
@@ -5,8 +6,15 @@ import '../models/partner_type.dart';
 
 class ProfileRepository {
   final ApiClient _apiClient;
+  final Dio _nominatimDio;
   
-  ProfileRepository(this._apiClient);
+  ProfileRepository(this._apiClient) : _nominatimDio = Dio() {
+    _nominatimDio.options.headers = {
+      'User-Agent': 'IndopoPartnerApp/1.0.0 (contact@indopo.com)',
+    };
+    _nominatimDio.options.connectTimeout = const Duration(seconds: 10);
+    _nominatimDio.options.receiveTimeout = const Duration(seconds: 10);
+  }
 
   Future<PartnerModel?> fetchProfile(String id) async {
     try {
@@ -30,17 +38,20 @@ class ProfileRepository {
       'name': details['full_name'] ?? details['lab_name'] ?? details['center_name'] ?? '',
       'phone': details['phone'] ?? '',
       'orgName': details['clinic_name'] ?? details['clinic_hospital_name'] ?? '',
-      'orgAddress': details['address'] ?? '',
+      'orgAddress': partner.orgAddress ?? details['address'] ?? '',
       'services': partner.services.map((e) => e.toJson()).toList(),
       'openTime': partner.openTime,
       'closeTime': partner.closeTime,
       'workingDays': partner.workingDays,
+      'lat': partner.lat,
+      'long': partner.long,
     };
 
     if (role == PartnerType.doctor) {
       body['doctorProfile'] = {
         'qualification': details['specialization'] ?? '',
         'licenseNumber': details['reg_number'] ?? '',
+        'consultationFee': details['consultation_fee'] ?? 0.0,
       };
     }
 
@@ -67,6 +78,9 @@ class ProfileRepository {
           details: mergedDetails, 
           services: servicesToKeep,
           isProfileConfigured: true,
+          lat: apiPartner.lat ?? partner.lat,
+          long: apiPartner.long ?? partner.long,
+          orgAddress: apiPartner.orgAddress ?? partner.orgAddress,
         );
       }
     } catch (e) {
@@ -74,5 +88,52 @@ class ProfileRepository {
       rethrow;
     }
     return partner;
+  }
+
+  Future<List<Map<String, dynamic>>> getAddressSuggestions(String query) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      final response = await _nominatimDio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'q': query,
+          'format': 'json',
+          'limit': 5,
+        },
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        final list = response.data as List;
+        return list.map((item) {
+          final map = item as Map<String, dynamic>;
+          return {
+            'display_name': map['display_name'] ?? '',
+            'lat': double.tryParse(map['lat']?.toString() ?? '') ?? 0.0,
+            'lon': double.tryParse(map['lon']?.toString() ?? '') ?? 0.0,
+          };
+        }).toList();
+      }
+    } catch (e) {
+      print('[ProfileRepository] getAddressSuggestions error: $e');
+    }
+    return [];
+  }
+
+  Future<String?> getAddressFromCoordinates(double lat, double lon) async {
+    try {
+      final response = await _nominatimDio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'lat': lat,
+          'lon': lon,
+          'format': 'json',
+        },
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['display_name'] as String?;
+      }
+    } catch (e) {
+      print('[ProfileRepository] getAddressFromCoordinates error: $e');
+    }
+    return null;
   }
 }

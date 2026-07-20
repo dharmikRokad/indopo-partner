@@ -23,8 +23,9 @@ class AuthRepository {
         final resData = response.data['data'] as Map<String, dynamic>;
         return PartnerModel.fromApiJson(resData);
       }
-    } catch (e) {
+    } catch (e, s) {
       print('[AuthRepository] checkActiveSession error: $e');
+      print('[AuthRepository] checkActiveSession error: $s');
       await logout();
     }
     return null;
@@ -75,8 +76,9 @@ class AuthRepository {
       } else {
         throw Exception(response.data?['message'] ?? 'Login failed');
       }
-    } catch (e) {
+    } catch (e, s) {
       print('[AuthRepository] login error: $e');
+      print('[AuthRepository] login error: $s');
       rethrow;
     }
   }
@@ -93,7 +95,9 @@ class AuthRepository {
         data: {'newPassword': newPassword},
       );
       if (response.statusCode != 200) {
-        throw Exception(response.data?['message'] ?? 'Failed to change password');
+        throw Exception(
+          response.data?['message'] ?? 'Failed to change password',
+        );
       }
     } catch (e) {
       print('[AuthRepository] changePassword error: $e');
@@ -105,7 +109,9 @@ class AuthRepository {
     try {
       final response = await _apiClient.delete(ApiEndpoints.deactivate);
       if (response.statusCode != 200) {
-        throw Exception(response.data?['message'] ?? 'Failed to deactivate account');
+        throw Exception(
+          response.data?['message'] ?? 'Failed to deactivate account',
+        );
       }
       await logout();
     } catch (e) {
@@ -121,7 +127,9 @@ class AuthRepository {
         data: {'isAvailable': isAvailable},
       );
       if (response.statusCode != 200) {
-        throw Exception(response.data?['message'] ?? 'Failed to update availability');
+        throw Exception(
+          response.data?['message'] ?? 'Failed to update availability',
+        );
       }
     } catch (e) {
       print('[AuthRepository] updateAvailability error: $e');

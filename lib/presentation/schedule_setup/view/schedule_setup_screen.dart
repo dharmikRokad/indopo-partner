@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/presentation/widgets/address_autocomplete_field.dart';
 import '../../../data/models/partner_model.dart';
 import '../../../data/repositories/profile_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -14,12 +15,18 @@ class ScheduleSetupScreenState {
   final List<String> selectedDays;
   final TimeOfDay? openTime;
   final TimeOfDay? closeTime;
+  final String address;
+  final double? lat;
+  final double? long;
   final bool isLoading;
 
   const ScheduleSetupScreenState({
     this.selectedDays = const [],
     this.openTime,
     this.closeTime,
+    this.address = '',
+    this.lat,
+    this.long,
     this.isLoading = false,
   });
 
@@ -27,12 +34,18 @@ class ScheduleSetupScreenState {
     List<String>? selectedDays,
     TimeOfDay? openTime,
     TimeOfDay? closeTime,
+    String? address,
+    double? lat,
+    double? long,
     bool? isLoading,
   }) {
     return ScheduleSetupScreenState(
       selectedDays: selectedDays ?? this.selectedDays,
       openTime: openTime ?? this.openTime,
       closeTime: closeTime ?? this.closeTime,
+      address: address ?? this.address,
+      lat: lat ?? this.lat,
+      long: long ?? this.long,
       isLoading: isLoading ?? this.isLoading,
     );
   }
@@ -48,6 +61,7 @@ class ScheduleSetupScreen extends StatefulWidget {
 class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
   final List<String> _daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   final _stateCubit = ValueCubit<ScheduleSetupScreenState>(const ScheduleSetupScreenState());
+  final _addressController = TextEditingController();
 
   @override
   void initState() {
@@ -62,16 +76,22 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
       }
       final openTime = _parseTimeString(partner.openTime);
       final closeTime = _parseTimeString(partner.closeTime);
+      final address = partner.details['address'] as String? ?? '';
+      _addressController.text = address;
       _stateCubit.update(ScheduleSetupScreenState(
         selectedDays: selectedDays,
         openTime: openTime,
         closeTime: closeTime,
+        address: address,
+        lat: partner.lat,
+        long: partner.long,
       ));
     }
   }
 
   @override
   void dispose() {
+    _addressController.dispose();
     _stateCubit.close();
     super.dispose();
   }
@@ -134,6 +154,10 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
   Future<void> _submitSchedule(PartnerModel partner) async {
     final currentState = _stateCubit.state;
     // Validations
+    if (currentState.address.trim().isEmpty) {
+      AppSnackBar.showWarning(context, 'Please specify your physical address');
+      return;
+    }
     if (currentState.selectedDays.isEmpty) {
       AppSnackBar.showWarning(context, 'Please select at least one working day');
       return;
@@ -155,10 +179,17 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     _stateCubit.update(currentState.copyWith(isLoading: true));
 
     try {
+      final updatedDetails = Map<String, dynamic>.from(partner.details)
+        ..['address'] = currentState.address.trim();
+
       final updatedPartner = partner.copyWith(
         workingDays: currentState.selectedDays,
         openTime: _formatTimeOfDay(currentState.openTime!),
         closeTime: _formatTimeOfDay(currentState.closeTime!),
+        details: updatedDetails,
+        lat: currentState.lat,
+        long: currentState.long,
+        orgAddress: currentState.address.trim(),
       );
 
       final savedPartner = await context.read<ProfileRepository>().saveProfile(updatedPartner);
@@ -240,6 +271,22 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Physical Address Section
+                  AddressAutocompleteField(
+                    controller: _addressController,
+                    label: 'Physical Address',
+                    hint: 'Enter your physical address',
+                    onLocationChanged: (address, lat, long) {
+                      _stateCubit.update(_stateCubit.state.copyWith(
+                        address: address,
+                        lat: lat,
+                        long: long,
+                      ));
+                    },
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Physical address is required' : null,
                   ),
                   const SizedBox(height: 24),
 

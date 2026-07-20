@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../core/presentation/widgets/address_autocomplete_field.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/partner_model.dart';
@@ -21,6 +22,8 @@ class ProfileScreenState {
   final List<String> selectedDays;
   final TimeOfDay? openTime;
   final TimeOfDay? closeTime;
+  final double? lat;
+  final double? long;
 
   const ProfileScreenState({
     this.isEditing = false,
@@ -29,6 +32,8 @@ class ProfileScreenState {
     this.selectedDays = const [],
     this.openTime,
     this.closeTime,
+    this.lat,
+    this.long,
   });
 
   ProfileScreenState copyWith({
@@ -38,6 +43,8 @@ class ProfileScreenState {
     List<String>? selectedDays,
     TimeOfDay? openTime,
     TimeOfDay? closeTime,
+    double? lat,
+    double? long,
   }) {
     return ProfileScreenState(
       isEditing: isEditing ?? this.isEditing,
@@ -46,6 +53,8 @@ class ProfileScreenState {
       selectedDays: selectedDays ?? this.selectedDays,
       openTime: openTime ?? this.openTime,
       closeTime: closeTime ?? this.closeTime,
+      lat: lat ?? this.lat,
+      long: long ?? this.long,
     );
   }
 }
@@ -69,6 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _contactPersonController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _consultationFeeController = TextEditingController();
   
   // Imaging center modalities tracker
   final List<String> _allModalities = [
@@ -89,11 +99,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _contactPersonController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
+    _consultationFeeController.dispose();
     _stateCubit.close();
     super.dispose();
   }
 
-  void _initFormFields(PartnerModel partner) {
+  void _initFormFields(PartnerModel partner, {bool isEditing = false}) {
     _nameController.text = partner.details['full_name'] ?? 
                            partner.details['lab_name'] ?? 
                            partner.details['center_name'] ?? '';
@@ -103,8 +114,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _clinicNameController.text = partner.details['clinic_name'] ?? 
                                  partner.details['clinic_hospital_name'] ?? '';
     _contactPersonController.text = partner.details['contact_person'] ?? '';
-    _addressController.text = partner.details['address'] ?? '';
+    _addressController.text = partner.orgAddress ?? partner.details['address'] ?? '';
     _phoneController.text = partner.details['phone'] ?? '';
+    _consultationFeeController.text = (partner.details['consultation_fee'] ?? 0.0).toString();
 
     final selectedModalities = <String>[];
     final dynamic modalities = partner.details['modalities'];
@@ -120,12 +132,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final closeTime = _parseTimeString(partner.closeTime);
 
     _stateCubit.update(ProfileScreenState(
-      isEditing: _stateCubit.state.isEditing,
+      isEditing: isEditing,
       isLoading: _stateCubit.state.isLoading,
       selectedModalities: selectedModalities,
       selectedDays: selectedDays,
       openTime: openTime,
       closeTime: closeTime,
+      lat: partner.lat,
+      long: partner.long,
     ));
   }
 
@@ -185,6 +199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           details['specialization'] = _specializationController.text.trim();
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_name'] = _clinicNameController.text.trim();
+          details['consultation_fee'] = double.tryParse(_consultationFeeController.text.trim()) ?? 0.0;
           break;
         case PartnerType.medical:
           details['full_name'] = _nameController.text.trim();
@@ -209,6 +224,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         workingDays: currentState.selectedDays,
         openTime: _formatTimeOfDay(currentState.openTime!),
         closeTime: _formatTimeOfDay(currentState.closeTime!),
+        lat: currentState.lat,
+        long: currentState.long,
+        orgAddress: _addressController.text.trim(),
       );
 
       final savedPartner = await context.read<ProfileRepository>().saveProfile(updatedPartner);
@@ -399,8 +417,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               child: ElevatedButton(
                                 onPressed: () {
-                                  _initFormFields(partner);
-                                  _stateCubit.update(state.copyWith(isEditing: true));
+                                  _initFormFields(partner, isEditing: true);
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
@@ -445,6 +462,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildInfoRow('Reg Number', partner.details['reg_number'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
                 _buildInfoRow('Clinic Name', partner.details['clinic_name'] ?? 'Not specified'),
+                const Divider(color: AppColors.blue3, height: 24),
+                _buildInfoRow('Consultation Fee', '\$${partner.details['consultation_fee'] ?? 0.0}'),
               ] else if (partner.role == PartnerType.medical) ...[
                 _buildInfoRow('License Number', partner.details['reg_number'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
@@ -571,7 +590,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             label: 'Specialization',
             hint: 'Cardiology, Pediatrics, etc.',
             enabled: false,
-            validator: (v) => Validators.validateRequired(v, 'Specialization'),
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _consultationFeeController,
+            label: 'Consultation Fee (\$)',
+            hint: 'Enter consultation fee',
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return 'Consultation fee is required';
+              }
+              if (double.tryParse(v) == null) {
+                return 'Please enter a valid number';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
         ],
@@ -643,11 +677,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
         ],
 
-        _buildTextField(
+        AddressAutocompleteField(
           controller: _addressController,
           label: 'Physical Address',
           hint: '123 Medical Street, Suite 4',
-          maxLines: 2,
+          initialLat: state.lat,
+          initialLong: state.long,
+          onLocationChanged: (address, lat, long) {
+            _stateCubit.update(_stateCubit.state.copyWith(
+              lat: lat,
+              long: long,
+            ));
+          },
           validator: (v) => Validators.validateRequired(v, 'Physical address'),
         ),
         const SizedBox(height: 16),
