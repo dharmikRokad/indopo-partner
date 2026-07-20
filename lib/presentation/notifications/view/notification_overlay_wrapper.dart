@@ -144,7 +144,7 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${request.requestType} • ${request.description}',
+                      request.description,
                       style: TextStyles.bodyRegular.copyWith(
                         fontSize: 12,
                         color: Colors.white.withValues(alpha: 0.9),

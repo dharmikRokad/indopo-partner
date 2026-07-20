@@ -1,32 +1,29 @@
 enum RequestStatus {
-  newRequest,
-  inProgress,
-  completed,
-}
+  newRequest(key: 'new', apiKey: 'PENDING', displayName: 'New'),
+  inProgress(key: 'in_progress', apiKey: 'CONFIRMED', displayName: 'Confirmed'),
+  completed(key: 'completed', apiKey: 'COMPLETED', displayName: 'Completed'),
+  cancelled(key: 'cancelled', apiKey: 'CANCELLED', displayName: 'Cancelled');
 
-extension RequestStatusExtension on RequestStatus {
-  String get key {
-    switch (this) {
-      case RequestStatus.newRequest:
-        return 'new';
-      case RequestStatus.inProgress:
-        return 'in_progress';
-      case RequestStatus.completed:
-        return 'completed';
-    }
-  }
+  final String key;
+  final String apiKey;
+  final String displayName;
+
+  const RequestStatus({
+    required this.key,
+    required this.apiKey,
+    required this.displayName,
+  });
 
   static RequestStatus fromKey(String key) {
     switch (key.toLowerCase()) {
-      case 'new':
-      case 'unread':
+      case 'pending':
         return RequestStatus.newRequest;
-      case 'in_progress':
-      case 'accepted':
+      case 'confirmed':
         return RequestStatus.inProgress;
       case 'completed':
-      case 'done':
         return RequestStatus.completed;
+      case 'cancelled':
+        return RequestStatus.cancelled;
       default:
         return RequestStatus.newRequest;
     }
@@ -39,7 +36,6 @@ class RequestModel {
   final int patientAge;
   final String patientGender;
   final String patientContact;
-  final String requestType; // Consultation, Test, Scan
   final String description;
   final List<String> attachments;
   final DateTime timestamp;
@@ -52,7 +48,6 @@ class RequestModel {
     required this.patientAge,
     required this.patientGender,
     required this.patientContact,
-    required this.requestType,
     required this.description,
     required this.attachments,
     required this.timestamp,
@@ -70,35 +65,17 @@ class RequestModel {
   }
 
   factory RequestModel.fromJson(Map<String, dynamic> json) {
-    return RequestModel(
-      id: json['id'] as String? ?? '',
-      patientName: json['patient_name'] as String? ?? 'Unknown Patient',
-      patientAge: json['patient_age'] as int? ?? 0,
-      patientGender: json['patient_gender'] as String? ?? 'Other',
-      patientContact: json['patient_contact'] as String? ?? '',
-      requestType: json['request_type'] as String? ?? 'Consultation',
-      description: json['description'] as String? ?? '',
-      attachments: List<String>.from(json['attachments'] ?? []),
-      timestamp: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String) 
-          : DateTime.now(),
-      status: RequestStatusExtension.fromKey(json['status'] as String? ?? 'new'),
-      rejectionReason: json['rejection_reason'] as String?,
-    );
-  }
-
-  factory RequestModel.fromAppointmentJson(Map<String, dynamic> json) {
     final statusStr = (json['status'] as String? ?? 'PENDING').toUpperCase();
     RequestStatus mappedStatus;
     if (statusStr == 'PENDING') {
       mappedStatus = RequestStatus.newRequest;
     } else if (statusStr == 'CONFIRMED') {
       mappedStatus = RequestStatus.inProgress;
-    } else {
+    } else if (statusStr == 'COMPLETED') {
       mappedStatus = RequestStatus.completed;
+    } else {
+      mappedStatus = RequestStatus.cancelled;
     }
-
-    final serviceName = json['service']?['name'] as String? ?? json['location'] as String? ?? 'Consultation';
 
     return RequestModel(
       id: json['id'] as String? ?? '',
@@ -106,7 +83,6 @@ class RequestModel {
       patientAge: json['patientAge'] as int? ?? 30,
       patientGender: json['patientGender'] as String? ?? 'Other',
       patientContact: json['patientPhone'] as String? ?? '',
-      requestType: serviceName,
       description: json['notes'] as String? ?? '',
       attachments: const [],
       timestamp: json['createdAt'] != null
@@ -124,7 +100,6 @@ class RequestModel {
       'patient_age': patientAge,
       'patient_gender': patientGender,
       'patient_contact': patientContact,
-      'request_type': requestType,
       'description': description,
       'attachments': attachments,
       'created_at': timestamp.toIso8601String(),
@@ -152,7 +127,6 @@ class RequestModel {
       patientAge: patientAge ?? this.patientAge,
       patientGender: patientGender ?? this.patientGender,
       patientContact: patientContact ?? this.patientContact,
-      requestType: requestType ?? this.requestType,
       description: description ?? this.description,
       attachments: attachments ?? this.attachments,
       timestamp: timestamp ?? this.timestamp,

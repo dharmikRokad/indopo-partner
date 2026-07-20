@@ -19,6 +19,7 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
     FetchRequests event,
     Emitter<RequestListState> emit,
   ) async {
+    final currentState = state;
     emit(RequestListLoading());
 
     try {
@@ -29,8 +30,12 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
       if (event.status == RequestStatus.newRequest) {
         hasUnread = list.isNotEmpty;
       } else {
-        final newReqs = await _requestRepository.fetchRequests(RequestStatus.newRequest);
-        hasUnread = newReqs.isNotEmpty;
+        if (currentState is RequestListLoaded) {
+          hasUnread = currentState.hasUnreadNew;
+        } else {
+          final newReqs = await _requestRepository.fetchRequests(RequestStatus.newRequest);
+          hasUnread = newReqs.isNotEmpty;
+        }
       }
 
       emit(RequestListLoaded(

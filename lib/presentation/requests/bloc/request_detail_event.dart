@@ -34,3 +34,12 @@ class RejectRequest extends RequestDetailEvent {
   @override
   List<Object?> get props => [id, reason];
 }
+
+class CompleteRequest extends RequestDetailEvent {
+  final String id;
+
+  const CompleteRequest(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}

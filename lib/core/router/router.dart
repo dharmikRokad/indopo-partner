@@ -8,6 +8,7 @@ import '../../presentation/chat/view/chat_screen.dart';
 import '../../presentation/profile_setup/view/profile_setup_screen.dart';
 import '../../presentation/schedule_setup/view/schedule_setup_screen.dart';
 import '../../presentation/requests/view/request_detail_screen.dart';
+import '../../data/models/request_model.dart';
 import '../../presentation/home/view/main_layout_screen.dart';
 import '../../presentation/splash/view/splash_view.dart';
 import '../../presentation/services/view/services_screen.dart';
@@ -120,7 +121,8 @@ class AppRouter {
         path: AppRoutes.requestDetail,
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return RequestDetailScreen(id: id);
+          final request = state.extra as RequestModel?;
+          return RequestDetailScreen(id: id, request: request);
         },
       ),
       GoRoute(

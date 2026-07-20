@@ -1,3 +1,4 @@
+import '../../core/network/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../models/appointment_model.dart';
 import '../models/request_model.dart';
@@ -8,23 +9,18 @@ class RequestRepository {
   RequestRepository(this._apiClient);
 
   Future<List<RequestModel>> fetchRequests(RequestStatus status) async {
-    String apiStatus = 'PENDING';
-    if (status == RequestStatus.inProgress) {
-      apiStatus = 'CONFIRMED';
-    } else if (status == RequestStatus.completed) {
-      apiStatus = 'COMPLETED';
-    }
-
     try {
       final response = await _apiClient.get(
-        '/appointments/partner/list',
-        queryParameters: {'status': apiStatus},
+        ApiEndpoints.appointmentsList,
+        queryParameters: {'status': status.apiKey},
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
         final list = resData['appointments'] as List? ?? [];
-        return list.map((json) => RequestModel.fromAppointmentJson(json as Map<String, dynamic>)).toList();
+        return list
+            .map((json) => RequestModel.fromJson(json as Map<String, dynamic>))
+            .toList();
       }
     } catch (e) {
       print('[RequestRepository] fetchRequests error: $e');
@@ -35,17 +31,10 @@ class RequestRepository {
 
   Future<RequestModel> fetchRequestById(String id) async {
     try {
-      final response = await _apiClient.get('/appointments/partner/list');
+      final response = await _apiClient.get(ApiEndpoints.appointmentDetail(id));
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
-        final list = resData['appointments'] as List? ?? [];
-        final match = list.firstWhere(
-          (json) => json['id'] == id,
-          orElse: () => null,
-        );
-        if (match != null) {
-          return RequestModel.fromAppointmentJson(match as Map<String, dynamic>);
-        }
+        return RequestModel.fromJson(resData);
       }
     } catch (e) {
       print('[RequestRepository] fetchRequestById error: $e');
@@ -55,24 +44,19 @@ class RequestRepository {
   }
 
   Future<RequestModel> updateRequestStatus(
-    String id, 
+    String id,
     RequestStatus status, {
     String? rejectionReason,
   }) async {
-    String apiStatus = 'CONFIRMED';
-    if (status == RequestStatus.completed) {
-      apiStatus = rejectionReason != null ? 'CANCELLED' : 'COMPLETED';
-    }
-
     try {
       final response = await _apiClient.patch(
-        '/appointments/$id/status',
-        data: {'status': apiStatus},
+        ApiEndpoints.appointmentStatus(id),
+        data: {'status': status.apiKey},
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
-        return RequestModel.fromAppointmentJson(resData);
+        return RequestModel.fromJson(resData);
       }
     } catch (e) {
       print('[RequestRepository] updateRequestStatus error: $e');
@@ -81,8 +65,11 @@ class RequestRepository {
     throw Exception('Failed to update status');
   }
 
-  Future<AppointmentModel> assignAppointment(AppointmentModel appointment) async {
-    final dateStr = "${appointment.date.year}-${appointment.date.month.toString().padLeft(2, '0')}-${appointment.date.day.toString().padLeft(2, '0')}";
+  Future<AppointmentModel> assignAppointment(
+    AppointmentModel appointment,
+  ) async {
+    final dateStr =
+        "${appointment.date.year}-${appointment.date.month.toString().padLeft(2, '0')}-${appointment.date.day.toString().padLeft(2, '0')}";
     final body = {
       'appointmentDate': dateStr,
       'appointmentTime': appointment.time,
@@ -90,7 +77,7 @@ class RequestRepository {
 
     try {
       final response = await _apiClient.post(
-        '/appointments/partner/${appointment.requestId}/confirm',
+        ApiEndpoints.appointmentConfirm(appointment.requestId),
         data: body,
       );
 
@@ -99,7 +86,9 @@ class RequestRepository {
         return AppointmentModel(
           id: resData['id']?.toString() ?? appointment.id,
           requestId: appointment.requestId,
-          appointmentNumber: resData['tokenNumber']?.toString() ?? appointment.appointmentNumber,
+          appointmentNumber:
+              resData['tokenNumber']?.toString() ??
+              appointment.appointmentNumber,
           date: appointment.date,
           time: appointment.time,
           notes: appointment.notes,

@@ -9,11 +9,13 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
 
   RequestDetailBloc({
     required RequestRepository requestRepository,
+    RequestModel? request,
   })  : _requestRepository = requestRepository,
-        super(RequestDetailInitial()) {
+        super(request != null ? RequestDetailLoaded(request) : RequestDetailInitial()) {
     on<FetchRequestDetail>(_onFetchRequestDetail);
     on<AcceptRequest>(_onAcceptRequest);
     on<RejectRequest>(_onRejectRequest);
+    on<CompleteRequest>(_onCompleteRequest);
   }
 
   Future<void> _onFetchRequestDetail(
@@ -52,13 +54,30 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
   ) async {
     emit(RequestDetailLoading());
     try {
-      // Rejecting updates status to Completed with rejection reason
+      // Rejecting/Cancelling updates status to Cancelled
       final request = await _requestRepository.updateRequestStatus(
         event.id,
-        RequestStatus.completed,
+        RequestStatus.cancelled,
         rejectionReason: event.reason,
       );
       emit(RequestActionSuccess(request, 'reject'));
+    } catch (e) {
+      emit(RequestDetailFailure(e.toString()));
+    }
+  }
+
+  Future<void> _onCompleteRequest(
+    CompleteRequest event,
+    Emitter<RequestDetailState> emit,
+  ) async {
+    emit(RequestDetailLoading());
+    try {
+      // Completing updates status to Completed
+      final request = await _requestRepository.updateRequestStatus(
+        event.id,
+        RequestStatus.completed,
+      );
+      emit(RequestActionSuccess(request, 'complete'));
     } catch (e) {
       emit(RequestDetailFailure(e.toString()));
     }

@@ -37,11 +37,30 @@ class _RequestListContent extends StatefulWidget {
 class _RequestListContentState extends State<_RequestListContent>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late List<RequestStatus> _activeTabs;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    final authState = context.read<AuthBloc>().state;
+    bool isMedical = false;
+    if (authState is AuthSuccess) {
+      isMedical = authState.partner.role == PartnerType.medical;
+    }
+    _activeTabs = isMedical
+        ? [
+            RequestStatus.newRequest,
+            RequestStatus.inProgress,
+            RequestStatus.cancelled,
+          ]
+        : [
+            RequestStatus.newRequest,
+            RequestStatus.inProgress,
+            RequestStatus.completed,
+            RequestStatus.cancelled,
+          ];
+
+    _tabController = TabController(length: _activeTabs.length, vsync: this);
     _tabController.addListener(_handleTabSelection);
 
     // Initial fetch of 'New' requests
@@ -62,17 +81,8 @@ class _RequestListContentState extends State<_RequestListContent>
     if (_tabController.indexIsChanging) return;
 
     final bloc = context.read<RequestListBloc>();
-    switch (_tabController.index) {
-      case 0:
-        bloc.add(const FetchRequests(RequestStatus.newRequest));
-        break;
-      case 1:
-        bloc.add(const FetchRequests(RequestStatus.inProgress));
-        break;
-      case 2:
-        bloc.add(const FetchRequests(RequestStatus.completed));
-        break;
-    }
+    final status = _activeTabs[_tabController.index];
+    bloc.add(FetchRequests(status));
   }
 
   @override
@@ -129,75 +139,44 @@ class _RequestListContentState extends State<_RequestListContent>
             ],
             bottom: TabBar(
               controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               indicatorColor: AppColors.blue1,
               indicatorSize: TabBarIndicatorSize.tab,
               labelColor: Colors.white,
               unselectedLabelColor: AppColors.textMuted,
-              labelStyle: TextStyles.headingSemiBold.copyWith(fontSize: 14),
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.fiber_new_rounded,
-                        size: 18,
-                        color: AppColors.info,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text('New'),
-                      if (hasUnreadDot) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
+              labelStyle: TextStyles.headingSemiBold.copyWith(fontSize: 13),
+              tabs: _activeTabs.map((status) {
+                if (status == RequestStatus.newRequest) {
+                  return Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('New'),
+                        if (hasUnreadDot) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                ),
-                const Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.pending_actions_rounded,
-                        size: 18,
-                        color: AppColors.warning,
-                      ),
-                      SizedBox(width: 6),
-                      Text('In Progress'),
-                    ],
-                  ),
-                ),
-                const Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.task_alt_rounded,
-                        size: 18,
-                        color: AppColors.success,
-                      ),
-                      SizedBox(width: 6),
-                      Text('Completed'),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  );
+                }
+                return Tab(text: status.displayName);
+              }).toList(),
             ),
           ),
           body: TabBarView(
             controller: _tabController,
-            children: [
-              _buildTabList(RequestStatus.newRequest, state),
-              _buildTabList(RequestStatus.inProgress, state),
-              _buildTabList(RequestStatus.completed, state),
-            ],
+            children: _activeTabs.map((status) {
+              return _buildTabList(status, state);
+            }).toList(),
           ),
         );
       },
@@ -274,8 +253,14 @@ class _RequestListContentState extends State<_RequestListContent>
             final req = requests[index];
             return _RequestCard(
               request: req,
-              onTap: () {
-                context.push(AppRoutes.requestDetail.replaceAll(':id', req.id));
+              onTap: () async {
+                await context.push(
+                  AppRoutes.requestDetail.replaceAll(':id', req.id),
+                  extra: req,
+                );
+                if (context.mounted) {
+                  context.read<RequestListBloc>().add(FetchRequests(status));
+                }
               },
             );
           },
@@ -293,15 +278,20 @@ class _RequestListContentState extends State<_RequestListContent>
     Color color = AppColors.info;
 
     if (status == RequestStatus.inProgress) {
-      message = 'No active work items';
-      sub = 'Accept a request to begin working on it.';
+      message = 'No active schedule';
+      sub = 'Confirm a request to schedule an appointment.';
       icon = Icons.hourglass_empty_rounded;
       color = AppColors.warning;
     } else if (status == RequestStatus.completed) {
-      message = 'No completed requests';
-      sub = 'Your resolved items will be archived here.';
+      message = 'No completed appointments';
+      sub = 'Your resolved appointments will be archived here.';
       icon = Icons.done_all_rounded;
       color = AppColors.success;
+    } else if (status == RequestStatus.cancelled) {
+      message = 'No cancelled appointments';
+      sub = 'Your cancelled booking requests will show up here.';
+      icon = Icons.cancel_outlined;
+      color = AppColors.error;
     }
 
     return Center(
@@ -349,15 +339,13 @@ class _RequestCard extends StatelessWidget {
 
     if (request.status == RequestStatus.inProgress) {
       badgeColor = AppColors.warning;
-      statusLabel = 'In Progress';
+      statusLabel = 'Confirmed';
     } else if (request.status == RequestStatus.completed) {
-      if (request.rejectionReason != null) {
-        badgeColor = AppColors.error;
-        statusLabel = 'Rejected';
-      } else {
-        badgeColor = AppColors.success;
-        statusLabel = 'Completed';
-      }
+      badgeColor = AppColors.success;
+      statusLabel = 'Completed';
+    } else if (request.status == RequestStatus.cancelled) {
+      badgeColor = AppColors.error;
+      statusLabel = 'Cancelled';
     }
 
     // Format timestamp
@@ -401,33 +389,9 @@ class _RequestCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.blue3,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                request.requestType,
-                                style: TextStyles.bodyMedium.copyWith(
-                                  color: AppColors.blue1,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              timeStr,
-                              style: TextStyles.labelRegular.copyWith(
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          timeStr,
+                          style: TextStyles.labelRegular.copyWith(fontSize: 11),
                         ),
                       ],
                     ),
