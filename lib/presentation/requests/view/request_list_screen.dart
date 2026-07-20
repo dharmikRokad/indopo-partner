@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:indopo_partner/data/models/partner_type.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/request_model.dart';
 import '../../../data/repositories/request_repo.dart';
@@ -157,8 +158,11 @@ class _RequestListContentState extends State<_RequestListContent>
               ),
               IconButton(
                 icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                onPressed: () {
-                  context.read<AuthBloc>().add(LogoutRequested());
+                onPressed: () async {
+                  final shouldLogout = await LogoutConfirmationDialog.show(context);
+                  if (shouldLogout == true && context.mounted) {
+                    context.read<AuthBloc>().add(LogoutRequested());
+                  }
                 },
               ),
             ],

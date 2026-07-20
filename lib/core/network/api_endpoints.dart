@@ -8,9 +8,11 @@ class ApiEndpoints {
   static const String availability = '/partner-auth/availability';
   static const String profile = '/partner-auth/profile';
   static const String refreshToken = '/auth/refresh-token';
+  static const String dropDownValue = '/dropdown-values';
 
   static const String appointmentsList = '/appointments/partner/list';
   static String appointmentStatus(String id) => '/appointments/$id/status';
-  static String appointmentConfirm(String requestId) => '/appointments/partner/$requestId/confirm';
+  static String appointmentConfirm(String requestId) =>
+      '/appointments/partner/$requestId/confirm';
   static String appointmentDetail(String id) => '/appointments/$id';
 }

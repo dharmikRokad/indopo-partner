@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../core/presentation/widgets/address_autocomplete_field.dart';
+import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/partner_model.dart';
@@ -80,16 +81,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _phoneController = TextEditingController();
   final _consultationFeeController = TextEditingController();
   
-  // Imaging center modalities tracker
-  final List<String> _allModalities = [
-    'CT Scan',
-    'MRI',
-    'X-Ray',
-    'Ultrasound',
-    'PET Scan',
-    'Mammography',
-  ];
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -111,7 +102,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _specializationController.text = partner.details['specialization'] ?? '';
     _regNumController.text = partner.details['reg_number'] ?? 
                              partner.details['accreditation_number'] ?? '';
-    _clinicNameController.text = partner.details['clinic_name'] ?? 
+    _clinicNameController.text = partner.details['org_name'] ?? 
+                                 partner.details['clinic_name'] ?? 
                                  partner.details['clinic_hospital_name'] ?? '';
     _contactPersonController.text = partner.details['contact_person'] ?? '';
     _addressController.text = partner.orgAddress ?? partner.details['address'] ?? '';
@@ -166,10 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final currentState = _stateCubit.state;
-    if (partner.role == PartnerType.imagingCenter && currentState.selectedModalities.isEmpty) {
-      AppSnackBar.showWarning(context, 'Please select at least one modality');
-      return;
-    }
+
 
     if (currentState.selectedDays.isEmpty) {
       AppSnackBar.showWarning(context, 'Please select at least one working day');
@@ -199,22 +188,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           details['specialization'] = _specializationController.text.trim();
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_name'] = _clinicNameController.text.trim();
+          details['org_name'] = _clinicNameController.text.trim();
           details['consultation_fee'] = double.tryParse(_consultationFeeController.text.trim()) ?? 0.0;
           break;
         case PartnerType.medical:
           details['full_name'] = _nameController.text.trim();
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_hospital_name'] = _clinicNameController.text.trim();
+          details['org_name'] = _clinicNameController.text.trim();
           break;
         case PartnerType.laboratory:
           details['lab_name'] = _nameController.text.trim();
           details['accreditation_number'] = _regNumController.text.trim();
           details['contact_person'] = _contactPersonController.text.trim();
+          details['org_name'] = _clinicNameController.text.trim();
           break;
         case PartnerType.imagingCenter:
           details['center_name'] = _nameController.text.trim();
           details['accreditation_number'] = _regNumController.text.trim();
-          details['modalities'] = currentState.selectedModalities;
+          details['modalities'] = partner.details['modalities'];
+          details['org_name'] = _clinicNameController.text.trim();
           break;
       }
 
@@ -275,8 +268,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!state.isEditing)
                 IconButton(
                   icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                  onPressed: () {
-                    context.read<AuthBloc>().add(LogoutRequested());
+                  onPressed: () async {
+                    final shouldLogout = await LogoutConfirmationDialog.show(context);
+                    if (shouldLogout == true && context.mounted) {
+                      context.read<AuthBloc>().add(LogoutRequested());
+                    }
                   },
                 ),
             ],
@@ -461,24 +457,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(color: AppColors.blue3, height: 24),
                 _buildInfoRow('Reg Number', partner.details['reg_number'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Clinic Name', partner.details['clinic_name'] ?? 'Not specified'),
+                _buildInfoRow('Clinic Name', partner.details['org_name'] ?? partner.details['clinic_name'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
                 _buildInfoRow('Consultation Fee', '\$${partner.details['consultation_fee'] ?? 0.0}'),
               ] else if (partner.role == PartnerType.medical) ...[
                 _buildInfoRow('License Number', partner.details['reg_number'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Practice Name', partner.details['clinic_hospital_name'] ?? 'Not specified'),
+                _buildInfoRow('Practice Name', partner.details['org_name'] ?? partner.details['clinic_hospital_name'] ?? 'Not specified'),
               ] else if (partner.role == PartnerType.laboratory) ...[
                 _buildInfoRow('Accreditation', partner.details['accreditation_number'] ?? 'Not specified'),
+                const Divider(color: AppColors.blue3, height: 24),
+                _buildInfoRow('Organization Name', partner.details['org_name'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
                 _buildInfoRow('Contact Person', partner.details['contact_person'] ?? 'Not specified'),
               ] else if (partner.role == PartnerType.imagingCenter) ...[
                 _buildInfoRow('Accreditation', partner.details['accreditation_number'] ?? 'Not specified'),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow(
-                  'Modalities',
-                  (partner.details['modalities'] as List?)?.join(', ') ?? 'Not specified',
-                ),
+                _buildInfoRow('Organization Name', partner.details['org_name'] ?? 'Not specified'),
               ],
             ],
           ),
@@ -618,15 +613,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
 
-        if (role == PartnerType.doctor || role == PartnerType.medical) ...[
-          _buildTextField(
-            controller: _clinicNameController,
-            label: role == PartnerType.doctor ? 'Clinic Name' : 'Clinic / Hospital Name',
-            hint: 'Enter practice name',
-            validator: (v) => Validators.validateRequired(v, 'Practice name'),
+        _buildTextField(
+          controller: _clinicNameController,
+          label: role == PartnerType.doctor 
+              ? 'Clinic Name' 
+              : (role == PartnerType.medical ? 'Clinic / Hospital Name' : 'Organization Name'),
+          hint: 'Enter organization/clinic name',
+          validator: (v) => Validators.validateRequired(
+            v, 
+            role == PartnerType.doctor 
+                ? 'Clinic name' 
+                : (role == PartnerType.medical ? 'Practice name' : 'Organization name')
           ),
-          const SizedBox(height: 16),
-        ],
+        ),
+        const SizedBox(height: 16),
 
         if (role == PartnerType.laboratory) ...[
           _buildTextField(
@@ -638,44 +638,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
         ],
 
-        if (role == PartnerType.imagingCenter) ...[
-          Text('Modalities Provided', style: TextStyles.headingSemiBold.copyWith(fontSize: 14)),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _allModalities.map((modality) {
-              final isSelected = state.selectedModalities.contains(modality);
-              return FilterChip(
-                label: Text(modality),
-                selected: isSelected,
-                selectedColor: AppColors.blue2,
-                checkmarkColor: Colors.white,
-                backgroundColor: AppColors.surface,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.textMuted,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected ? AppColors.blue1 : AppColors.blue2.withValues(alpha: 0.5),
-                  ),
-                ),
-                onSelected: (selected) {
-                  final list = List<String>.from(state.selectedModalities);
-                  if (selected) {
-                    list.add(modality);
-                  } else {
-                    list.remove(modality);
-                  }
-                  _stateCubit.update(state.copyWith(selectedModalities: list));
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-        ],
+
 
         AddressAutocompleteField(
           controller: _addressController,

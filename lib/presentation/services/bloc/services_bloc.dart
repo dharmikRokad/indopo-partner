@@ -5,22 +5,22 @@ import '../../../data/models/service_model.dart';
 import '../../../data/models/partner_type.dart';
 import '../../../data/models/partner_model.dart';
 import '../../../data/repositories/service_repo.dart';
-import '../../../data/repositories/profile_repo.dart';
+import '../../../data/repositories/dropdown_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../auth/bloc/auth_event.dart';
 
 class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
   final ServiceRepository _serviceRepository;
-  final ProfileRepository _profileRepository;
+  final DropdownRepository _dropdownRepository;
   final AuthBloc _authBloc;
 
   ServicesBloc({
     required ServiceRepository serviceRepository,
-    required ProfileRepository profileRepository,
+    required DropdownRepository dropdownRepository,
     required AuthBloc authBloc,
   })  : _serviceRepository = serviceRepository,
-        _profileRepository = profileRepository,
+        _dropdownRepository = dropdownRepository,
         _authBloc = authBloc,
         super(ServicesInitial()) {
     on<LoadServices>(_onLoadServices);
@@ -39,43 +39,21 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
     throw Exception('User is not authenticated');
   }
 
-  List<String> _getMockCategories(PartnerType role) {
-    if (role == PartnerType.laboratory) {
-      return [
-        'All',
-        'Blood Test',
-        'Pathology',
-        'Urine Test',
-        'Biochemistry',
-        'Hematology',
-        'Immunology',
-        'Hormone Test',
-        'Microbiology'
-      ];
-    } else if (role == PartnerType.imagingCenter) {
-      return [
-        'All',
-        'X-Ray',
-        'CT Scan',
-        'MRI',
-        'Ultrasound',
-        'PET Scan',
-        'Mammography',
-        'DEXA Scan',
-        'Echocardiography'
-      ];
-    }
-    return ['All'];
+  List<String> _getCategories(PartnerType role) {
+    final categories = _dropdownRepository.getServiceCategoriesForRole(role);
+    return ['All', ...categories];
   }
 
   Future<void> _onLoadServices(LoadServices event, Emitter<ServicesState> emit) async {
     emit(ServicesLoading());
     try {
-      final services = await _serviceRepository.fetchServices(
-        partnerId: event.partnerId,
-        role: event.role,
-      );
-      final categories = _getMockCategories(event.role);
+      final services = await _serviceRepository.fetchServices();
+      final categories = _getCategories(event.role);
+      
+      // Update local AuthBloc with the loaded services
+      final updatedPartner = _currentPartner.copyWith(services: services);
+      _authBloc.add(PartnerUpdated(updatedPartner));
+
       emit(ServicesLoaded(
         allServices: services,
         filteredServices: services,
@@ -99,15 +77,12 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
       // 2. Prepare updated list
       final updatedServices = List<ServiceModel>.from(currentState.allServices)..add(addedService);
       
-      // 3. Call saveProfile API to sync services in profile endpoint
+      // 3. Update AuthBloc
       final partner = _currentPartner.copyWith(services: updatedServices);
-      final savedPartner = await _profileRepository.saveProfile(partner);
-      
-      // 4. Update AuthBloc
-      _authBloc.add(PartnerUpdated(savedPartner));
+      _authBloc.add(PartnerUpdated(partner));
 
-      // 5. Apply filtering and emit loaded state
-      final categories = _getMockCategories(partner.role);
+      // 4. Apply filtering and emit loaded state
+      final categories = _getCategories(partner.role);
       emit(ServicesLoaded(
         allServices: updatedServices,
         filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
@@ -135,15 +110,12 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
         return e.id == updatedService.id ? updatedService : e;
       }).toList();
 
-      // 3. Call saveProfile API to sync services in profile endpoint
+      // 3. Update AuthBloc
       final partner = _currentPartner.copyWith(services: updatedServices);
-      final savedPartner = await _profileRepository.saveProfile(partner);
-      
-      // 4. Update AuthBloc
-      _authBloc.add(PartnerUpdated(savedPartner));
+      _authBloc.add(PartnerUpdated(partner));
 
-      // 5. Apply filtering and emit loaded state
-      final categories = _getMockCategories(partner.role);
+      // 4. Apply filtering and emit loaded state
+      final categories = _getCategories(partner.role);
       emit(ServicesLoaded(
         allServices: updatedServices,
         filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
@@ -170,15 +142,12 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
         return e.id == updatedService.id ? updatedService : e;
       }).toList();
 
-      // 3. Call saveProfile API to sync services in profile endpoint
+      // 3. Update AuthBloc
       final partner = _currentPartner.copyWith(services: updatedServices);
-      final savedPartner = await _profileRepository.saveProfile(partner);
-      
-      // 4. Update AuthBloc
-      _authBloc.add(PartnerUpdated(savedPartner));
+      _authBloc.add(PartnerUpdated(partner));
 
-      // 5. Apply filtering and emit loaded state
-      final categories = _getMockCategories(partner.role);
+      // 4. Apply filtering and emit loaded state
+      final categories = _getCategories(partner.role);
       emit(ServicesLoaded(
         allServices: updatedServices,
         filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
@@ -203,15 +172,12 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
       // 2. Prepare updated list
       final updatedServices = currentState.allServices.where((e) => e.id != event.id).toList();
 
-      // 3. Call saveProfile API to sync services in profile endpoint
+      // 3. Update AuthBloc
       final partner = _currentPartner.copyWith(services: updatedServices);
-      final savedPartner = await _profileRepository.saveProfile(partner);
-      
-      // 4. Update AuthBloc
-      _authBloc.add(PartnerUpdated(savedPartner));
+      _authBloc.add(PartnerUpdated(partner));
 
-      // 5. Apply filtering and emit loaded state
-      final categories = _getMockCategories(partner.role);
+      // 4. Apply filtering and emit loaded state
+      final categories = _getCategories(partner.role);
       emit(ServicesLoaded(
         allServices: updatedServices,
         filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),

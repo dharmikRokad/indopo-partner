@@ -12,6 +12,7 @@ import 'data/repositories/auth_repo.dart';
 import 'data/repositories/profile_repo.dart';
 import 'data/repositories/request_repo.dart';
 import 'data/repositories/service_repo.dart';
+import 'data/repositories/dropdown_repo.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
@@ -37,6 +38,10 @@ void main() async {
   final profileRepository = ProfileRepository(apiClient);
   final requestRepository = RequestRepository(apiClient);
   final serviceRepository = ServiceRepository(apiClient);
+  final dropdownRepository = DropdownRepository(apiClient);
+
+  // Trigger dropdown values load immediately when the user opens the app
+  dropdownRepository.fetchDropdownValues();
 
   runApp(
     MultiRepositoryProvider(
@@ -46,6 +51,7 @@ void main() async {
         RepositoryProvider<ProfileRepository>.value(value: profileRepository),
         RepositoryProvider<RequestRepository>.value(value: requestRepository),
         RepositoryProvider<ServiceRepository>.value(value: serviceRepository),
+        RepositoryProvider<DropdownRepository>.value(value: dropdownRepository),
       ],
       child: const IndopoPartnerApp(),
     ),
@@ -80,9 +86,10 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
     _appRouter = AppRouter(_authBloc);
 
     // 6. Listen to global token refresh failures to auto-logout the user
-    _sessionExpirySubscription = TokenManager.instance.sessionExpiryStream.listen((_) {
-      _authBloc.add(LogoutRequested());
-    });
+    _sessionExpirySubscription = TokenManager.instance.sessionExpiryStream
+        .listen((_) {
+          _authBloc.add(LogoutRequested());
+        });
   }
 
   @override

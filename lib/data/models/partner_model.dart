@@ -70,13 +70,14 @@ class PartnerModel {
 
     final orgAddressStr = json['orgAddress'] as String? ?? '';
 
+    final name = json['name'] as String? ?? '';
+    final orgName = json['orgName'] as String? ?? '';
+
     final details = <String, dynamic>{
       'phone': json['phone'] ?? '',
       'address': orgAddressStr,
+      'org_name': orgName,
     };
-
-    final name = json['name'] as String? ?? '';
-    final orgName = json['orgName'] as String? ?? '';
 
     if (role == PartnerType.doctor) {
       details['full_name'] = name;

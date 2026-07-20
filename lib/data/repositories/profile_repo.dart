@@ -7,7 +7,7 @@ import '../models/partner_type.dart';
 class ProfileRepository {
   final ApiClient _apiClient;
   final Dio _nominatimDio;
-  
+
   ProfileRepository(this._apiClient) : _nominatimDio = Dio() {
     _nominatimDio.options.headers = {
       'User-Agent': 'IndopoPartnerApp/1.0.0 (contact@indopo.com)',
@@ -35,9 +35,13 @@ class ProfileRepository {
     final role = partner.role;
 
     final Map<String, dynamic> body = {
-      'name': details['full_name'] ?? details['lab_name'] ?? details['center_name'] ?? '',
+      'name':
+          details['full_name'] ??
+          details['lab_name'] ??
+          details['center_name'] ??
+          '',
       'phone': details['phone'] ?? '',
-      'orgName': details['clinic_name'] ?? details['clinic_hospital_name'] ?? '',
+      'orgName': details['org_name'] ?? details['clinic_name'] ?? details['clinic_hospital_name'] ?? '',
       'orgAddress': partner.orgAddress ?? details['address'] ?? '',
       'services': partner.services.map((e) => e.toJson()).toList(),
       'openTime': partner.openTime,
@@ -56,10 +60,7 @@ class ProfileRepository {
     }
 
     try {
-      final response = await _apiClient.patch(
-        ApiEndpoints.profile,
-        data: body,
-      );
+      final response = await _apiClient.patch(ApiEndpoints.profile, data: body);
 
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
@@ -70,12 +71,12 @@ class ProfileRepository {
           ..addAll(apiPartner.details);
 
         // Keep local services if the api response does not contain them
-        final servicesToKeep = apiPartner.services.isNotEmpty 
-            ? apiPartner.services 
+        final servicesToKeep = apiPartner.services.isNotEmpty
+            ? apiPartner.services
             : partner.services;
 
         return apiPartner.copyWith(
-          details: mergedDetails, 
+          details: mergedDetails,
           services: servicesToKeep,
           isProfileConfigured: true,
           lat: apiPartner.lat ?? partner.lat,
@@ -95,11 +96,7 @@ class ProfileRepository {
     try {
       final response = await _nominatimDio.get(
         'https://nominatim.openstreetmap.org/search',
-        queryParameters: {
-          'q': query,
-          'format': 'json',
-          'limit': 5,
-        },
+        queryParameters: {'q': query, 'format': 'json', 'limit': 5},
       );
       if (response.statusCode == 200 && response.data is List) {
         final list = response.data as List;
@@ -122,11 +119,7 @@ class ProfileRepository {
     try {
       final response = await _nominatimDio.get(
         'https://nominatim.openstreetmap.org/reverse',
-        queryParameters: {
-          'lat': lat,
-          'lon': lon,
-          'format': 'json',
-        },
+        queryParameters: {'lat': lat, 'lon': lon, 'format': 'json'},
       );
       if (response.statusCode == 200 && response.data != null) {
         return response.data['display_name'] as String?;

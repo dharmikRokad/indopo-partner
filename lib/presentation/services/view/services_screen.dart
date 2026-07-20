@@ -5,8 +5,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/service_model.dart';
-import '../../../data/repositories/profile_repo.dart';
 import '../../../data/repositories/service_repo.dart';
+import '../../../data/repositories/dropdown_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../bloc/services_bloc.dart';
@@ -31,7 +31,7 @@ class ServicesScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => ServicesBloc(
         serviceRepository: context.read<ServiceRepository>(),
-        profileRepository: context.read<ProfileRepository>(),
+        dropdownRepository: context.read<DropdownRepository>(),
         authBloc: context.read<AuthBloc>(),
       )..add(LoadServices(partnerId: partner.id, role: partner.role)),
       child: const _ServicesContent(),
@@ -355,7 +355,7 @@ class _ServicesContentState extends State<_ServicesContent> {
                   ),
                 ),
                 Text(
-                  '\$${service.price}',
+                  service.price,
                   style: TextStyles.headingBold.copyWith(color: AppColors.blue1, fontSize: 20),
                 ),
               ],

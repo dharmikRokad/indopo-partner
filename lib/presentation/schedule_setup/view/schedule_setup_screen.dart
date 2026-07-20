@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
+import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/presentation/widgets/address_autocomplete_field.dart';
 import '../../../data/models/partner_model.dart';
@@ -230,8 +231,11 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                onPressed: () {
-                  context.read<AuthBloc>().add(LogoutRequested());
+                onPressed: () async {
+                  final shouldLogout = await LogoutConfirmationDialog.show(context);
+                  if (shouldLogout == true && context.mounted) {
+                    context.read<AuthBloc>().add(LogoutRequested());
+                  }
                 },
               ),
             ],
