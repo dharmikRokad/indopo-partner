@@ -11,6 +11,24 @@ import '../../../data/repositories/request_repo.dart';
 import '../bloc/appointment_bloc.dart';
 import '../bloc/appointment_event.dart';
 import '../bloc/appointment_state.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
+
+class AssignAppointmentState {
+  final DateTime? selectedDate;
+  final TimeOfDay? selectedTime;
+
+  const AssignAppointmentState({this.selectedDate, this.selectedTime});
+
+  AssignAppointmentState copyWith({
+    DateTime? selectedDate,
+    TimeOfDay? selectedTime,
+  }) {
+    return AssignAppointmentState(
+      selectedDate: selectedDate ?? this.selectedDate,
+      selectedTime: selectedTime ?? this.selectedTime,
+    );
+  }
+}
 
 class AssignAppointmentDialog extends StatelessWidget {
   final String requestId;
@@ -53,9 +71,7 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
   final _formKey = GlobalKey<FormState>();
   final _aptNumberController = TextEditingController();
   final _notesController = TextEditingController();
-  
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  final _stateCubit = ValueCubit<AssignAppointmentState>(const AssignAppointmentState());
 
   @override
   void initState() {
@@ -69,6 +85,7 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
   void dispose() {
     _aptNumberController.dispose();
     _notesController.dispose();
+    _stateCubit.close();
     super.dispose();
   }
 
@@ -94,9 +111,7 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
     );
 
     if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      _stateCubit.update(_stateCubit.state.copyWith(selectedDate: picked));
     }
   }
 
@@ -120,30 +135,29 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
     );
 
     if (picked != null) {
-      setState(() {
-        _selectedTime = picked;
-      });
+      _stateCubit.update(_stateCubit.state.copyWith(selectedTime: picked));
     }
   }
 
   void _submitAppointment() {
     if (_formKey.currentState?.validate() ?? false) {
-      if (_selectedDate == null) {
+      final currentState = _stateCubit.state;
+      if (currentState.selectedDate == null) {
         AppSnackBar.showWarning(context, 'Please select an appointment date');
         return;
       }
-      if (_selectedTime == null) {
+      if (currentState.selectedTime == null) {
         AppSnackBar.showWarning(context, 'Please select an appointment time');
         return;
       }
 
-      final formattedTime = '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
+      final formattedTime = '${currentState.selectedTime!.hour.toString().padLeft(2, '0')}:${currentState.selectedTime!.minute.toString().padLeft(2, '0')}';
       
       final appointment = AppointmentModel(
         id: 'apt-${DateTime.now().millisecondsSinceEpoch}',
         requestId: widget.requestId,
         appointmentNumber: _aptNumberController.text.trim(),
-        date: _selectedDate!,
+        date: currentState.selectedDate!,
         time: formattedTime,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       );
@@ -170,203 +184,208 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
       builder: (context, state) {
         final bool isLoading = state is AppointmentLoading;
 
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.blue3,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Handle Bar
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Assign Appointment',
-                    style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Appointment Number field
-                  Text(
-                    'Appointment Number',
-                    style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _aptNumberController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. APT-1001',
-                    ),
-                    validator: (v) => Validators.validateRequired(v, 'Appointment number'),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Date and Time Pickers Row
-                  Row(
+        return BlocBuilder<ValueCubit<AssignAppointmentState>, AssignAppointmentState>(
+          bloc: _stateCubit,
+          builder: (context, appointmentState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.blue3,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Date Picker
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Date',
-                              style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
-                            ),
-                            const SizedBox(height: 8),
-                            InkWell(
-                              onTap: _selectDate,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                height: 56,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  border: Border.all(color: AppColors.blue2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.calendar_today_rounded, color: AppColors.blue1, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _selectedDate == null
-                                            ? 'Select Date'
-                                            : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                                        style: TextStyle(
-                                          color: _selectedDate == null ? AppColors.textMuted : Colors.white,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                      // Top Handle Bar
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      // Time Picker
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Time',
-                              style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
-                            ),
-                            const SizedBox(height: 8),
-                            InkWell(
-                              onTap: _selectTime,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                height: 56,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  border: Border.all(color: AppColors.blue2),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Assign Appointment',
+                        style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Appointment Number field
+                      Text(
+                        'Appointment Number',
+                        style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _aptNumberController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. APT-1001',
+                        ),
+                        validator: (v) => Validators.validateRequired(v, 'Appointment number'),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Date and Time Pickers Row
+                      Row(
+                        children: [
+                          // Date Picker
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Date',
+                                  style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: _selectDate,
                                   borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.access_time_rounded, color: AppColors.blue1, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _selectedTime == null
-                                            ? 'Select Time'
-                                            : _selectedTime!.format(context),
-                                        style: TextStyle(
-                                          color: _selectedTime == null ? AppColors.textMuted : Colors.white,
-                                          fontSize: 15,
-                                        ),
-                                      ),
+                                  child: Container(
+                                    height: 56,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      border: Border.all(color: AppColors.blue2),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  ],
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today_rounded, color: AppColors.blue1, size: 20),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            appointmentState.selectedDate == null
+                                                ? 'Select Date'
+                                                : '${appointmentState.selectedDate!.day}/${appointmentState.selectedDate!.month}/${appointmentState.selectedDate!.year}',
+                                            style: TextStyle(
+                                              color: appointmentState.selectedDate == null ? AppColors.textMuted : Colors.white,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 16),
+                          // Time Picker
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Time',
+                                  style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: _selectTime,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 56,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      border: Border.all(color: AppColors.blue2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.access_time_rounded, color: AppColors.blue1, size: 20),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            appointmentState.selectedTime == null
+                                                ? 'Select Time'
+                                                : appointmentState.selectedTime!.format(context),
+                                            style: TextStyle(
+                                              color: appointmentState.selectedTime == null ? AppColors.textMuted : Colors.white,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Optional Notes
+                      Text(
+                        'Notes / Instructions (Optional)',
+                        style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _notesController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'Enter fasting requirements, prepare documents, etc.',
+                        ),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 32),
+
+                      // CTA Gradient Confirm button
+                      Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                            colors: [AppColors.blue1, AppColors.blue2],
+                          ),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : _submitAppointment,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : Text(
+                                  'Confirm Appointment',
+                                  style: TextStyles.headingBold.copyWith(fontSize: 16),
+                                ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-
-                  // Optional Notes
-                  Text(
-                    'Notes / Instructions (Optional)',
-                    style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _notesController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: 'Enter fasting requirements, prepare documents, etc.',
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // CTA Gradient Confirm button
-                  Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: const LinearGradient(
-                        colors: [AppColors.blue1, AppColors.blue2],
-                      ),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : _submitAppointment,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : Text(
-                              'Confirm Appointment',
-                              style: TextStyles.headingBold.copyWith(fontSize: 16),
-                            ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

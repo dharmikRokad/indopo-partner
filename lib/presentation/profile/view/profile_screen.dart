@@ -12,6 +12,43 @@ import '../../../data/repositories/profile_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
+
+class ProfileScreenState {
+  final bool isEditing;
+  final bool isLoading;
+  final List<String> selectedModalities;
+  final List<String> selectedDays;
+  final TimeOfDay? openTime;
+  final TimeOfDay? closeTime;
+
+  const ProfileScreenState({
+    this.isEditing = false,
+    this.isLoading = false,
+    this.selectedModalities = const [],
+    this.selectedDays = const [],
+    this.openTime,
+    this.closeTime,
+  });
+
+  ProfileScreenState copyWith({
+    bool? isEditing,
+    bool? isLoading,
+    List<String>? selectedModalities,
+    List<String>? selectedDays,
+    TimeOfDay? openTime,
+    TimeOfDay? closeTime,
+  }) {
+    return ProfileScreenState(
+      isEditing: isEditing ?? this.isEditing,
+      isLoading: isLoading ?? this.isLoading,
+      selectedModalities: selectedModalities ?? this.selectedModalities,
+      selectedDays: selectedDays ?? this.selectedDays,
+      openTime: openTime ?? this.openTime,
+      closeTime: closeTime ?? this.closeTime,
+    );
+  }
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,8 +58,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isEditing = false;
-  bool _isLoading = false;
+  final _stateCubit = ValueCubit<ProfileScreenState>(const ProfileScreenState());
   final _formKey = GlobalKey<FormState>();
 
   // Text controllers for the edit form
@@ -43,10 +79,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'PET Scan',
     'Mammography',
   ];
-  final List<String> _selectedModalities = [];
-  final List<String> _selectedDays = [];
-  TimeOfDay? _openTime;
-  TimeOfDay? _closeTime;
 
   @override
   void dispose() {
@@ -57,6 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _contactPersonController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
+    _stateCubit.close();
     super.dispose();
   }
 
@@ -73,18 +106,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _addressController.text = partner.details['address'] ?? '';
     _phoneController.text = partner.details['phone'] ?? '';
 
-    _selectedModalities.clear();
+    final selectedModalities = <String>[];
     final dynamic modalities = partner.details['modalities'];
     if (modalities is List) {
-      _selectedModalities.addAll(modalities.map((e) => e.toString()));
+      selectedModalities.addAll(modalities.map((e) => e.toString()));
     }
 
-    _selectedDays.clear();
+    final selectedDays = <String>[];
     if (partner.workingDays != null) {
-      _selectedDays.addAll(partner.workingDays!);
+      selectedDays.addAll(partner.workingDays!);
     }
-    _openTime = _parseTimeString(partner.openTime);
-    _closeTime = _parseTimeString(partner.closeTime);
+    final openTime = _parseTimeString(partner.openTime);
+    final closeTime = _parseTimeString(partner.closeTime);
+
+    _stateCubit.update(ProfileScreenState(
+      isEditing: _stateCubit.state.isEditing,
+      isLoading: _stateCubit.state.isLoading,
+      selectedModalities: selectedModalities,
+      selectedDays: selectedDays,
+      openTime: openTime,
+      closeTime: closeTime,
+    ));
   }
 
   TimeOfDay? _parseTimeString(String? timeStr) {
@@ -109,27 +151,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveProfile(PartnerModel partner) async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (partner.role == PartnerType.imagingCenter && _selectedModalities.isEmpty) {
+    final currentState = _stateCubit.state;
+    if (partner.role == PartnerType.imagingCenter && currentState.selectedModalities.isEmpty) {
       AppSnackBar.showWarning(context, 'Please select at least one modality');
       return;
     }
 
-    if (_selectedDays.isEmpty) {
+    if (currentState.selectedDays.isEmpty) {
       AppSnackBar.showWarning(context, 'Please select at least one working day');
       return;
     }
-    if (_openTime == null || _closeTime == null) {
+    if (currentState.openTime == null || currentState.closeTime == null) {
       AppSnackBar.showWarning(context, 'Please select opening and closing times');
       return;
     }
-    if (_openTime!.hour + _openTime!.minute/60.0 >= _closeTime!.hour + _closeTime!.minute/60.0) {
+    if (currentState.openTime!.hour + currentState.openTime!.minute/60.0 >= currentState.closeTime!.hour + currentState.closeTime!.minute/60.0) {
       AppSnackBar.showWarning(context, 'Opening time must be earlier than closing time');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    _stateCubit.update(_stateCubit.state.copyWith(isLoading: true));
 
     try {
       final details = <String, dynamic>{
@@ -158,16 +199,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         case PartnerType.imagingCenter:
           details['center_name'] = _nameController.text.trim();
           details['accreditation_number'] = _regNumController.text.trim();
-          details['modalities'] = _selectedModalities;
+          details['modalities'] = currentState.selectedModalities;
           break;
       }
 
       final updatedPartner = partner.copyWith(
         details: details,
         isProfileConfigured: true,
-        workingDays: _selectedDays,
-        openTime: _formatTimeOfDay(_openTime!),
-        closeTime: _formatTimeOfDay(_closeTime!),
+        workingDays: currentState.selectedDays,
+        openTime: _formatTimeOfDay(currentState.openTime!),
+        closeTime: _formatTimeOfDay(currentState.closeTime!),
       );
 
       final savedPartner = await context.read<ProfileRepository>().saveProfile(updatedPartner);
@@ -177,15 +218,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       AppSnackBar.showSuccess(context, 'Profile updated successfully!');
 
-      setState(() {
-        _isEditing = false;
-      });
+      _stateCubit.update(_stateCubit.state.copyWith(isEditing: false));
     } catch (e) {
       AppSnackBar.showError(context, 'Failed to update profile: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      _stateCubit.update(_stateCubit.state.copyWith(isLoading: false));
     }
   }
 
@@ -204,183 +241,186 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         
     final initials = displayName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
 
-    return Scaffold(
-      backgroundColor: AppColors.blue3,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          _isEditing ? 'Edit Profile' : 'Profile',
-          style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
-        ),
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-              onPressed: () {
-                context.read<AuthBloc>().add(LogoutRequested());
-              },
+    return BlocBuilder<ValueCubit<ProfileScreenState>, ProfileScreenState>(
+      bloc: _stateCubit,
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: AppColors.blue3,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              state.isEditing ? 'Edit Profile' : 'Profile',
+              style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
             ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
+            actions: [
+              if (!state.isEditing)
+                IconButton(
+                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                  onPressed: () {
+                    context.read<AuthBloc>().add(LogoutRequested());
+                  },
                 ),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: AppColors.blue2,
-                      child: Text(
-                        initials.isEmpty ? 'P' : initials,
-                        style: TextStyles.headingBold.copyWith(fontSize: 28),
-                      ),
+            ],
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header Card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      displayName,
-                      style: TextStyles.headingBold.copyWith(fontSize: 22),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      partner.email,
-                      style: TextStyles.labelRegular.copyWith(fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.blue2.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.blue1, width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(partner.role.icon, style: const TextStyle(fontSize: 16)),
-                          const SizedBox(width: 6),
-                          Text(
-                            partner.role.displayName,
-                            style: TextStyles.bodyMedium.copyWith(
-                              color: AppColors.blue1,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: AppColors.blue2,
+                          child: Text(
+                            initials.isEmpty ? 'P' : initials,
+                            style: TextStyles.headingBold.copyWith(fontSize: 28),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Content based on Mode
-              _isEditing 
-                  ? Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildEditFields(partner.role),
-                          const SizedBox(height: 28),
-                          Row(
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          displayName,
+                          style: TextStyles.headingBold.copyWith(fontSize: 22),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          partner.email,
+                          style: TextStyles.labelRegular.copyWith(fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.blue2.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.blue1, width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: _isLoading 
-                                      ? null 
-                                      : () => setState(() => _isEditing = false),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: AppColors.textMuted),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  child: Text('Cancel', style: TextStyles.headingSemiBold.copyWith(color: AppColors.textMuted)),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Container(
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    gradient: const LinearGradient(
-                                      colors: [AppColors.blue1, AppColors.blue2],
-                                    ),
-                                  ),
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading ? null : () => _saveProfile(partner),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.transparent,
-                                      shadowColor: Colors.transparent,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    child: _isLoading 
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                          )
-                                        : Text('Save Changes', style: TextStyles.headingBold.copyWith(fontSize: 16)),
-                                  ),
+                              Text(partner.role.icon, style: const TextStyle(fontSize: 16)),
+                              const SizedBox(width: 6),
+                              Text(
+                                partner.role.displayName,
+                                style: TextStyles.bodyMedium.copyWith(
+                                  color: AppColors.blue1,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildViewFields(partner),
-                        const SizedBox(height: 28),
-                        Container(
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(
-                              colors: [AppColors.blue1, AppColors.blue2],
-                            ),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              _initFormFields(partner);
-                              setState(() {
-                                _isEditing = true;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: Text(
-                              'Edit Profile',
-                              style: TextStyles.headingBold.copyWith(fontSize: 16),
-                            ),
-                          ),
                         ),
                       ],
                     ),
-            ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Content based on Mode
+                  state.isEditing 
+                      ? Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildEditFields(partner.role, state),
+                              const SizedBox(height: 28),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: state.isLoading 
+                                          ? null 
+                                          : () => _stateCubit.update(state.copyWith(isEditing: false)),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: AppColors.textMuted),
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      child: Text('Cancel', style: TextStyles.headingSemiBold.copyWith(color: AppColors.textMuted)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Container(
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        gradient: const LinearGradient(
+                                          colors: [AppColors.blue1, AppColors.blue2],
+                                        ),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: state.isLoading ? null : () => _saveProfile(partner),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                        child: state.isLoading 
+                                            ? const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                              )
+                                            : Text('Save Changes', style: TextStyles.headingBold.copyWith(fontSize: 16)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildViewFields(partner),
+                            const SizedBox(height: 28),
+                            Container(
+                              height: 56,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: const LinearGradient(
+                                  colors: [AppColors.blue1, AppColors.blue2],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  _initFormFields(partner);
+                                  _stateCubit.update(state.copyWith(isEditing: true));
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: Text(
+                                  'Edit Profile',
+                                  style: TextStyles.headingBold.copyWith(fontSize: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -502,7 +542,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Edit mode fields builder
-  Widget _buildEditFields(PartnerType role) {
+  Widget _buildEditFields(PartnerType role, ProfileScreenState state) {
     final nameLabel = (role == PartnerType.laboratory) 
         ? 'Laboratory Name' 
         : (role == PartnerType.imagingCenter ? 'Center Name' : 'Full Name');
@@ -571,7 +611,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             spacing: 10,
             runSpacing: 10,
             children: _allModalities.map((modality) {
-              final isSelected = _selectedModalities.contains(modality);
+              final isSelected = state.selectedModalities.contains(modality);
               return FilterChip(
                 label: Text(modality),
                 selected: isSelected,
@@ -589,13 +629,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedModalities.add(modality);
-                    } else {
-                      _selectedModalities.remove(modality);
-                    }
-                  });
+                  final list = List<String>.from(state.selectedModalities);
+                  if (selected) {
+                    list.add(modality);
+                  } else {
+                    list.remove(modality);
+                  }
+                  _stateCubit.update(state.copyWith(selectedModalities: list));
                 },
               );
             }).toList(),
@@ -633,7 +673,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             spacing: 8,
             runSpacing: 8,
             children: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) {
-              final isSelected = _selectedDays.contains(day);
+              final isSelected = state.selectedDays.contains(day);
               return FilterChip(
                 label: Text(day),
                 selected: isSelected,
@@ -652,13 +692,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedDays.add(day);
-                    } else {
-                      _selectedDays.remove(day);
-                    }
-                  });
+                  final list = List<String>.from(state.selectedDays);
+                  if (selected) {
+                    list.add(day);
+                  } else {
+                    list.remove(day);
+                  }
+                  _stateCubit.update(state.copyWith(selectedDays: list));
                 },
               );
             }).toList(),
@@ -673,7 +713,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: _buildTimeSelector(
                 label: 'Opening Time',
-                time: _openTime,
+                time: state.openTime,
                 onTap: () => _selectTime(isOpenTime: true),
               ),
             ),
@@ -681,7 +721,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: _buildTimeSelector(
                 label: 'Closing Time',
-                time: _closeTime,
+                time: state.closeTime,
                 onTap: () => _selectTime(isOpenTime: false),
               ),
             ),
@@ -756,8 +796,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _selectTime({required bool isOpenTime}) async {
     final initialTime = isOpenTime
-        ? (_openTime ?? const TimeOfDay(hour: 9, minute: 0))
-        : (_closeTime ?? const TimeOfDay(hour: 18, minute: 0));
+        ? (_stateCubit.state.openTime ?? const TimeOfDay(hour: 9, minute: 0))
+        : (_stateCubit.state.closeTime ?? const TimeOfDay(hour: 18, minute: 0));
 
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -779,13 +819,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (picked != null) {
-      setState(() {
-        if (isOpenTime) {
-          _openTime = picked;
-        } else {
-          _closeTime = picked;
-        }
-      });
+      if (isOpenTime) {
+        _stateCubit.update(_stateCubit.state.copyWith(openTime: picked));
+      } else {
+        _stateCubit.update(_stateCubit.state.copyWith(closeTime: picked));
+      }
     }
   }
 

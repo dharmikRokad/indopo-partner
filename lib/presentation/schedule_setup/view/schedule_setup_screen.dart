@@ -8,6 +8,35 @@ import '../../../data/repositories/profile_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
+
+class ScheduleSetupScreenState {
+  final List<String> selectedDays;
+  final TimeOfDay? openTime;
+  final TimeOfDay? closeTime;
+  final bool isLoading;
+
+  const ScheduleSetupScreenState({
+    this.selectedDays = const [],
+    this.openTime,
+    this.closeTime,
+    this.isLoading = false,
+  });
+
+  ScheduleSetupScreenState copyWith({
+    List<String>? selectedDays,
+    TimeOfDay? openTime,
+    TimeOfDay? closeTime,
+    bool? isLoading,
+  }) {
+    return ScheduleSetupScreenState(
+      selectedDays: selectedDays ?? this.selectedDays,
+      openTime: openTime ?? this.openTime,
+      closeTime: closeTime ?? this.closeTime,
+      isLoading: isLoading ?? this.isLoading,
+    );
+  }
+}
 
 class ScheduleSetupScreen extends StatefulWidget {
   const ScheduleSetupScreen({super.key});
@@ -18,11 +47,7 @@ class ScheduleSetupScreen extends StatefulWidget {
 
 class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
   final List<String> _daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-  final List<String> _selectedDays = [];
-
-  TimeOfDay? _openTime;
-  TimeOfDay? _closeTime;
-  bool _isLoading = false;
+  final _stateCubit = ValueCubit<ScheduleSetupScreenState>(const ScheduleSetupScreenState());
 
   @override
   void initState() {
@@ -31,12 +56,24 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthSuccess) {
       final partner = authState.partner;
+      final selectedDays = <String>[];
       if (partner.workingDays != null) {
-        _selectedDays.addAll(partner.workingDays!);
+        selectedDays.addAll(partner.workingDays!);
       }
-      _openTime = _parseTimeString(partner.openTime);
-      _closeTime = _parseTimeString(partner.closeTime);
+      final openTime = _parseTimeString(partner.openTime);
+      final closeTime = _parseTimeString(partner.closeTime);
+      _stateCubit.update(ScheduleSetupScreenState(
+        selectedDays: selectedDays,
+        openTime: openTime,
+        closeTime: closeTime,
+      ));
     }
+  }
+
+  @override
+  void dispose() {
+    _stateCubit.close();
+    super.dispose();
   }
 
   TimeOfDay? _parseTimeString(String? timeStr) {
@@ -59,9 +96,10 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
   }
 
   Future<void> _selectTime({required bool isOpenTime}) async {
+    final currentState = _stateCubit.state;
     final initialTime = isOpenTime
-        ? (_openTime ?? const TimeOfDay(hour: 9, minute: 0))
-        : (_closeTime ?? const TimeOfDay(hour: 18, minute: 0));
+        ? (currentState.openTime ?? const TimeOfDay(hour: 9, minute: 0))
+        : (currentState.closeTime ?? const TimeOfDay(hour: 18, minute: 0));
 
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -83,47 +121,44 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     );
 
     if (picked != null) {
-      setState(() {
-        if (isOpenTime) {
-          _openTime = picked;
-        } else {
-          _closeTime = picked;
-        }
-      });
+      if (isOpenTime) {
+        _stateCubit.update(currentState.copyWith(openTime: picked));
+      } else {
+        _stateCubit.update(currentState.copyWith(closeTime: picked));
+      }
     }
   }
 
   double _timeOfDayToDouble(TimeOfDay time) => time.hour + time.minute / 60.0;
 
   Future<void> _submitSchedule(PartnerModel partner) async {
+    final currentState = _stateCubit.state;
     // Validations
-    if (_selectedDays.isEmpty) {
+    if (currentState.selectedDays.isEmpty) {
       AppSnackBar.showWarning(context, 'Please select at least one working day');
       return;
     }
-    if (_openTime == null) {
+    if (currentState.openTime == null) {
       AppSnackBar.showWarning(context, 'Please select an opening time');
       return;
     }
-    if (_closeTime == null) {
+    if (currentState.closeTime == null) {
       AppSnackBar.showWarning(context, 'Please select a closing time');
       return;
     }
 
-    if (_timeOfDayToDouble(_openTime!) >= _timeOfDayToDouble(_closeTime!)) {
+    if (_timeOfDayToDouble(currentState.openTime!) >= _timeOfDayToDouble(currentState.closeTime!)) {
       AppSnackBar.showWarning(context, 'Opening time must be earlier than closing time');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    _stateCubit.update(currentState.copyWith(isLoading: true));
 
     try {
       final updatedPartner = partner.copyWith(
-        workingDays: _selectedDays,
-        openTime: _formatTimeOfDay(_openTime!),
-        closeTime: _formatTimeOfDay(_closeTime!),
+        workingDays: currentState.selectedDays,
+        openTime: _formatTimeOfDay(currentState.openTime!),
+        closeTime: _formatTimeOfDay(currentState.closeTime!),
       );
 
       final savedPartner = await context.read<ProfileRepository>().saveProfile(updatedPartner);
@@ -138,9 +173,7 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        _stateCubit.update(_stateCubit.state.copyWith(isLoading: false));
       }
     }
   }
@@ -153,161 +186,171 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     }
     final partner = authState.partner;
 
-    return Scaffold(
-      backgroundColor: AppColors.blue3,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text('Schedule Setup', style: TextStyles.headingSemiBold),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            onPressed: () {
-              context.read<AuthBloc>().add(LogoutRequested());
-            },
+    return BlocBuilder<ValueCubit<ScheduleSetupScreenState>, ScheduleSetupScreenState>(
+      bloc: _stateCubit,
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: AppColors.blue3,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text('Schedule Setup', style: TextStyles.headingSemiBold),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                onPressed: () {
+                  context.read<AuthBloc>().add(LogoutRequested());
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header description card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.schedule_rounded,
-                      color: AppColors.blue1,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Configure Working Hours',
-                      style: TextStyles.headingBold.copyWith(fontSize: 18),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Please specify the working days and opening/closing hours of your practice so patients can request appointments.',
-                      style: TextStyles.labelRegular.copyWith(fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Working Days Section
-              Text('Working Days', style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1)),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: _daysOfWeek.map((day) {
-                    final isSelected = _selectedDays.contains(day);
-                    return FilterChip(
-                      label: Text(day),
-                      selected: isSelected,
-                      selectedColor: AppColors.blue2,
-                      checkmarkColor: Colors.white,
-                      backgroundColor: AppColors.blue3,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : AppColors.textMuted,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: isSelected ? AppColors.blue1 : AppColors.blue2.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedDays.add(day);
-                          } else {
-                            _selectedDays.remove(day);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Open / Close Time Section
-              Text('Working Hours', style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1)),
-              const SizedBox(height: 12),
-              Row(
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: _buildTimeSelector(
-                      label: 'Opening Time',
-                      time: _openTime,
-                      onTap: () => _selectTime(isOpenTime: true),
+                  // Header description card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          color: AppColors.blue1,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Configure Working Hours',
+                          style: TextStyles.headingBold.copyWith(fontSize: 18),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please specify the working days and opening/closing hours of your practice so patients can request appointments.',
+                          style: TextStyles.labelRegular.copyWith(fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTimeSelector(
-                      label: 'Closing Time',
-                      time: _closeTime,
-                      onTap: () => _selectTime(isOpenTime: false),
+                  const SizedBox(height: 24),
+
+                  // Working Days Section
+                  Text('Working Days', style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1)),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _daysOfWeek.map((day) {
+                        final isSelected = state.selectedDays.contains(day);
+                        return FilterChip(
+                          label: Text(day),
+                          selected: isSelected,
+                          selectedColor: AppColors.blue2,
+                          checkmarkColor: Colors.white,
+                          backgroundColor: AppColors.blue3,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : AppColors.textMuted,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected ? AppColors.blue1 : AppColors.blue2.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          onSelected: (selected) {
+                            final list = List<String>.from(state.selectedDays);
+                            if (selected) {
+                              list.add(day);
+                            } else {
+                              list.remove(day);
+                            }
+                            _stateCubit.update(state.copyWith(selectedDays: list));
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Open / Close Time Section
+                  Text('Working Hours', style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTimeSelector(
+                          label: 'Opening Time',
+                          time: state.openTime,
+                          onTap: () => _selectTime(isOpenTime: true),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTimeSelector(
+                          label: 'Closing Time',
+                          time: state.closeTime,
+                          onTap: () => _selectTime(isOpenTime: false),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+
+                  // CTA Submit Button
+                  Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(
+                        colors: [AppColors.blue1, AppColors.blue2],
+                      ),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: state.isLoading ? null : () => _submitSchedule(partner),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: state.isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'Save & Continue',
+                              style: TextStyles.headingBold.copyWith(fontSize: 16),
+                            ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-
-              // Submit Button
-              Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(
-                    colors: [AppColors.blue1, AppColors.blue2],
-                  ),
-                ),
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : () => _submitSchedule(partner),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(
-                          'Save & Continue',
-                          style: TextStyles.headingBold.copyWith(fontSize: 16),
-                        ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

@@ -6,6 +6,7 @@ import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/partner_type.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -21,7 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final _obscurePasswordCubit = ValueCubit<bool>(true);
+  final _credentialsFilledCubit = ValueCubit<bool>(false);
 
   @override
   void initState() {
@@ -34,11 +36,17 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _obscurePasswordCubit.close();
+    _credentialsFilledCubit.close();
     super.dispose();
   }
 
   void _updateButtonState() {
-    setState(() {});
+    final isFilled = _usernameController.text.trim().isNotEmpty &&
+        _passwordController.text.isNotEmpty;
+    if (_credentialsFilledCubit.state != isFilled) {
+      _credentialsFilledCubit.update(isFilled);
+    }
   }
 
   @override
@@ -68,11 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
           }
 
           final bool isRoleSelected = selectedRole != null;
-          final bool isCredentialsFilled =
-              _usernameController.text.trim().isNotEmpty &&
-              _passwordController.text.isNotEmpty;
-          final bool isLoginButtonEnabled =
-              isRoleSelected && isCredentialsFilled && !isLoading;
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -197,32 +200,35 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              enabled: isRoleSelected,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: 'Enter your password',
-                                prefixIcon: const Icon(
-                                  Icons.lock_outline,
-                                  color: AppColors.textMuted,
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    color: AppColors.textMuted,
+                            BlocBuilder<ValueCubit<bool>, bool>(
+                              bloc: _obscurePasswordCubit,
+                              builder: (context, obscurePassword) {
+                                return TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: obscurePassword,
+                                  enabled: isRoleSelected,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter your password',
+                                    prefixIcon: const Icon(
+                                      Icons.lock_outline,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        obscurePassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      onPressed: () {
+                                        _obscurePasswordCubit.update(!obscurePassword);
+                                      },
+                                    ),
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
-                                ),
-                              ),
-                              validator: Validators.validatePassword,
+                                  validator: Validators.validatePassword,
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -231,10 +237,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 36),
 
                     // CTA Login button
-                    _LoginButton(
-                      isEnabled: isLoginButtonEnabled,
-                      isLoading: isLoading,
-                      onPressed: _submitLogin,
+                    BlocBuilder<ValueCubit<bool>, bool>(
+                      bloc: _credentialsFilledCubit,
+                      builder: (context, credentialsFilled) {
+                        final bool isLoginButtonEnabled =
+                            isRoleSelected && credentialsFilled && !isLoading;
+                        return _LoginButton(
+                          isEnabled: isLoginButtonEnabled,
+                          isLoading: isLoading,
+                          onPressed: _submitLogin,
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                   ],

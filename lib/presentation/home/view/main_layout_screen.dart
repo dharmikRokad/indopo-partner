@@ -7,6 +7,7 @@ import '../../auth/bloc/auth_state.dart';
 import '../../chat_list/view/chats_list_screen.dart';
 import '../../profile/view/profile_screen.dart';
 import '../../requests/view/request_list_screen.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
 
 class MainLayoutScreen extends StatefulWidget {
   const MainLayoutScreen({super.key});
@@ -16,7 +17,13 @@ class MainLayoutScreen extends StatefulWidget {
 }
 
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
-  int _currentIndex = 0;
+  final _navigationCubit = ValueCubit<int>(0);
+
+  @override
+  void dispose() {
+    _navigationCubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,37 +63,40 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
       ),
     ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: AppColors.surface.withValues(alpha: 0.8),
-              width: 1,
+    return BlocBuilder<ValueCubit<int>, int>(
+      bloc: _navigationCubit,
+      builder: (context, currentIndex) {
+        return Scaffold(
+          body: IndexedStack(
+            index: currentIndex,
+            children: screens,
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.surface.withValues(alpha: 0.8),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: BottomNavigationBar(
+              currentIndex: currentIndex,
+              onTap: (index) {
+                _navigationCubit.update(index);
+              },
+              backgroundColor: AppColors.surface,
+              selectedItemColor: AppColors.blue1,
+              unselectedItemColor: AppColors.textMuted,
+              showUnselectedLabels: true,
+              type: BottomNavigationBarType.fixed,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              items: items,
             ),
           ),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          backgroundColor: AppColors.surface,
-          selectedItemColor: AppColors.blue1,
-          unselectedItemColor: AppColors.textMuted,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontSize: 12),
-          items: items,
-        ),
-      ),
+        );
+      },
     );
   }
 }

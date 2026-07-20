@@ -12,6 +12,13 @@ import '../../auth/bloc/auth_state.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
+
+class ChatRequestState {
+  final RequestModel? requestDetails;
+  final bool isLoadingRequest;
+  const ChatRequestState({this.requestDetails, this.isLoadingRequest = true});
+}
 
 class ChatScreen extends StatelessWidget {
   final String id;
@@ -49,9 +56,7 @@ class _ChatContent extends StatefulWidget {
 class _ChatContentState extends State<_ChatContent> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-
-  RequestModel? _requestDetails;
-  bool _isLoadingRequest = true;
+  final _requestCubit = ValueCubit<ChatRequestState>(const ChatRequestState());
 
   @override
   void initState() {
@@ -63,6 +68,7 @@ class _ChatContentState extends State<_ChatContent> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _requestCubit.close();
     super.dispose();
   }
 
@@ -71,16 +77,11 @@ class _ChatContentState extends State<_ChatContent> {
       final repo = context.read<RequestRepository>();
       final req = await repo.fetchRequestById(widget.requestId);
       if (mounted) {
-        setState(() {
-          _requestDetails = req;
-          _isLoadingRequest = false;
-        });
+        _requestCubit.update(ChatRequestState(requestDetails: req, isLoadingRequest: false));
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoadingRequest = false;
-        });
+        _requestCubit.update(ChatRequestState(requestDetails: _requestCubit.state.requestDetails, isLoadingRequest: false));
       }
     }
   }
@@ -117,225 +118,232 @@ class _ChatContentState extends State<_ChatContent> {
 
   @override
   Widget build(BuildContext context) {
-    final String patientName = _requestDetails?.patientName ?? 'Patient';
+    return BlocBuilder<ValueCubit<ChatRequestState>, ChatRequestState>(
+      bloc: _requestCubit,
+      builder: (context, requestState) {
+        final requestDetails = requestState.requestDetails;
+        final isLoadingRequest = requestState.isLoadingRequest;
+        final String patientName = requestDetails?.patientName ?? 'Patient';
 
-    return Scaffold(
-      backgroundColor: AppColors.blue3,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-          ),
-          onPressed: () => context.pop(),
-        ),
-        title: _isLoadingRequest
-            ? const Text('Loading chat...', style: TextStyle(fontSize: 16))
-            : Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.blue2,
-                    child: Text(
-                      _requestDetails?.patientInitials ?? 'P',
-                      style: TextStyles.headingBold.copyWith(fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          patientName,
-                          style: TextStyles.headingSemiBold.copyWith(
-                            fontSize: 16,
-                          ),
+        return Scaffold(
+          backgroundColor: AppColors.blue3,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+              ),
+              onPressed: () => context.pop(),
+            ),
+            title: isLoadingRequest
+                ? const Text('Loading chat...', style: TextStyle(fontSize: 16))
+                : Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.blue2,
+                        child: Text(
+                          requestDetails?.patientInitials ?? 'P',
+                          style: TextStyles.headingBold.copyWith(fontSize: 13),
                         ),
-                        Row(
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.success,
-                                shape: BoxShape.circle,
+                            Text(
+                              patientName,
+                              style: TextStyles.headingSemiBold.copyWith(
+                                fontSize: 16,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Online',
-                              style: TextStyles.labelRegular.copyWith(
-                                fontSize: 11,
-                                color: AppColors.success,
-                              ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Online',
+                                  style: TextStyles.labelRegular.copyWith(
+                                    fontSize: 11,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-      ),
-      body: Column(
-        children: [
-          // 1. Guard Banner for Non-Medical Partner types
-          if (!widget.isMedicalPartner)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: AppColors.error.withValues(alpha: 0.2),
-              child: Row(
-                children: [
-                  const Icon(Icons.lock_rounded, color: AppColors.error),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Access Restricted: Chat features are only available for Doctor and Medical partner profiles.',
-                      style: TextStyles.bodyRegular.copyWith(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // 2. Chat Messages list
-          Expanded(
-            child: widget.isMedicalPartner
-                ? BlocConsumer<ChatBloc, ChatState>(
-                    listener: (context, state) {
-                      if (state is ChatLoaded) {
-                        // Scroll down slightly after load
-                        WidgetsBinding.instance.addPostFrameCallback(
-                          (_) => _scrollToBottom(),
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      if (state is ChatLoading) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.blue1,
-                          ),
-                        );
-                      }
-                      if (state is ChatFailure) {
-                        return Center(child: Text('Error: ${state.message}'));
-                      }
-                      if (state is ChatLoaded) {
-                        final messages = state.messages;
-                        if (messages.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'Start of message history.',
-                              style: TextStyles.labelRegular,
-                            ),
-                          );
-                        }
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          itemCount: messages.length,
-                          itemBuilder: (context, index) {
-                            final msg = messages[index];
-                            return _MessageBubble(message: msg);
-                          },
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.forum_rounded,
-                          size: 64,
-                          color: AppColors.surface,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Chat Disabled',
-                          style: TextStyles.headingSemiBold.copyWith(
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
           ),
-
-          // 3. Message Input Area (Disabled for non-medical)
-          AbsorbPointer(
-            absorbing: !widget.isMedicalPartner,
-            child: Opacity(
-              opacity: widget.isMedicalPartner ? 1.0 : 0.3,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(
-                    top: BorderSide(color: AppColors.blue3, width: 2),
-                  ),
-                ),
-                child: SafeArea(
+          body: Column(
+            children: [
+              // 1. Guard Banner for Non-Medical Partner types
+              if (!widget.isMedicalPartner)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: AppColors.error.withValues(alpha: 0.2),
                   child: Row(
                     children: [
-                      // Simulated image attachment selector
-                      IconButton(
-                        icon: const Icon(
-                          Icons.add_photo_alternate_rounded,
-                          color: AppColors.blue1,
-                        ),
-                        onPressed: _sendSimulatedImage,
-                      ),
+                      const Icon(Icons.lock_rounded, color: AppColors.error),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            hintText: 'Type a message...',
-                            fillColor: AppColors.blue3,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                          ),
-                          onSubmitted: (_) => _sendMessage(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Send button
-                      CircleAvatar(
-                        backgroundColor: AppColors.blue1,
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.send_rounded,
+                        child: Text(
+                          'Access Restricted: Chat features are only available for Doctor and Medical partner profiles.',
+                          style: TextStyles.bodyRegular.copyWith(
                             color: Colors.white,
-                            size: 18,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
                           ),
-                          onPressed: _sendMessage,
                         ),
                       ),
                     ],
                   ),
                 ),
+
+              // 2. Chat Messages list
+              Expanded(
+                child: widget.isMedicalPartner
+                    ? BlocConsumer<ChatBloc, ChatState>(
+                        listener: (context, state) {
+                          if (state is ChatLoaded) {
+                            // Scroll down slightly after load
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => _scrollToBottom(),
+                            );
+                          }
+                        },
+                        builder: (context, state) {
+                          if (state is ChatLoading) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.blue1,
+                              ),
+                            );
+                          }
+                          if (state is ChatFailure) {
+                            return Center(child: Text('Error: ${state.message}'));
+                          }
+                          if (state is ChatLoaded) {
+                            final messages = state.messages;
+                            if (messages.isEmpty) {
+                              return Center(
+                                  child: Text(
+                                    'Start of message history.',
+                                    style: TextStyles.labelRegular,
+                                  ),
+                                );
+                            }
+                            return ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final msg = messages[index];
+                                return _MessageBubble(message: msg);
+                              },
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.forum_rounded,
+                              size: 64,
+                              color: AppColors.surface,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Chat Disabled',
+                              style: TextStyles.headingSemiBold.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               ),
+
+              // 3. Message Input Area (Disabled for non-medical)
+              AbsorbPointer(
+                absorbing: !widget.isMedicalPartner,
+                child: Opacity(
+                  opacity: widget.isMedicalPartner ? 1.0 : 0.3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface,
+                      border: Border(
+                        top: BorderSide(color: AppColors.blue3, width: 2),
+                      ),
+                    ),
+                    child: SafeArea(
+                      child: Row(
+                        children: [
+                          // Simulated image attachment selector
+                          IconButton(
+                            icon: const Icon(
+                              Icons.add_photo_alternate_rounded,
+                              color: AppColors.blue1,
+                            ),
+                            onPressed: _sendSimulatedImage,
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'Type a message...',
+                                fillColor: AppColors.blue3,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              onSubmitted: (_) => _sendMessage(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Send button
+                          CircleAvatar(
+                            backgroundColor: AppColors.blue1,
+                            child: IconButton(
+                              icon: const Icon(
+                                  Icons.send_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                onPressed: _sendMessage,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-    );
+          );
+        },
+      );
   }
 }
 

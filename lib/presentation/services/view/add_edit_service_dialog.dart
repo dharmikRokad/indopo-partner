@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/service_model.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
 
 class AddEditServiceDialog extends StatefulWidget {
   final ServiceModel? service;
@@ -25,7 +27,7 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String? _selectedCategory;
+  final _categoryCubit = ValueCubit<String?>(null);
 
   @override
   void initState() {
@@ -33,20 +35,22 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
     // Filter out 'All' category if present
     final validCategories = widget.categories.where((c) => c != 'All').toList();
     
+    String? initialCategory;
     if (widget.service != null) {
       _nameController.text = widget.service!.name;
       _priceController.text = widget.service!.price;
       _descriptionController.text = widget.service!.description;
       if (validCategories.contains(widget.service!.category)) {
-        _selectedCategory = widget.service!.category;
+        initialCategory = widget.service!.category;
       } else if (validCategories.isNotEmpty) {
-        _selectedCategory = validCategories.first;
+        initialCategory = validCategories.first;
       }
     } else {
       if (validCategories.isNotEmpty) {
-        _selectedCategory = validCategories.first;
+        initialCategory = validCategories.first;
       }
     }
+    _categoryCubit.update(initialCategory);
   }
 
   @override
@@ -54,18 +58,20 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
     _nameController.dispose();
     _priceController.dispose();
     _descriptionController.dispose();
+    _categoryCubit.close();
     super.dispose();
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate() || _selectedCategory == null) return;
+    final selectedCategory = _categoryCubit.state;
+    if (!_formKey.currentState!.validate() || selectedCategory == null) return;
 
     final now = DateTime.now().toIso8601String();
     final service = ServiceModel(
       id: widget.service?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       partnerId: widget.partnerId,
       name: _nameController.text.trim(),
-      category: _selectedCategory!,
+      category: selectedCategory,
       description: _descriptionController.text.trim(),
       price: _priceController.text.trim(),
       isAvailable: widget.service?.isAvailable ?? true,
@@ -131,25 +137,28 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                 // Category Dropdown
                 _buildLabel('Category'),
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedCategory,
-                  dropdownColor: AppColors.surface,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  items: validCategories.map((category) {
-                    return DropdownMenuItem<String>(
-                      value: category,
-                      child: Text(category, style: TextStyles.bodyRegular),
+                BlocBuilder<ValueCubit<String?>, String?>(
+                  bloc: _categoryCubit,
+                  builder: (context, selectedCategory) {
+                    return DropdownButtonFormField<String>(
+                      initialValue: selectedCategory,
+                      dropdownColor: AppColors.surface,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      items: validCategories.map((category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category, style: TextStyles.bodyRegular),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        _categoryCubit.update(val);
+                      },
+                      validator: (v) => v == null ? 'Please select a category' : null,
                     );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedCategory = val;
-                    });
                   },
-                  validator: (v) => v == null ? 'Please select a category' : null,
                 ),
                 const SizedBox(height: 20),
 

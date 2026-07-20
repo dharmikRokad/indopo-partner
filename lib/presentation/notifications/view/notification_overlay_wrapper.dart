@@ -8,6 +8,7 @@ import '../../../data/models/request_model.dart';
 import '../bloc/notification_bloc.dart';
 import '../bloc/notification_state.dart';
 import '../bloc/notification_event.dart';
+import '../../../core/presentation/bloc/value_cubit.dart';
 
 class NotificationOverlayWrapper extends StatefulWidget {
   final Widget child;
@@ -22,7 +23,7 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
-  RequestModel? _activeNotification;
+  final _notificationCubit = ValueCubit<RequestModel?>(null);
 
   @override
   void initState() {
@@ -40,23 +41,20 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
   @override
   void dispose() {
     _controller.dispose();
+    _notificationCubit.close();
     super.dispose();
   }
 
   void _showBanner(RequestModel request) {
-    setState(() {
-      _activeNotification = request;
-    });
+    _notificationCubit.update(request);
     _controller.forward();
 
     // Automatically dismiss after 4 seconds
     Future.delayed(const Duration(seconds: 4), () {
-      if (mounted && _activeNotification?.id == request.id) {
+      if (mounted && _notificationCubit.state?.id == request.id) {
         _controller.reverse().then((_) {
           if (mounted) {
-            setState(() {
-              _activeNotification = null;
-            });
+            _notificationCubit.update(null);
           }
         });
       }
@@ -74,24 +72,29 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
           context.go(AppRoutes.requestList);
         }
       },
-      child: Stack(
-        children: [
-          widget.child,
-          if (_activeNotification != null)
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Positioned(
-                  top: _slideAnimation.value,
-                  left: 16,
-                  right: 16,
-                  child: SafeArea(
-                    child: _buildBannerCard(context, _activeNotification!),
-                  ),
-                );
-              },
-            ),
-        ],
+      child: BlocBuilder<ValueCubit<RequestModel?>, RequestModel?>(
+        bloc: _notificationCubit,
+        builder: (context, activeNotification) {
+          return Stack(
+            children: [
+              widget.child,
+              if (activeNotification != null)
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    return Positioned(
+                      top: _slideAnimation.value,
+                      left: 16,
+                      right: 16,
+                      child: SafeArea(
+                        child: _buildBannerCard(context, activeNotification),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -106,9 +109,7 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
         onTap: () {
           _controller.reverse().then((_) {
             if (mounted) {
-              setState(() {
-                _activeNotification = null;
-              });
+              _notificationCubit.update(null);
             }
           });
           context.read<NotificationBloc>().add(NotificationTapped(request.id));

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "185602092244",
+    "project_id": "indopo-57840",
+    "storage_bucket": "indopo-57840.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:185602092244:android:250993df471cd671bb5f41",
+        "android_client_info": {
+          "package_name": "com.indopo.partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjINBSRK972lthL-ASqdbgqzTpAMv-z4I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
