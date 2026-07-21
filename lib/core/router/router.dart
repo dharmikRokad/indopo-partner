@@ -129,7 +129,8 @@ class AppRouter {
         path: AppRoutes.chat,
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return ChatScreen(id: id);
+          final appointmentId = state.uri.queryParameters['appointmentId'];
+          return ChatScreen(id: id, appointmentId: appointmentId);
         },
       ),
       GoRoute(

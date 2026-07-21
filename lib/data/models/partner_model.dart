@@ -16,6 +16,13 @@ class PartnerModel {
   final String? orgAddress;
   final bool isAvailable;
 
+  String get name =>
+      details['full_name'] as String? ??
+      details['org_name'] as String? ??
+      details['lab_name'] as String? ??
+      details['center_name'] as String? ??
+      email;
+
   PartnerModel({
     required this.id,
     required this.email,

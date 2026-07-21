@@ -18,11 +18,21 @@ class FetchRequestDetail extends RequestDetailEvent {
 
 class AcceptRequest extends RequestDetailEvent {
   final String id;
+  final String? partnerId;
+  final String? partnerName;
+  final String? patientId;
+  final String? patientName;
 
-  const AcceptRequest(this.id);
+  const AcceptRequest(
+    this.id, {
+    this.partnerId,
+    this.partnerName,
+    this.patientId,
+    this.patientName,
+  });
 
   @override
-  List<Object?> get props => [id];
+  List<Object?> get props => [id, partnerId, partnerName, patientId, patientName];
 }
 
 class RejectRequest extends RequestDetailEvent {

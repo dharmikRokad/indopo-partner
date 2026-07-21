@@ -7,6 +7,7 @@ import '../../../data/models/chat_message.dart';
 import '../../../data/models/partner_type.dart';
 import '../../../data/models/request_model.dart';
 import '../../../data/repositories/request_repo.dart';
+import '../../../data/repositories/supabase_chat_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../bloc/chat_bloc.dart';
@@ -22,32 +23,57 @@ class ChatRequestState {
 
 class ChatScreen extends StatelessWidget {
   final String id;
-  const ChatScreen({super.key, required this.id});
+  final String? appointmentId;
+
+  const ChatScreen({
+    super.key,
+    required this.id,
+    this.appointmentId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // 1. Guard check from AuthBloc
+    // Guard check from AuthBloc
     final authState = context.read<AuthBloc>().state;
     bool isMedicalPartner = false;
+    String partnerId = '';
 
     if (authState is AuthSuccess) {
+      partnerId = authState.partner.id;
       final role = authState.partner.role;
       isMedicalPartner =
           role == PartnerType.doctor || role == PartnerType.medical;
     }
 
+    final supabaseRepo = context.read<SupabaseChatRepository>();
+    final targetAppointmentId = appointmentId ?? id;
+
     return BlocProvider(
-      create: (context) => ChatBloc()..add(LoadChatHistory(id)),
-      child: _ChatContent(requestId: id, isMedicalPartner: isMedicalPartner),
+      create: (context) => ChatBloc(supabaseChatRepository: supabaseRepo)
+        ..add(InitChatStream(
+          chatId: id,
+          appointmentId: targetAppointmentId,
+          partnerId: partnerId,
+        )),
+      child: _ChatContent(
+        chatId: id,
+        appointmentId: targetAppointmentId,
+        isMedicalPartner: isMedicalPartner,
+      ),
     );
   }
 }
 
 class _ChatContent extends StatefulWidget {
-  final String requestId;
+  final String chatId;
+  final String appointmentId;
   final bool isMedicalPartner;
 
-  const _ChatContent({required this.requestId, required this.isMedicalPartner});
+  const _ChatContent({
+    required this.chatId,
+    required this.appointmentId,
+    required this.isMedicalPartner,
+  });
 
   @override
   State<_ChatContent> createState() => _ChatContentState();
@@ -75,7 +101,7 @@ class _ChatContentState extends State<_ChatContent> {
   Future<void> _fetchRequestInfo() async {
     try {
       final repo = context.read<RequestRepository>();
-      final req = await repo.fetchRequestById(widget.requestId);
+      final req = await repo.fetchRequestById(widget.appointmentId);
       if (mounted) {
         _requestCubit.update(ChatRequestState(requestDetails: req, isLoadingRequest: false));
       }
@@ -101,19 +127,19 @@ class _ChatContentState extends State<_ChatContent> {
     if (text.isNotEmpty) {
       context.read<ChatBloc>().add(SendMessage(content: text));
       _messageController.clear();
-      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      Future.delayed(const Duration(milliseconds: 150), _scrollToBottom);
     }
   }
 
   void _sendSimulatedImage() {
     context.read<ChatBloc>().add(
       const SendMessage(
-        content: 'Sent an attachment',
+        content: 'Prescription Attachment',
         imageUrl:
             'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=300&auto=format&fit=crop',
       ),
     );
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    Future.delayed(const Duration(milliseconds: 150), _scrollToBottom);
   }
 
   @override
@@ -172,7 +198,7 @@ class _ChatContentState extends State<_ChatContent> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Online',
+                                  'Live Stream',
                                   style: TextStyles.labelRegular.copyWith(
                                     fontSize: 11,
                                     color: AppColors.success,
@@ -188,7 +214,7 @@ class _ChatContentState extends State<_ChatContent> {
           ),
           body: Column(
             children: [
-              // 1. Guard Banner for Non-Medical Partner types
+              // Guard Banner for Non-Medical Partner types
               if (!widget.isMedicalPartner)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -211,13 +237,12 @@ class _ChatContentState extends State<_ChatContent> {
                   ),
                 ),
 
-              // 2. Chat Messages list
+              // Chat Messages list
               Expanded(
                 child: widget.isMedicalPartner
                     ? BlocConsumer<ChatBloc, ChatState>(
                         listener: (context, state) {
                           if (state is ChatLoaded) {
-                            // Scroll down slightly after load
                             WidgetsBinding.instance.addPostFrameCallback(
                               (_) => _scrollToBottom(),
                             );
@@ -238,11 +263,11 @@ class _ChatContentState extends State<_ChatContent> {
                             final messages = state.messages;
                             if (messages.isEmpty) {
                               return Center(
-                                  child: Text(
-                                    'Start of message history.',
-                                    style: TextStyles.labelRegular,
-                                  ),
-                                );
+                                child: Text(
+                                  'Start of real-time message stream.',
+                                  style: TextStyles.labelRegular,
+                                ),
+                              );
                             }
                             return ListView.builder(
                               controller: _scrollController,
@@ -250,7 +275,43 @@ class _ChatContentState extends State<_ChatContent> {
                               itemCount: messages.length,
                               itemBuilder: (context, index) {
                                 final msg = messages[index];
-                                return _MessageBubble(message: msg);
+                                final bool showAppointmentHeader = index == 0 ||
+                                    messages[index - 1].appointmentId != msg.appointmentId;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (showAppointmentHeader) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        child: Row(
+                                          children: [
+                                            const Expanded(child: Divider(color: AppColors.surface, thickness: 1)),
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.surface,
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  'Prescription Appointment #${msg.appointmentId.length > 8 ? msg.appointmentId.substring(0, 8) : msg.appointmentId}',
+                                                  style: TextStyles.labelRegular.copyWith(
+                                                    fontSize: 11,
+                                                    color: AppColors.blue1,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const Expanded(child: Divider(color: AppColors.surface, thickness: 1)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    _MessageBubble(message: msg),
+                                  ],
+                                );
                               },
                             );
                           }
@@ -278,7 +339,7 @@ class _ChatContentState extends State<_ChatContent> {
                       ),
               ),
 
-              // 3. Message Input Area (Disabled for non-medical)
+              // Message Input Area
               AbsorbPointer(
                 absorbing: !widget.isMedicalPartner,
                 child: Opacity(
@@ -297,7 +358,6 @@ class _ChatContentState extends State<_ChatContent> {
                     child: SafeArea(
                       child: Row(
                         children: [
-                          // Simulated image attachment selector
                           IconButton(
                             icon: const Icon(
                               Icons.add_photo_alternate_rounded,
@@ -321,29 +381,28 @@ class _ChatContentState extends State<_ChatContent> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Send button
                           CircleAvatar(
                             backgroundColor: AppColors.blue1,
                             child: IconButton(
                               icon: const Icon(
-                                  Icons.send_rounded,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                onPressed: _sendMessage,
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 18,
                               ),
+                              onPressed: _sendMessage,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
-      );
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -387,7 +446,6 @@ class _MessageBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Display attachment image if url exists
                 if (message.imageUrl != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),

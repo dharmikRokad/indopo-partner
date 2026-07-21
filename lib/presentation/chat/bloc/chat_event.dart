@@ -8,13 +8,28 @@ abstract class ChatEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadChatHistory extends ChatEvent {
-  final String requestId;
+class InitChatStream extends ChatEvent {
+  final String chatId;
+  final String appointmentId;
+  final String partnerId;
 
-  const LoadChatHistory(this.requestId);
+  const InitChatStream({
+    required this.chatId,
+    required this.appointmentId,
+    required this.partnerId,
+  });
 
   @override
-  List<Object?> get props => [requestId];
+  List<Object?> get props => [chatId, appointmentId, partnerId];
+}
+
+class StreamUpdated extends ChatEvent {
+  final List<ChatMessage> messages;
+
+  const StreamUpdated(this.messages);
+
+  @override
+  List<Object?> get props => [messages];
 }
 
 class SendMessage extends ChatEvent {
@@ -25,13 +40,4 @@ class SendMessage extends ChatEvent {
 
   @override
   List<Object?> get props => [content, imageUrl];
-}
-
-class MessageReceived extends ChatEvent {
-  final ChatMessage message;
-
-  const MessageReceived(this.message);
-
-  @override
-  List<Object?> get props => [message];
 }

@@ -9,6 +9,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/partner_type.dart';
 import '../../../data/models/request_model.dart';
 import '../../../data/repositories/request_repo.dart';
+import '../../../data/repositories/supabase_chat_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../bloc/request_detail_bloc.dart';
@@ -28,6 +29,7 @@ class RequestDetailScreen extends StatelessWidget {
       create: (context) {
         final bloc = RequestDetailBloc(
           requestRepository: context.read<RequestRepository>(),
+          supabaseChatRepository: context.read<SupabaseChatRepository>(),
           request: request,
         );
         if (request == null) {
@@ -53,8 +55,12 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
     PartnerType partnerRole = PartnerType.doctor;
+    String? partnerId;
+    String? partnerName;
     if (authState is AuthSuccess) {
       partnerRole = authState.partner.role;
+      partnerId = authState.partner.id;
+      partnerName = authState.partner.name;
     }
 
     return Scaffold(
@@ -91,7 +97,8 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                 context,
                 'Appointment confirmed successfully',
               );
-              context.replace(AppRoutes.chat.replaceAll(':id', widget.id));
+              final targetId = state.chatId ?? widget.id;
+              context.replace('${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}');
             }
           } else if (state is RequestDetailFailure) {
             AppSnackBar.showError(context, state.message);
@@ -377,7 +384,13 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                               onPressed: () {
                                 if (partnerRole == PartnerType.medical) {
                                   context.read<RequestDetailBloc>().add(
-                                    AcceptRequest(widget.id),
+                                    AcceptRequest(
+                                      widget.id,
+                                      partnerId: partnerId,
+                                      partnerName: partnerName,
+                                      patientId: req.id,
+                                      patientName: req.patientName,
+                                    ),
                                   );
                                 } else {
                                   showModalBottomSheet(

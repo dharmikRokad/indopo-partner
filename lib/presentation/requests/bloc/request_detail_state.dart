@@ -23,12 +23,13 @@ class RequestDetailLoaded extends RequestDetailState {
 
 class RequestActionSuccess extends RequestDetailState {
   final RequestModel request;
-  final String actionType; // 'accept' or 'reject'
+  final String actionType; // 'accept', 'reject', 'complete'
+  final String? chatId;
 
-  const RequestActionSuccess(this.request, this.actionType);
+  const RequestActionSuccess(this.request, this.actionType, {this.chatId});
 
   @override
-  List<Object?> get props => [request, actionType];
+  List<Object?> get props => [request, actionType, chatId];
 }
 
 class RequestDetailFailure extends RequestDetailState {

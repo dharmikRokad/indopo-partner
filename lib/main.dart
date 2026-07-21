@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide LocalStorage;
 import 'core/constants/app_strings.dart';
 import 'core/network/api_client.dart';
 import 'core/network/token_manager.dart';
 import 'core/network_copy/local_storage.dart';
 import 'core/router/router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/repositories/app_config_repo.dart';
 import 'data/repositories/auth_repo.dart';
+import 'data/repositories/dropdown_repo.dart';
 import 'data/repositories/profile_repo.dart';
 import 'data/repositories/request_repo.dart';
 import 'data/repositories/service_repo.dart';
-import 'data/repositories/dropdown_repo.dart';
+import 'data/repositories/supabase_chat_repo.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
@@ -22,6 +26,31 @@ import 'package:indopo_partner/core/services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 0. Load environment variables from .env
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print('[Main] Warning: Could not load .env asset file: $e');
+  }
+
+  // 0.5 Initialize Supabase SDK for real-time chat
+  final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+
+  if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
+    try {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+      );
+      print('[Main] Supabase initialized successfully');
+    } catch (e) {
+      print('[Main] Supabase initialization error: $e');
+    }
+  } else {
+    print('[Main] Supabase credentials missing in .env file');
+  }
 
   // 1. Initialize SharedPreferences & LocalStorage service
   final prefs = await SharedPreferences.getInstance();
@@ -39,6 +68,10 @@ void main() async {
   final requestRepository = RequestRepository(apiClient);
   final serviceRepository = ServiceRepository(apiClient);
   final dropdownRepository = DropdownRepository(apiClient);
+  final appConfigRepository = AppConfigRepository();
+  final supabaseChatRepository = SupabaseChatRepository(
+    appConfigRepo: appConfigRepository,
+  );
 
   // Trigger dropdown values load immediately when the user opens the app
   dropdownRepository.fetchDropdownValues();
@@ -52,6 +85,8 @@ void main() async {
         RepositoryProvider<RequestRepository>.value(value: requestRepository),
         RepositoryProvider<ServiceRepository>.value(value: serviceRepository),
         RepositoryProvider<DropdownRepository>.value(value: dropdownRepository),
+        RepositoryProvider<AppConfigRepository>.value(value: appConfigRepository),
+        RepositoryProvider<SupabaseChatRepository>.value(value: supabaseChatRepository),
       ],
       child: const IndopoPartnerApp(),
     ),

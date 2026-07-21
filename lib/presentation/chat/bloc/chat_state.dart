@@ -14,11 +14,23 @@ class ChatLoading extends ChatState {}
 
 class ChatLoaded extends ChatState {
   final List<ChatMessage> messages;
+  final String chatId;
+  final String appointmentId;
 
-  const ChatLoaded(this.messages);
+  const ChatLoaded({
+    required this.messages,
+    required this.chatId,
+    required this.appointmentId,
+  });
+
+  int get patientMessageCount =>
+      messages.where((m) => m.senderRole == 'patient' && m.appointmentId == appointmentId).length;
+
+  int get partnerMessageCount =>
+      messages.where((m) => m.senderRole == 'partner' && m.appointmentId == appointmentId).length;
 
   @override
-  List<Object?> get props => [messages];
+  List<Object?> get props => [messages, chatId, appointmentId];
 }
 
 class ChatFailure extends ChatState {
