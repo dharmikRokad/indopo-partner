@@ -5,7 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../data/models/partner_type.dart';
+import 'package:indopo_partner/data/models/partner_type.dart';
 import '../../../data/models/request_model.dart';
 import '../../../data/repositories/request_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -23,6 +23,7 @@ class MedicalRequestsScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => RequestListBloc(
         requestRepository: context.read<RequestRepository>(),
+        isMedical: true,
       )..add(const FetchRequests(RequestStatus.newRequest)),
       child: const _MedicalRequestsContent(),
     );
@@ -31,13 +32,6 @@ class MedicalRequestsScreen extends StatelessWidget {
 
 class _MedicalRequestsContent extends StatelessWidget {
   const _MedicalRequestsContent();
-
-  static const List<RequestStatus> _activeTabs = [
-    RequestStatus.newRequest,
-    RequestStatus.inProgress,
-    RequestStatus.completed,
-    RequestStatus.cancelled,
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -56,226 +50,172 @@ class _MedicalRequestsContent extends StatelessWidget {
       isAvailable = p.isAvailable;
     }
 
-    return DefaultTabController(
-      length: _activeTabs.length,
-      child: BlocBuilder<RequestListBloc, RequestListState>(
-        builder: (context, state) {
-          bool hasUnreadDot = false;
-          if (state is RequestListLoaded) {
-            hasUnreadDot = state.hasUnreadNew;
-          }
-
-          return Scaffold(
-            backgroundColor: AppColors.blue3,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    partnerName,
-                    style: TextStyles.headingSemiBold.copyWith(fontSize: 18),
-                  ),
-                  Text(
-                    roleBadge,
-                    style: TextStyles.labelRegular.copyWith(
-                      fontSize: 12,
-                      color: AppColors.blue1,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                Row(
-                  children: [
-                    Text(
-                      isAvailable ? 'Active' : 'Away',
-                      style: TextStyles.labelRegular.copyWith(
-                        fontSize: 12,
-                        color: isAvailable ? Colors.green : AppColors.textMuted,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Switch(
-                      value: isAvailable,
-                      activeThumbColor: Colors.green,
-                      activeTrackColor: Colors.green.withValues(alpha: 0.3),
-                      inactiveThumbColor: AppColors.textMuted,
-                      inactiveTrackColor: AppColors.surface,
-                      onChanged: (val) {
-                        context.read<AuthBloc>().add(AvailabilityToggled(val));
-                      },
-                    ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                  onPressed: () async {
-                    final shouldLogout = await LogoutConfirmationDialog.show(context);
-                    if (shouldLogout == true && context.mounted) {
-                      context.read<AuthBloc>().add(LogoutRequested());
-                    }
-                  },
-                ),
-              ],
-              bottom: TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                indicatorColor: AppColors.blue1,
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: Colors.white,
-                unselectedLabelColor: AppColors.textMuted,
-                labelStyle: TextStyles.headingSemiBold.copyWith(fontSize: 13),
-                onTap: (index) {
-                  final status = _activeTabs[index];
-                  context.read<RequestListBloc>().add(FetchRequests(status));
-                },
-                tabs: _activeTabs.map((status) {
-                  if (status == RequestStatus.newRequest) {
-                    return Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('New Inquiries'),
-                          if (hasUnreadDot) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: AppColors.error,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  }
-                  return Tab(text: status.displayName);
-                }).toList(),
-              ),
-            ),
-            body: TabBarView(
-              children: _activeTabs.map((status) {
-                return _buildTabList(context, status, state);
-              }).toList(),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTabList(
-    BuildContext context,
-    RequestStatus status,
-    RequestListState state,
-  ) {
-    if (state is RequestListLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.blue1),
-      );
-    }
-
-    if (state is RequestListFailure) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      backgroundColor: AppColors.blue3,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.error,
-              size: 48,
+            Text(
+              partnerName,
+              style: TextStyles.headingSemiBold.copyWith(fontSize: 18),
             ),
-            const SizedBox(height: 12),
-            Text('Error loading prescription requests', style: TextStyles.headingSemiBold),
-            const SizedBox(height: 4),
-            Text(state.message, style: TextStyles.labelRegular),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                context.read<RequestListBloc>().add(FetchRequests(status));
-              },
-              child: const Text('Retry'),
+            Text(
+              roleBadge,
+              style: TextStyles.labelRegular.copyWith(
+                fontSize: 12,
+                color: AppColors.blue1,
+              ),
             ),
           ],
         ),
-      );
-    }
-
-    if (state is RequestListLoaded) {
-      if (state.status != status) {
-        return const Center(
-          child: CircularProgressIndicator(color: AppColors.blue1),
-        );
-      }
-
-      final requests = state.requests;
-
-      if (requests.isEmpty) {
-        return RefreshIndicator(
-          onRefresh: () async {
-            context.read<RequestListBloc>().add(FetchRequests(status));
-          },
-          color: AppColors.blue1,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+        actions: [
+          Row(
             children: [
-              SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: AppColors.surface,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.receipt_long_rounded,
-                        size: 48,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No ${status.displayName.toLowerCase()} prescription requests',
-                      style: TextStyles.headingSemiBold.copyWith(color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Prescription inquiries from patients will appear here',
-                      style: TextStyles.labelRegular.copyWith(color: AppColors.textMuted),
-                    ),
-                  ],
+              Text(
+                isAvailable ? 'Active' : 'Away',
+                style: TextStyles.labelRegular.copyWith(
+                  fontSize: 12,
+                  color: isAvailable ? Colors.green : AppColors.textMuted,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
+              const SizedBox(width: 4),
+              Switch(
+                value: isAvailable,
+                activeThumbColor: Colors.green,
+                activeTrackColor: Colors.green.withValues(alpha: 0.3),
+                inactiveThumbColor: AppColors.textMuted,
+                inactiveTrackColor: AppColors.surface,
+                onChanged: (val) {
+                  context.read<AuthBloc>().add(AvailabilityToggled(val));
+                },
               ),
             ],
           ),
-        );
-      }
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+            onPressed: () async {
+              final shouldLogout = await LogoutConfirmationDialog.show(context);
+              if (shouldLogout == true && context.mounted) {
+                context.read<AuthBloc>().add(LogoutRequested());
+              }
+            },
+          ),
+        ],
+      ),
+      body: BlocBuilder<RequestListBloc, RequestListState>(
+        builder: (context, state) {
+          if (state is RequestListLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.blue1),
+            );
+          }
 
-      return RefreshIndicator(
-        onRefresh: () async {
-          context.read<RequestListBloc>().add(FetchRequests(status));
+          if (state is RequestListFailure) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.error,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Error loading prescription requests',
+                      style: TextStyles.headingSemiBold),
+                  const SizedBox(height: 4),
+                  Text(state.message, style: TextStyles.labelRegular),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<RequestListBloc>().add(
+                            const FetchRequests(RequestStatus.newRequest),
+                          );
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (state is RequestListLoaded) {
+            final requests = state.requests;
+
+            if (requests.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: () async {
+                  context.read<RequestListBloc>().add(
+                        const FetchRequests(RequestStatus.newRequest),
+                      );
+                },
+                color: AppColors.blue1,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: const BoxDecoration(
+                              color: AppColors.surface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.receipt_long_rounded,
+                              size: 48,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No prescription requests',
+                            style: TextStyles.headingSemiBold
+                                .copyWith(color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Prescription inquiries from patients will appear here',
+                            style: TextStyles.labelRegular
+                                .copyWith(color: AppColors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<RequestListBloc>().add(
+                      const FetchRequests(RequestStatus.newRequest),
+                    );
+              },
+              color: AppColors.blue1,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: requests.length,
+                itemBuilder: (context, index) {
+                  final request = requests[index];
+                  return _MedicalRequestCard(request: request);
+                },
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
         },
-        color: AppColors.blue1,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final request = requests[index];
-            return _MedicalRequestCard(request: request);
-          },
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
+      ),
+    );
   }
 }
 

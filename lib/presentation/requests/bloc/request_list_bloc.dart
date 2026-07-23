@@ -6,11 +6,12 @@ import 'request_list_state.dart';
 
 class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
   final RequestRepository _requestRepository;
+  final bool isMedical;
 
   RequestListBloc({
-    required RequestRepository requestRepository,
-  })  : _requestRepository = requestRepository,
-        super(RequestListInitial()) {
+    required this._requestRepository,
+    this.isMedical = false,
+  })  : super(RequestListInitial()) {
     on<FetchRequests>(_onFetchRequests);
     on<RequestReceived>(_onRequestReceived);
   }
@@ -23,8 +24,11 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
     emit(RequestListLoading());
 
     try {
-      final list = await _requestRepository.fetchRequests(event.status);
-      
+      final list = await _requestRepository.fetchRequests(
+        event.status,
+        isMedical: isMedical,
+      );
+
       // Determine if there are unread/new requests (to display unread notification dot)
       bool hasUnread = false;
       if (event.status == RequestStatus.newRequest) {
@@ -33,7 +37,10 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
         if (currentState is RequestListLoaded) {
           hasUnread = currentState.hasUnreadNew;
         } else {
-          final newReqs = await _requestRepository.fetchRequests(RequestStatus.newRequest);
+          final newReqs = await _requestRepository.fetchRequests(
+            RequestStatus.newRequest,
+            isMedical: isMedical,
+          );
           hasUnread = newReqs.isNotEmpty;
         }
       }
@@ -55,7 +62,7 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
     final currentState = state;
     if (currentState is RequestListLoaded) {
       final updatedList = List<RequestModel>.from(currentState.requests);
-      
+
       // If notification belongs to the active tab status, add to screen list
       if (event.request.status == currentState.status) {
         updatedList.insert(0, event.request);

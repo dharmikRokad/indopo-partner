@@ -1,6 +1,7 @@
 import '../../core/network/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../models/appointment_model.dart';
+import '../models/notification_model.dart';
 import '../models/request_model.dart';
 
 class RequestRepository {
@@ -8,7 +9,14 @@ class RequestRepository {
 
   RequestRepository(this._apiClient);
 
-  Future<List<RequestModel>> fetchRequests(RequestStatus status) async {
+  Future<List<RequestModel>> fetchRequests(
+    RequestStatus status, {
+    bool isMedical = false,
+  }) async {
+    if (isMedical) {
+      return fetchPrescriptionInquiries(status: status);
+    }
+
     try {
       final response = await _apiClient.get(
         ApiEndpoints.appointmentsList,
@@ -27,6 +35,61 @@ class RequestRepository {
       rethrow;
     }
     return [];
+  }
+
+  Future<List<RequestModel>> fetchPrescriptionInquiries({
+    RequestStatus status = RequestStatus.newRequest,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'type': 'PRESCRIPTION_INQUIRY',
+        'page': page,
+        'limit': limit,
+        'sortBy': 'createdAt',
+        'sortOrder': 'desc',
+      };
+
+      if (status == RequestStatus.newRequest) {
+        queryParams['isRead'] = false;
+      } else if (status == RequestStatus.inProgress || status == RequestStatus.completed) {
+        queryParams['isRead'] = true;
+      }
+
+      final response = await _apiClient.get(
+        ApiEndpoints.notificationsList,
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        final notificationResp = NotificationResponse.fromJson(resData);
+        return notificationResp.notifications
+            .map((notif) => notif.toRequestModel())
+            .toList();
+      }
+    } catch (e) {
+      print('[RequestRepository] fetchPrescriptionInquiries error: $e');
+      rethrow;
+    }
+    return [];
+  }
+
+  Future<NotificationModel?> markNotificationAsRead(String notificationId) async {
+    try {
+      final response = await _apiClient.patch(
+        ApiEndpoints.notificationRead(notificationId),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        return NotificationModel.fromJson(resData);
+      }
+    } catch (e) {
+      print('[RequestRepository] markNotificationAsRead error: $e');
+    }
+    return null;
   }
 
   Future<RequestModel> fetchRequestById(String id) async {

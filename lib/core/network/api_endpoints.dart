@@ -16,6 +16,10 @@ class ApiEndpoints {
       '/appointments/partner/$requestId/confirm';
   static String appointmentDetail(String id) => '/appointments/$id';
 
+  // Notification Endpoints
+  static const String notificationsList = '/notifications';
+  static String notificationRead(String id) => '/notifications/$id/read';
+
   // Prescription Chat & Thread Endpoints
   static const String prescriptionThreadInit = '/chat/prescription-thread';
   static const String myChats = '/chat/my-chats';

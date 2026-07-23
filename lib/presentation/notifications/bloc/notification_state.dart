@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../data/models/request_model.dart';
+import '../../../data/models/notification_model.dart';
 
 abstract class NotificationState extends Equatable {
   const NotificationState();
@@ -11,19 +11,19 @@ abstract class NotificationState extends Equatable {
 class NotificationInitial extends NotificationState {}
 
 class NotificationForegroundReceived extends NotificationState {
-  final RequestModel request;
+  final NotificationModel notification;
 
-  const NotificationForegroundReceived(this.request);
+  const NotificationForegroundReceived(this.notification);
 
   @override
-  List<Object?> get props => [request];
+  List<Object?> get props => [notification];
 }
 
 class NotificationOpened extends NotificationState {
-  final String requestId;
+  final NotificationModel notification;
 
-  const NotificationOpened(this.requestId);
+  const NotificationOpened(this.notification);
 
   @override
-  List<Object?> get props => [requestId];
+  List<Object?> get props => [notification];
 }

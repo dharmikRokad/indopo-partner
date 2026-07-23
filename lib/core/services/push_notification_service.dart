@@ -1,20 +1,24 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../../data/models/request_model.dart';
+import '../../data/models/notification_model.dart' hide NotificationResponse;
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print('[PushNotificationService] Background message received: ${message.messageId}');
+  print(
+    '[PushNotificationService] Background message received: ${message.messageId}',
+  );
 }
 
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
   'high_importance_channel', // id
   'High Importance Notifications', // name
-  description: 'This channel is used for important notifications.', // description
+  description:
+      'This channel is used for important notifications.', // description
   importance: Importance.max,
   playSound: true,
 );
@@ -25,15 +29,16 @@ class PushNotificationService {
 
   String? _fcmToken;
   final _foregroundNotificationController =
-      StreamController<RequestModel>.broadcast();
-  final _notificationOpenedController = StreamController<String>.broadcast();
+      StreamController<NotificationModel>.broadcast();
+  final _notificationOpenedController =
+      StreamController<NotificationModel>.broadcast();
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   String? get fcmToken => _fcmToken;
-  Stream<RequestModel> get foregroundNotificationStream =>
+  Stream<NotificationModel> get foregroundNotificationStream =>
       _foregroundNotificationController.stream;
-  Stream<String> get notificationOpenedStream =>
+  Stream<NotificationModel> get notificationOpenedStream =>
       _notificationOpenedController.stream;
 
   Future<void> initialize() async {
@@ -41,7 +46,9 @@ class PushNotificationService {
       await Firebase.initializeApp();
 
       // Register background messaging handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       // Request permission
       await FirebaseMessaging.instance.requestPermission(
@@ -53,41 +60,54 @@ class PushNotificationService {
       // Initialize local notifications for Android foreground notifications banner
       if (Platform.isAndroid) {
         await _localNotificationsPlugin
-            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
             ?.createNotificationChannel(channel);
       }
 
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-      
+
       const DarwinInitializationSettings initializationSettingsIOS =
           DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
-      );
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          );
 
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsIOS,
-      );
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+            android: initializationSettingsAndroid,
+            iOS: initializationSettingsIOS,
+          );
 
       await _localNotificationsPlugin.initialize(
         settings: initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           final payload = response.payload;
           if (payload != null && payload.isNotEmpty) {
-            _notificationOpenedController.add(payload);
+            try {
+              final jsonMap = jsonDecode(payload) as Map<String, dynamic>;
+              _notificationOpenedController.add(
+                NotificationModel.fromJson(jsonMap),
+              );
+            } catch (_) {
+              _notificationOpenedController.add(
+                _createFallbackNotification(payload),
+              );
+            }
           }
         },
       );
 
       // Configure foreground presentation options for iOS
-      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
 
       // Get FCM token
       _fcmToken = await FirebaseMessaging.instance.getToken();
@@ -104,7 +124,8 @@ class PushNotificationService {
         print(
           '[PushNotificationService] Foreground message received: ${message.messageId}',
         );
-        _handleIncomingMessage(message);
+        final notif = _parseRemoteMessage(message);
+        _foregroundNotificationController.add(notif);
 
         // On Android, show local notification to trigger the banner manually
         if (Platform.isAndroid) {
@@ -127,7 +148,7 @@ class PushNotificationService {
                   playSound: true,
                 ),
               ),
-              payload: message.data['id']?.toString(),
+              payload: jsonEncode(notif.toJson()),
             );
           }
         }
@@ -138,57 +159,78 @@ class PushNotificationService {
         print(
           '[PushNotificationService] Background message clicked: ${message.messageId}',
         );
-        final requestId = message.data['id']?.toString() ?? '';
-        _notificationOpenedController.add(requestId);
+        final notif = _parseRemoteMessage(message);
+        _notificationOpenedController.add(notif);
       });
 
       // Handle initial message (terminated app click via FCM)
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
       if (initialMessage != null) {
-        final requestId = initialMessage.data['id']?.toString() ?? '';
-        _notificationOpenedController.add(requestId);
+        final notif = _parseRemoteMessage(initialMessage);
+        _notificationOpenedController.add(notif);
       }
 
       // Handle initial message (terminated app click via local notifications)
-      final notificationAppLaunchDetails =
-          await _localNotificationsPlugin.getNotificationAppLaunchDetails();
+      final notificationAppLaunchDetails = await _localNotificationsPlugin
+          .getNotificationAppLaunchDetails();
       if (notificationAppLaunchDetails != null &&
           notificationAppLaunchDetails.didNotificationLaunchApp) {
-        final payload = notificationAppLaunchDetails.notificationResponse?.payload;
+        final payload =
+            notificationAppLaunchDetails.notificationResponse?.payload;
         if (payload != null && payload.isNotEmpty) {
-          _notificationOpenedController.add(payload);
+          try {
+            final jsonMap = jsonDecode(payload) as Map<String, dynamic>;
+            _notificationOpenedController.add(
+              NotificationModel.fromJson(jsonMap),
+            );
+          } catch (_) {
+            _notificationOpenedController.add(
+              _createFallbackNotification(payload),
+            );
+          }
         }
       }
     } catch (e) {
       print(
         '[PushNotificationService] Initialization error (falling back to mock): $e',
       );
-      // Mock fallback: always provide a token so login succeeded
       _fcmToken = 'mock_fcm_token_${DateTime.now().millisecondsSinceEpoch}';
     }
   }
 
-  void _handleIncomingMessage(RemoteMessage message) {
+  NotificationModel _parseRemoteMessage(RemoteMessage message) {
     try {
-      final request = RequestModel.fromJson(message.data);
-      _foregroundNotificationController.add(request);
-    } catch (_) {
-      // Create fallback model using title and body
-      final fallbackRequest = RequestModel(
-        id:
-            message.data['id']?.toString() ??
-            'push-${DateTime.now().millisecondsSinceEpoch}',
-        patientName: message.notification?.title ?? 'Notification',
-        patientAge: 30,
-        patientGender: 'Other',
-        patientContact: '',
-        description: message.notification?.body ?? '',
-        attachments: const [],
-        timestamp: DateTime.now(),
-        status: RequestStatus.newRequest,
-      );
-      _foregroundNotificationController.add(fallbackRequest);
-    }
+      if (message.data.isNotEmpty && message.data.containsKey('type')) {
+        return NotificationModel.fromJson(message.data);
+      }
+    } catch (_) {}
+
+    return NotificationModel(
+      id:
+          message.data['id']?.toString() ??
+          'push-${DateTime.now().millisecondsSinceEpoch}',
+      patientId: message.data['patientId']?.toString() ?? '',
+      type: NotificationType.fromString(message.data['type']?.toString()),
+      message:
+          message.notification?.body ??
+          message.data['message']?.toString() ??
+          '',
+      metadata: message.data,
+      isRead: false,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  NotificationModel _createFallbackNotification(String id) {
+    return NotificationModel(
+      id: id,
+      patientId: '',
+      type: NotificationType.general,
+      message: 'New Notification',
+      isRead: false,
+      createdAt: DateTime.now(),
+    );
   }
 
   void dispose() {
