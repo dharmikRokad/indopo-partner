@@ -70,6 +70,7 @@ void main() async {
   final dropdownRepository = DropdownRepository(apiClient);
   final appConfigRepository = AppConfigRepository();
   final supabaseChatRepository = SupabaseChatRepository(
+    apiClient: apiClient,
     appConfigRepo: appConfigRepository,
   );
 

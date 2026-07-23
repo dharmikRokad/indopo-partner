@@ -1,0 +1,501 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_routes.dart';
+import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
+import '../../../core/theme/text_styles.dart';
+import '../../../data/models/partner_type.dart';
+import '../../../data/models/request_model.dart';
+import '../../../data/repositories/request_repo.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_event.dart';
+import '../../auth/bloc/auth_state.dart';
+import '../bloc/request_list_bloc.dart';
+import '../bloc/request_list_event.dart';
+import '../bloc/request_list_state.dart';
+
+class MedicalRequestsScreen extends StatelessWidget {
+  const MedicalRequestsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => RequestListBloc(
+        requestRepository: context.read<RequestRepository>(),
+      )..add(const FetchRequests(RequestStatus.newRequest)),
+      child: const _MedicalRequestsContent(),
+    );
+  }
+}
+
+class _MedicalRequestsContent extends StatelessWidget {
+  const _MedicalRequestsContent();
+
+  static const List<RequestStatus> _activeTabs = [
+    RequestStatus.newRequest,
+    RequestStatus.inProgress,
+    RequestStatus.completed,
+    RequestStatus.cancelled,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    String partnerName = 'Medical Store';
+    String roleBadge = '💊 Medical';
+    bool isAvailable = false;
+
+    if (authState is AuthSuccess) {
+      final p = authState.partner;
+      partnerName = p.details['full_name'] ??
+          p.details['pharmacy_name'] ??
+          p.details['lab_name'] ??
+          p.name;
+      roleBadge = '${p.role.icon} ${p.role.displayName}';
+      isAvailable = p.isAvailable;
+    }
+
+    return DefaultTabController(
+      length: _activeTabs.length,
+      child: BlocBuilder<RequestListBloc, RequestListState>(
+        builder: (context, state) {
+          bool hasUnreadDot = false;
+          if (state is RequestListLoaded) {
+            hasUnreadDot = state.hasUnreadNew;
+          }
+
+          return Scaffold(
+            backgroundColor: AppColors.blue3,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    partnerName,
+                    style: TextStyles.headingSemiBold.copyWith(fontSize: 18),
+                  ),
+                  Text(
+                    roleBadge,
+                    style: TextStyles.labelRegular.copyWith(
+                      fontSize: 12,
+                      color: AppColors.blue1,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                Row(
+                  children: [
+                    Text(
+                      isAvailable ? 'Active' : 'Away',
+                      style: TextStyles.labelRegular.copyWith(
+                        fontSize: 12,
+                        color: isAvailable ? Colors.green : AppColors.textMuted,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Switch(
+                      value: isAvailable,
+                      activeThumbColor: Colors.green,
+                      activeTrackColor: Colors.green.withValues(alpha: 0.3),
+                      inactiveThumbColor: AppColors.textMuted,
+                      inactiveTrackColor: AppColors.surface,
+                      onChanged: (val) {
+                        context.read<AuthBloc>().add(AvailabilityToggled(val));
+                      },
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                  onPressed: () async {
+                    final shouldLogout = await LogoutConfirmationDialog.show(context);
+                    if (shouldLogout == true && context.mounted) {
+                      context.read<AuthBloc>().add(LogoutRequested());
+                    }
+                  },
+                ),
+              ],
+              bottom: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                indicatorColor: AppColors.blue1,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: AppColors.textMuted,
+                labelStyle: TextStyles.headingSemiBold.copyWith(fontSize: 13),
+                onTap: (index) {
+                  final status = _activeTabs[index];
+                  context.read<RequestListBloc>().add(FetchRequests(status));
+                },
+                tabs: _activeTabs.map((status) {
+                  if (status == RequestStatus.newRequest) {
+                    return Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('New Inquiries'),
+                          if (hasUnreadDot) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.error,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }
+                  return Tab(text: status.displayName);
+                }).toList(),
+              ),
+            ),
+            body: TabBarView(
+              children: _activeTabs.map((status) {
+                return _buildTabList(context, status, state);
+              }).toList(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTabList(
+    BuildContext context,
+    RequestStatus status,
+    RequestListState state,
+  ) {
+    if (state is RequestListLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.blue1),
+      );
+    }
+
+    if (state is RequestListFailure) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.error,
+              size: 48,
+            ),
+            const SizedBox(height: 12),
+            Text('Error loading prescription requests', style: TextStyles.headingSemiBold),
+            const SizedBox(height: 4),
+            Text(state.message, style: TextStyles.labelRegular),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                context.read<RequestListBloc>().add(FetchRequests(status));
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (state is RequestListLoaded) {
+      if (state.status != status) {
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.blue1),
+        );
+      }
+
+      final requests = state.requests;
+
+      if (requests.isEmpty) {
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<RequestListBloc>().add(FetchRequests(status));
+          },
+          color: AppColors.blue1,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.receipt_long_rounded,
+                        size: 48,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No ${status.displayName.toLowerCase()} prescription requests',
+                      style: TextStyles.headingSemiBold.copyWith(color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Prescription inquiries from patients will appear here',
+                      style: TextStyles.labelRegular.copyWith(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return RefreshIndicator(
+        onRefresh: () async {
+          context.read<RequestListBloc>().add(FetchRequests(status));
+        },
+        color: AppColors.blue1,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: requests.length,
+          itemBuilder: (context, index) {
+            final request = requests[index];
+            return _MedicalRequestCard(request: request);
+          },
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+class _MedicalRequestCard extends StatelessWidget {
+  final RequestModel request;
+
+  const _MedicalRequestCard({required this.request});
+
+  @override
+  Widget build(BuildContext context) {
+    final formattedTime =
+        '${request.timestamp.day}/${request.timestamp.month}/${request.timestamp.year} ${request.timestamp.hour.toString().padLeft(2, '0')}:${request.timestamp.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.blue2.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.blue2,
+                  child: Text(
+                    request.patientInitials,
+                    style: TextStyles.headingBold.copyWith(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.patientName,
+                        style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${request.patientAge} yrs • ${request.patientGender}',
+                        style: TextStyles.labelRegular.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.blue3,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    formattedTime,
+                    style: TextStyles.labelRegular.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.blue3),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.description_outlined,
+                      size: 18,
+                      color: AppColors.blue1,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Prescription Inquiry Details',
+                      style: TextStyles.headingSemiBold.copyWith(
+                        fontSize: 13,
+                        color: AppColors.blue1,
+                      ),
+                    ),
+                  ],
+                ),
+                if (request.description.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.blue3.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.blue2.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      'Note: "${request.description}"',
+                      style: TextStyles.bodyRegular.copyWith(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                if (request.attachments.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      request.attachments.first,
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 60,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.blue3,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.picture_as_pdf, color: AppColors.error),
+                            SizedBox(width: 8),
+                            Text('Prescription PDF Attached', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.blue3,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.receipt_rounded, color: AppColors.blue1, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Prescription Image / Document Available',
+                          style: TextStyle(fontSize: 13, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.blue3),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      context.push(
+                        AppRoutes.requestDetail.replaceAll(':id', request.id),
+                        extra: request,
+                      );
+                    },
+                    icon: const Icon(Icons.info_outline_rounded, size: 16),
+                    label: const Text('View Details'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: AppColors.blue2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      context.push(
+                        '${AppRoutes.chat.replaceAll(':id', request.id)}?appointmentId=${request.id}',
+                      );
+                    },
+                    icon: const Icon(Icons.chat_bubble_rounded, size: 16),
+                    label: const Text('Go to Chat'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue1,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

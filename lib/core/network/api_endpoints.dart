@@ -15,4 +15,11 @@ class ApiEndpoints {
   static String appointmentConfirm(String requestId) =>
       '/appointments/partner/$requestId/confirm';
   static String appointmentDetail(String id) => '/appointments/$id';
+
+  // Prescription Chat & Thread Endpoints
+  static const String prescriptionThreadInit = '/chat/prescription-thread';
+  static const String myChats = '/chat/my-chats';
+  static String chatMessages(String chatId) => '/chat/$chatId/messages';
+  static String chatThreadReplies(String parentMessageId) => '/chat/thread/$parentMessageId';
+  static const String sendMessage = '/chat/send';
 }

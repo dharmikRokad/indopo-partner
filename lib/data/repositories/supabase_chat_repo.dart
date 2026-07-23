@@ -1,20 +1,42 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
 import '../models/chat_message.dart';
 import '../models/chat_room_model.dart';
 import 'app_config_repo.dart';
 
 class SupabaseChatRepository {
+  final ApiClient _apiClient;
   final SupabaseClient? _client;
   final AppConfigRepository _appConfigRepo;
 
   SupabaseChatRepository({
+    required ApiClient apiClient,
     SupabaseClient? client,
     required AppConfigRepository appConfigRepo,
-  })  : _client = client,
+  })  : _apiClient = apiClient,
+        _client = client,
         _appConfigRepo = appConfigRepo;
 
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
+
+  /// Fetches user chat rooms using Backend REST API (GET /api/chat/my-chats)
+  Future<List<ChatRoomModel>> fetchMyChats() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.myChats);
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        final list = resData['chats'] as List? ?? [];
+        return list
+            .map((json) => ChatRoomModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      print('[SupabaseChatRepository] fetchMyChats REST error: $e');
+    }
+    return [];
+  }
 
   /// Retrieves an existing chat room between a patient and partner if one exists,
   /// otherwise creates a new chat room in the 'chats' Supabase table.
@@ -27,7 +49,6 @@ class SupabaseChatRepository {
     String? partnerPhotoUrl,
   }) async {
     try {
-      // 1. Check if chat already exists
       final existingChat = await _supabase
           .from('chats')
           .select()
@@ -39,7 +60,6 @@ class SupabaseChatRepository {
         return ChatRoomModel.fromJson(existingChat);
       }
 
-      // 2. Insert new chat room if not existing
       final newChatData = {
         'patient_id': patientId,
         'partner_id': partnerId,
@@ -65,7 +85,82 @@ class SupabaseChatRepository {
     }
   }
 
-  /// Streams real-time messages for a specific chat room (chatId)
+  /// Initializes / Opens a prescription thread via Backend REST API (POST /api/chat/prescription-thread)
+  Future<Map<String, dynamic>> initPrescriptionThread({
+    required String patientId,
+    required String prescriptionUrl,
+    String? notes,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.prescriptionThreadInit,
+        data: {
+          'patientId': patientId,
+          'prescriptionUrl': prescriptionUrl,
+          'notes': notes,
+        },
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['data'] as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('[SupabaseChatRepository] initPrescriptionThread error: $e');
+      rethrow;
+    }
+    throw Exception('Failed to initialize prescription thread');
+  }
+
+  /// Fetches main root messages for a chat room via Backend REST API (GET /api/chat/:chatId/messages)
+  Future<List<ChatMessage>> fetchChatMessages(String chatId) async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.chatMessages(chatId));
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        final list = resData['messages'] as List? ?? [];
+        return list
+            .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      print('[SupabaseChatRepository] fetchChatMessages REST error, falling back to Supabase: $e');
+      try {
+        final res = await _supabase
+            .from('messages')
+            .select()
+            .eq('chat_id', chatId)
+            .order('created_at', ascending: true);
+        return (res as List)
+            .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } catch (err) {
+        print('[SupabaseChatRepository] fetchChatMessages Supabase fallback error: $err');
+      }
+    }
+    return [];
+  }
+
+  /// Fetches inner thread replies for a prescription inquiry via Backend REST API (GET /api/chat/thread/:parentMessageId)
+  Future<Map<String, dynamic>> fetchThreadReplies(String parentMessageId) async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.chatThreadReplies(parentMessageId));
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data['data'] as Map<String, dynamic>;
+        final repliesList = resData['replies'] as List? ?? [];
+        final replies = repliesList
+            .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return {
+          'parentMessage': resData['parentMessage'],
+          'replies': replies,
+        };
+      }
+    } catch (e) {
+      print('[SupabaseChatRepository] fetchThreadReplies REST error: $e');
+    }
+    return {'parentMessage': null, 'replies': <ChatMessage>[]};
+  }
+
+  /// Streams real-time live messages for a specific chat room via Supabase while in Chat Screen
   Stream<List<ChatMessage>> streamMessages(String chatId) {
     return _supabase
         .from('messages')
@@ -77,7 +172,7 @@ class SupabaseChatRepository {
         });
   }
 
-  /// Streams active chat rooms for a pharmacy partner for the ChatsListScreen
+  /// Streams active chat rooms for a pharmacy partner via Supabase
   Stream<List<ChatRoomModel>> streamPartnerChats(String partnerId) {
     return _supabase
         .from('chats')
@@ -89,49 +184,33 @@ class SupabaseChatRepository {
         });
   }
 
-  /// Sends a chat message and updates the parent chat room metadata (last message, unread count).
-  /// Respects role-based message limits configured via AppConfigRepository if any are active.
+  /// Sends a chat message via Backend REST API (POST /api/chat/send) and updates real-time Supabase table
   Future<void> sendMessage({
     required String chatId,
     required String appointmentId,
     required String senderId,
-    required String senderRole, // 'patient' or 'partner'
+    required String senderRole, // 'partner' or 'patient'
     required String content,
     String? imageUrl,
+    String? parentMessageId,
   }) async {
     try {
-      // 1. Evaluate message limits if active
-      if (senderRole == 'patient') {
-        final limit = await _appConfigRepo.getPatientMessageLimit();
-        if (limit != null && limit > 0) {
-          final countRes = await _supabase
-              .from('messages')
-              .select('id')
-              .eq('appointment_id', appointmentId)
-              .eq('sender_role', 'patient');
-          final currentCount = (countRes as List).length;
-          if (currentCount >= limit) {
-            throw Exception('Patient message limit of $limit reached for this appointment.');
-          }
-        }
-      } else if (senderRole == 'partner') {
-        final limit = await _appConfigRepo.getPartnerMessageLimit();
-        if (limit != null && limit > 0) {
-          final countRes = await _supabase
-              .from('messages')
-              .select('id')
-              .eq('appointment_id', appointmentId)
-              .eq('sender_role', 'partner');
-          final currentCount = (countRes as List).length;
-          if (currentCount >= limit) {
-            throw Exception('Partner message limit of $limit reached for this appointment.');
-          }
-        }
+      // 1. Send via Backend REST API
+      try {
+        await _apiClient.post(
+          ApiEndpoints.sendMessage,
+          data: {
+            'chatId': chatId,
+            'content': content,
+            if (parentMessageId != null) 'parentMessageId': parentMessageId,
+          },
+        );
+      } catch (apiErr) {
+        print('[SupabaseChatRepository] sendMessage REST API error, writing to Supabase: $apiErr');
       }
 
+      // 2. Insert into Supabase table to ensure real-time stream sync across connected clients
       final now = DateTime.now();
-
-      // 2. Insert message into messages table
       final messageData = {
         'chat_id': chatId,
         'appointment_id': appointmentId,
@@ -144,7 +223,7 @@ class SupabaseChatRepository {
 
       await _supabase.from('messages').insert(messageData);
 
-      // 3. Fetch current chat room to update unread count
+      // 3. Update chat room last message & unread count
       final chatRow = await _supabase
           .from('chats')
           .select()
@@ -172,7 +251,7 @@ class SupabaseChatRepository {
     }
   }
 
-  /// Marks partner unread messages as read (resets partner_unread_count to 0)
+  /// Marks partner unread messages as read
   Future<void> markPartnerUnreadAsRead(String chatId) async {
     try {
       await _supabase

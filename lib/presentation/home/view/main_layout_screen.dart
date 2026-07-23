@@ -6,6 +6,7 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../chat_list/view/chats_list_screen.dart';
 import '../../profile/view/profile_screen.dart';
+import '../../requests/view/medical_requests_screen.dart';
 import '../../requests/view/request_list_screen.dart';
 import '../../../core/presentation/bloc/value_cubit.dart';
 
@@ -39,16 +40,16 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
     // Dynamically build screens & items based on role
     final List<Widget> screens = [
-      const RequestListScreen(),
+      isMedical ? const MedicalRequestsScreen() : const RequestListScreen(),
       if (isMedical) const ChatsListScreen(),
       const ProfileScreen(),
     ];
 
     final List<BottomNavigationBarItem> items = [
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.assignment_outlined),
-        activeIcon: Icon(Icons.assignment_rounded),
-        label: 'Requests',
+      BottomNavigationBarItem(
+        icon: Icon(isMedical ? Icons.medication_outlined : Icons.assignment_outlined),
+        activeIcon: Icon(isMedical ? Icons.medication_rounded : Icons.assignment_rounded),
+        label: isMedical ? 'Prescriptions' : 'Requests',
       ),
       if (isMedical)
         const BottomNavigationBarItem(
