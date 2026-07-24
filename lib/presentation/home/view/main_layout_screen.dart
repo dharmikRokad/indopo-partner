@@ -30,13 +30,11 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     if (authState is! AuthSuccess) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final partner = authState.partner;
-    final isMedical = partner.role == PartnerType.medical;
+    final isMedical = partner.role == PartnerType.pharmacy;
 
     // Dynamically build screens & items based on role
     final List<Widget> screens = [
@@ -47,8 +45,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
     final List<BottomNavigationBarItem> items = [
       BottomNavigationBarItem(
-        icon: Icon(isMedical ? Icons.medication_outlined : Icons.assignment_outlined),
-        activeIcon: Icon(isMedical ? Icons.medication_rounded : Icons.assignment_rounded),
+        icon: Icon(
+          isMedical ? Icons.medication_outlined : Icons.assignment_outlined,
+        ),
+        activeIcon: Icon(
+          isMedical ? Icons.medication_rounded : Icons.assignment_rounded,
+        ),
         label: isMedical ? 'Prescriptions' : 'Requests',
       ),
       if (isMedical)
@@ -68,10 +70,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
       bloc: _navigationCubit,
       builder: (context, currentIndex) {
         return Scaffold(
-          body: IndexedStack(
-            index: currentIndex,
-            children: screens,
-          ),
+          body: IndexedStack(index: currentIndex, children: screens),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               border: Border(
@@ -91,7 +90,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
               unselectedItemColor: AppColors.textMuted,
               showUnselectedLabels: true,
               type: BottomNavigationBarType.fixed,
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
               unselectedLabelStyle: const TextStyle(fontSize: 12),
               items: items,
             ),

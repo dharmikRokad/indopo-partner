@@ -46,7 +46,7 @@ class _RequestListContentState extends State<_RequestListContent>
     final authState = context.read<AuthBloc>().state;
     bool isMedical = false;
     if (authState is AuthSuccess) {
-      isMedical = authState.partner.role == PartnerType.medical;
+      isMedical = authState.partner.role == PartnerType.pharmacy;
     }
     _activeTabs = isMedical
         ? [
@@ -159,7 +159,9 @@ class _RequestListContentState extends State<_RequestListContent>
               IconButton(
                 icon: const Icon(Icons.logout_rounded, color: AppColors.error),
                 onPressed: () async {
-                  final shouldLogout = await LogoutConfirmationDialog.show(context);
+                  final shouldLogout = await LogoutConfirmationDialog.show(
+                    context,
+                  );
                   if (shouldLogout == true && context.mounted) {
                     context.read<AuthBloc>().add(LogoutRequested());
                   }

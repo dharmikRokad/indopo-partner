@@ -98,7 +98,9 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                 'Appointment confirmed successfully',
               );
               final targetId = state.chatId ?? widget.id;
-              context.replace('${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}');
+              context.replace(
+                '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}',
+              );
             }
           } else if (state is RequestDetailFailure) {
             AppSnackBar.showError(context, state.message);
@@ -382,7 +384,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                             ),
                             child: ElevatedButton(
                               onPressed: () {
-                                if (partnerRole == PartnerType.medical) {
+                                if (partnerRole == PartnerType.pharmacy) {
                                   context.read<RequestDetailBloc>().add(
                                     AcceptRequest(
                                       widget.id,
@@ -471,7 +473,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                             ),
                             child: ElevatedButton(
                               onPressed: () {
-                                if (partnerRole == PartnerType.medical) {
+                                if (partnerRole == PartnerType.pharmacy) {
                                   context.push(
                                     AppRoutes.chat.replaceAll(':id', widget.id),
                                   );
@@ -489,7 +491,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                                 ),
                               ),
                               child: Text(
-                                partnerRole == PartnerType.medical
+                                partnerRole == PartnerType.pharmacy
                                     ? 'Open Chat'
                                     : 'Complete',
                                 style: TextStyles.headingBold.copyWith(

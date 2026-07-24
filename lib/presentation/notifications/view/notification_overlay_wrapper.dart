@@ -72,11 +72,12 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     }
 
     final metadata = notification.metadata ?? {};
-    final appointmentId = metadata['appointmentId']?.toString() ?? metadata['id']?.toString();
+    final appointmentId =
+        metadata['appointmentId']?.toString() ?? metadata['id']?.toString();
 
     // Check notification type and partner role for appropriate page redirection
     if (notification.type == NotificationType.prescriptionInquiry ||
-        partnerRole == PartnerType.medical) {
+        partnerRole == PartnerType.pharmacy) {
       // Redirect medical/pharmacy partner to prescriptions page
       context.go(AppRoutes.requestList);
     } else {
@@ -84,9 +85,7 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
       if (appointmentId != null &&
           appointmentId.isNotEmpty &&
           appointmentId != notification.id) {
-        context.push(
-          AppRoutes.requestDetail.replaceAll(':id', appointmentId),
-        );
+        context.push(AppRoutes.requestDetail.replaceAll(':id', appointmentId));
       } else {
         context.go(AppRoutes.requestList);
       }
@@ -130,7 +129,10 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     );
   }
 
-  Widget _buildBannerCard(BuildContext context, NotificationModel notification) {
+  Widget _buildBannerCard(
+    BuildContext context,
+    NotificationModel notification,
+  ) {
     final title = notification.patient?.fullName.isNotEmpty == true
         ? 'Notification: ${notification.patient!.fullName}'
         : 'New Notification';
@@ -147,7 +149,9 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
               _notificationCubit.update(null);
             }
           });
-          context.read<NotificationBloc>().add(NotificationTapped(notification));
+          context.read<NotificationBloc>().add(
+            NotificationTapped(notification),
+          );
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(

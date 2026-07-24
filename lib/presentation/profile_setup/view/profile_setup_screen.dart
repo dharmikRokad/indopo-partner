@@ -78,7 +78,9 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
 
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _stateCubit = ValueCubit<ProfileSetupScreenState>(const ProfileSetupScreenState());
+  final _stateCubit = ValueCubit<ProfileSetupScreenState>(
+    const ProfileSetupScreenState(),
+  );
 
   // Modalities for Imaging Center
   final List<String> _allModalities = [
@@ -118,7 +120,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_name'] = _clinicNameController.text.trim();
           break;
-        case PartnerType.medical:
+        case PartnerType.pharmacy:
           details['full_name'] = _nameController.text.trim();
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_hospital_name'] = _clinicNameController.text.trim();
@@ -169,11 +171,17 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
       body: BlocConsumer<ProfileSetupBloc, ProfileSetupState>(
         listener: (context, state) {
           if (state is ProfileSetupSuccess) {
-            AppSnackBar.showSuccess(context, 'Profile setup completed successfully!');
+            AppSnackBar.showSuccess(
+              context,
+              'Profile setup completed successfully!',
+            );
             // Update auth state directly to trigger redirect to Dashboard
             context.read<AuthBloc>().add(PartnerUpdated(state.partner));
           } else if (state is ProfileSetupFailure) {
-            AppSnackBar.showError(context, 'Failed to setup profile: ${state.message}');
+            AppSnackBar.showError(
+              context,
+              'Failed to setup profile: ${state.message}',
+            );
           }
         },
         builder: (context, blocState) {
@@ -189,7 +197,10 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
             currentStep = blocState.step;
           }
 
-          return BlocBuilder<ValueCubit<ProfileSetupScreenState>, ProfileSetupScreenState>(
+          return BlocBuilder<
+            ValueCubit<ProfileSetupScreenState>,
+            ProfileSetupScreenState
+          >(
             bloc: _stateCubit,
             builder: (context, screenState) {
               return SafeArea(
@@ -218,7 +229,10 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
                             decoration: BoxDecoration(
                               color: AppColors.blue2.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.blue1, width: 1),
+                              border: Border.all(
+                                color: AppColors.blue1,
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -287,8 +301,12 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
                               child: OutlinedButton(
                                 onPressed: isLoading ? null : _prevStep,
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: AppColors.blue1),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  side: const BorderSide(
+                                    color: AppColors.blue1,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -381,14 +399,16 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
               controller: _specializationController,
               label: 'Specialization',
               hint: 'e.g., Cardiology',
-              validator: (v) => Validators.validateRequired(v, 'Specialization'),
+              validator: (v) =>
+                  Validators.validateRequired(v, 'Specialization'),
             ),
             const SizedBox(height: 20),
             _buildTextField(
               controller: _regNumController,
               label: 'Medical Registration Number',
               hint: 'MD-12345',
-              validator: (v) => Validators.validateRequired(v, 'Registration number'),
+              validator: (v) =>
+                  Validators.validateRequired(v, 'Registration number'),
             ),
             const SizedBox(height: 20),
             _buildTextField(
@@ -399,7 +419,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
             ),
           ],
         );
-      case PartnerType.medical:
+      case PartnerType.pharmacy:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -419,7 +439,8 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
               controller: _regNumController,
               label: 'License / Registration Number',
               hint: 'LIC-67890',
-              validator: (v) => Validators.validateRequired(v, 'License number'),
+              validator: (v) =>
+                  Validators.validateRequired(v, 'License number'),
             ),
             const SizedBox(height: 20),
             _buildTextField(
@@ -525,7 +546,9 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
                     } else {
                       list.remove(modality);
                     }
-                    _stateCubit.update(state.copyWith(selectedModalities: list));
+                    _stateCubit.update(
+                      state.copyWith(selectedModalities: list),
+                    );
                   },
                 );
               }).toList(),
@@ -537,7 +560,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
 
   Widget _buildStep2Fields(PartnerType role, ProfileSetupScreenState state) {
     final String photoLabel =
-        (role == PartnerType.doctor || role == PartnerType.medical)
+        (role == PartnerType.doctor || role == PartnerType.pharmacy)
         ? 'Profile Photo'
         : 'Company Logo';
 
@@ -619,10 +642,16 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
               ElevatedButton(
                 onPressed: () {
                   // Simulate image upload
-                  _stateCubit.update(state.copyWith(
-                    uploadedPhotoPath: 'indopo_profile_photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                  ));
-                  AppSnackBar.showInfo(context, '$photoLabel simulated upload complete!');
+                  _stateCubit.update(
+                    state.copyWith(
+                      uploadedPhotoPath:
+                          'indopo_profile_photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                    ),
+                  );
+                  AppSnackBar.showInfo(
+                    context,
+                    '$photoLabel simulated upload complete!',
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.blue2,

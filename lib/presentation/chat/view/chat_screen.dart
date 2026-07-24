@@ -26,11 +26,7 @@ class ChatScreen extends StatelessWidget {
   final String id;
   final String? appointmentId;
 
-  const ChatScreen({
-    super.key,
-    required this.id,
-    this.appointmentId,
-  });
+  const ChatScreen({super.key, required this.id, this.appointmentId});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +38,7 @@ class ChatScreen extends StatelessWidget {
       partnerId = authState.partner.id;
       final role = authState.partner.role;
       isMedicalPartner =
-          role == PartnerType.doctor || role == PartnerType.medical;
+          role == PartnerType.doctor || role == PartnerType.pharmacy;
     }
 
     final supabaseRepo = context.read<SupabaseChatRepository>();
@@ -50,11 +46,13 @@ class ChatScreen extends StatelessWidget {
 
     return BlocProvider(
       create: (context) => ChatBloc(supabaseChatRepository: supabaseRepo)
-        ..add(InitChatStream(
-          chatId: id,
-          appointmentId: targetAppointmentId,
-          partnerId: partnerId,
-        )),
+        ..add(
+          InitChatStream(
+            chatId: id,
+            appointmentId: targetAppointmentId,
+            partnerId: partnerId,
+          ),
+        ),
       child: _ChatContent(
         chatId: id,
         appointmentId: targetAppointmentId,
@@ -110,7 +108,10 @@ class _ChatContent extends StatelessWidget {
                 },
               ),
               title: isLoadingRequest
-                  ? const Text('Loading chat...', style: TextStyle(fontSize: 16))
+                  ? const Text(
+                      'Loading chat...',
+                      style: TextStyle(fontSize: 16),
+                    )
                   : Row(
                       children: [
                         CircleAvatar(
@@ -118,7 +119,9 @@ class _ChatContent extends StatelessWidget {
                           backgroundColor: AppColors.blue2,
                           child: Text(
                             requestDetails?.patientInitials ?? 'P',
-                            style: TextStyles.headingBold.copyWith(fontSize: 13),
+                            style: TextStyles.headingBold.copyWith(
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -162,7 +165,10 @@ class _ChatContent extends StatelessWidget {
               children: [
                 if (!isMedicalPartner)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     color: AppColors.error.withValues(alpha: 0.2),
                     child: Row(
                       children: [
@@ -200,7 +206,9 @@ class _ChatContent extends StatelessWidget {
                               );
                             }
                             if (state is ChatFailure) {
-                              return Center(child: Text('Error: ${state.message}'));
+                              return Center(
+                                child: Text('Error: ${state.message}'),
+                              );
                             }
                             if (state is ChatLoaded) {
                               final messages = state.messages;
@@ -218,11 +226,14 @@ class _ChatContent extends StatelessWidget {
                                 itemCount: messages.length,
                                 itemBuilder: (context, index) {
                                   final msg = messages[index];
-                                  final bool showAppointmentHeader = index == 0 ||
-                                      messages[index - 1].appointmentId != msg.appointmentId;
+                                  final bool showAppointmentHeader =
+                                      index == 0 ||
+                                      messages[index - 1].appointmentId !=
+                                          msg.appointmentId;
 
                                   return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       if (showAppointmentHeader) ...[
                                         _PrescriptionInquiryCard(
@@ -284,7 +295,10 @@ class _ChatContent extends StatelessWidget {
                                 Icons.add_photo_alternate_rounded,
                                 color: AppColors.blue1,
                               ),
-                              onPressed: () => _sendSimulatedImage(context, scrollController),
+                              onPressed: () => _sendSimulatedImage(
+                                context,
+                                scrollController,
+                              ),
                             ),
                             Expanded(
                               child: TextField(
@@ -342,9 +356,16 @@ class _ChatContent extends StatelessWidget {
     try {
       final repo = context.read<RequestRepository>();
       final req = await repo.fetchRequestById(appointmentId);
-      requestCubit.update(ChatRequestState(requestDetails: req, isLoadingRequest: false));
+      requestCubit.update(
+        ChatRequestState(requestDetails: req, isLoadingRequest: false),
+      );
     } catch (e) {
-      requestCubit.update(ChatRequestState(requestDetails: requestCubit.state.requestDetails, isLoadingRequest: false));
+      requestCubit.update(
+        ChatRequestState(
+          requestDetails: requestCubit.state.requestDetails,
+          isLoadingRequest: false,
+        ),
+      );
     }
   }
 
@@ -367,7 +388,10 @@ class _ChatContent extends StatelessWidget {
     if (text.isNotEmpty) {
       context.read<ChatBloc>().add(SendMessage(content: text));
       messageController.clear();
-      Future.delayed(const Duration(milliseconds: 150), () => _scrollToBottom(scrollController));
+      Future.delayed(
+        const Duration(milliseconds: 150),
+        () => _scrollToBottom(scrollController),
+      );
     }
   }
 
@@ -382,7 +406,10 @@ class _ChatContent extends StatelessWidget {
             'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=300&auto=format&fit=crop',
       ),
     );
-    Future.delayed(const Duration(milliseconds: 150), () => _scrollToBottom(scrollController));
+    Future.delayed(
+      const Duration(milliseconds: 150),
+      () => _scrollToBottom(scrollController),
+    );
   }
 }
 
@@ -515,7 +542,11 @@ class _PrescriptionInquiryCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.receipt_long_rounded, color: AppColors.blue1, size: 20),
+                  const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.blue1,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -527,7 +558,10 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.blue3,
                       borderRadius: BorderRadius.circular(10),
@@ -556,7 +590,11 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                       height: 60,
                       color: AppColors.blue3,
                       child: const Center(
-                        child: Icon(Icons.picture_as_pdf, color: AppColors.error, size: 36),
+                        child: Icon(
+                          Icons.picture_as_pdf,
+                          color: AppColors.error,
+                          size: 36,
+                        ),
                       ),
                     ),
                   ),
@@ -581,7 +619,11 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.forum_outlined, size: 14, color: AppColors.blue1),
+                      const Icon(
+                        Icons.forum_outlined,
+                        size: 14,
+                        color: AppColors.blue1,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Tap to open prescription thread',

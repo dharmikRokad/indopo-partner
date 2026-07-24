@@ -42,7 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _updateButtonState() {
-    final isFilled = _usernameController.text.trim().isNotEmpty &&
+    final isFilled =
+        _usernameController.text.trim().isNotEmpty &&
         _passwordController.text.isNotEmpty;
     if (_credentialsFilledCubit.state != isFilled) {
       _credentialsFilledCubit.update(isFilled);
@@ -128,8 +129,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         _RoleCard(
                           label: AppStrings.medical,
                           icon: '💊',
-                          isSelected: selectedRole == PartnerType.medical,
-                          onTap: () => _selectRole(PartnerType.medical),
+                          isSelected: selectedRole == PartnerType.pharmacy,
+                          onTap: () => _selectRole(PartnerType.pharmacy),
                         ),
                         _RoleCard(
                           label: AppStrings.laboratory,
@@ -222,7 +223,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                         color: AppColors.textMuted,
                                       ),
                                       onPressed: () {
-                                        _obscurePasswordCubit.update(!obscurePassword);
+                                        _obscurePasswordCubit.update(
+                                          !obscurePassword,
+                                        );
                                       },
                                     ),
                                   ),

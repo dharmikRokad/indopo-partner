@@ -1,17 +1,12 @@
-enum PartnerType {
-  doctor,
-  medical,
-  laboratory,
-  imagingCenter,
-}
+enum PartnerType { doctor, pharmacy, laboratory, imagingCenter }
 
 extension PartnerTypeExtension on PartnerType {
   String get key {
     switch (this) {
       case PartnerType.doctor:
         return 'doctor';
-      case PartnerType.medical:
-        return 'medical';
+      case PartnerType.pharmacy:
+        return 'pharmacy';
       case PartnerType.laboratory:
         return 'laboratory';
       case PartnerType.imagingCenter:
@@ -23,8 +18,8 @@ extension PartnerTypeExtension on PartnerType {
     switch (key.toLowerCase()) {
       case 'doctor':
         return PartnerType.doctor;
-      case 'medical':
-        return PartnerType.medical;
+      case 'pharmacy':
+        return PartnerType.pharmacy;
       case 'laboratory':
       case 'lab':
         return PartnerType.laboratory;
@@ -41,8 +36,8 @@ extension PartnerTypeExtension on PartnerType {
     switch (this) {
       case PartnerType.doctor:
         return 'Doctor';
-      case PartnerType.medical:
-        return 'Medical';
+      case PartnerType.pharmacy:
+        return 'Pharmacy';
       case PartnerType.laboratory:
         return 'Laboratory';
       case PartnerType.imagingCenter:
@@ -54,7 +49,7 @@ extension PartnerTypeExtension on PartnerType {
     switch (this) {
       case PartnerType.doctor:
         return '🩺';
-      case PartnerType.medical:
+      case PartnerType.pharmacy:
         return '💊';
       case PartnerType.laboratory:
         return '🧪';

@@ -100,7 +100,7 @@ class PartnerModel {
             ? double.parse(docProfile['consultationFee'])
             : (docProfile['consultationFee'] as num?)?.toDouble() ?? 0.0;
       }
-    } else if (role == PartnerType.medical) {
+    } else if (role == PartnerType.pharmacy) {
       details['full_name'] = name;
       details['clinic_hospital_name'] = orgName;
     } else if (role == PartnerType.laboratory) {

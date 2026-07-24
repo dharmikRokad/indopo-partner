@@ -68,7 +68,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _stateCubit = ValueCubit<ProfileScreenState>(const ProfileScreenState());
+  final _stateCubit = ValueCubit<ProfileScreenState>(
+    const ProfileScreenState(),
+  );
   final _formKey = GlobalKey<FormState>();
 
   // Text controllers for the edit form
@@ -80,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
   final _consultationFeeController = TextEditingController();
-  
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -96,19 +98,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _initFormFields(PartnerModel partner, {bool isEditing = false}) {
-    _nameController.text = partner.details['full_name'] ?? 
-                           partner.details['lab_name'] ?? 
-                           partner.details['center_name'] ?? '';
+    _nameController.text =
+        partner.details['full_name'] ??
+        partner.details['lab_name'] ??
+        partner.details['center_name'] ??
+        '';
     _specializationController.text = partner.details['specialization'] ?? '';
-    _regNumController.text = partner.details['reg_number'] ?? 
-                             partner.details['accreditation_number'] ?? '';
-    _clinicNameController.text = partner.details['org_name'] ?? 
-                                 partner.details['clinic_name'] ?? 
-                                 partner.details['clinic_hospital_name'] ?? '';
+    _regNumController.text =
+        partner.details['reg_number'] ??
+        partner.details['accreditation_number'] ??
+        '';
+    _clinicNameController.text =
+        partner.details['org_name'] ??
+        partner.details['clinic_name'] ??
+        partner.details['clinic_hospital_name'] ??
+        '';
     _contactPersonController.text = partner.details['contact_person'] ?? '';
-    _addressController.text = partner.orgAddress ?? partner.details['address'] ?? '';
+    _addressController.text =
+        partner.orgAddress ?? partner.details['address'] ?? '';
     _phoneController.text = partner.details['phone'] ?? '';
-    _consultationFeeController.text = (partner.details['consultation_fee'] ?? 0.0).toString();
+    _consultationFeeController.text =
+        (partner.details['consultation_fee'] ?? 0.0).toString();
 
     final selectedModalities = <String>[];
     final dynamic modalities = partner.details['modalities'];
@@ -123,16 +133,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final openTime = _parseTimeString(partner.openTime);
     final closeTime = _parseTimeString(partner.closeTime);
 
-    _stateCubit.update(ProfileScreenState(
-      isEditing: isEditing,
-      isLoading: _stateCubit.state.isLoading,
-      selectedModalities: selectedModalities,
-      selectedDays: selectedDays,
-      openTime: openTime,
-      closeTime: closeTime,
-      lat: partner.lat,
-      long: partner.long,
-    ));
+    _stateCubit.update(
+      ProfileScreenState(
+        isEditing: isEditing,
+        isLoading: _stateCubit.state.isLoading,
+        selectedModalities: selectedModalities,
+        selectedDays: selectedDays,
+        openTime: openTime,
+        closeTime: closeTime,
+        lat: partner.lat,
+        long: partner.long,
+      ),
+    );
   }
 
   TimeOfDay? _parseTimeString(String? timeStr) {
@@ -159,17 +171,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final currentState = _stateCubit.state;
 
-
     if (currentState.selectedDays.isEmpty) {
-      AppSnackBar.showWarning(context, 'Please select at least one working day');
+      AppSnackBar.showWarning(
+        context,
+        'Please select at least one working day',
+      );
       return;
     }
     if (currentState.openTime == null || currentState.closeTime == null) {
-      AppSnackBar.showWarning(context, 'Please select opening and closing times');
+      AppSnackBar.showWarning(
+        context,
+        'Please select opening and closing times',
+      );
       return;
     }
-    if (currentState.openTime!.hour + currentState.openTime!.minute/60.0 >= currentState.closeTime!.hour + currentState.closeTime!.minute/60.0) {
-      AppSnackBar.showWarning(context, 'Opening time must be earlier than closing time');
+    if (currentState.openTime!.hour + currentState.openTime!.minute / 60.0 >=
+        currentState.closeTime!.hour + currentState.closeTime!.minute / 60.0) {
+      AppSnackBar.showWarning(
+        context,
+        'Opening time must be earlier than closing time',
+      );
       return;
     }
 
@@ -179,7 +200,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final details = <String, dynamic>{
         'address': _addressController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'visual_profile': partner.details['visual_profile'] ?? 'Simulated_Image_Path.jpg',
+        'visual_profile':
+            partner.details['visual_profile'] ?? 'Simulated_Image_Path.jpg',
       };
 
       switch (partner.role) {
@@ -189,9 +211,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_name'] = _clinicNameController.text.trim();
           details['org_name'] = _clinicNameController.text.trim();
-          details['consultation_fee'] = double.tryParse(_consultationFeeController.text.trim()) ?? 0.0;
+          details['consultation_fee'] =
+              double.tryParse(_consultationFeeController.text.trim()) ?? 0.0;
           break;
-        case PartnerType.medical:
+        case PartnerType.pharmacy:
           details['full_name'] = _nameController.text.trim();
           details['reg_number'] = _regNumController.text.trim();
           details['clinic_hospital_name'] = _clinicNameController.text.trim();
@@ -222,8 +245,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         orgAddress: _addressController.text.trim(),
       );
 
-      final savedPartner = await context.read<ProfileRepository>().saveProfile(updatedPartner);
-      
+      final savedPartner = await context.read<ProfileRepository>().saveProfile(
+        updatedPartner,
+      );
+
       // Update global AuthBloc
       context.read<AuthBloc>().add(PartnerUpdated(savedPartner));
 
@@ -245,12 +270,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final partner = authState.partner;
 
-    final displayName = partner.details['full_name'] ?? 
-                        partner.details['lab_name'] ?? 
-                        partner.details['center_name'] ?? 
-                        'Provider';
-                        
-    final initials = displayName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
+    final displayName =
+        partner.details['full_name'] ??
+        partner.details['lab_name'] ??
+        partner.details['center_name'] ??
+        'Provider';
+
+    final initials = displayName
+        .split(' ')
+        .map((e) => e.isNotEmpty ? e[0] : '')
+        .take(2)
+        .join()
+        .toUpperCase();
 
     return BlocBuilder<ValueCubit<ProfileScreenState>, ProfileScreenState>(
       bloc: _stateCubit,
@@ -267,9 +298,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             actions: [
               if (!state.isEditing)
                 IconButton(
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                  icon: const Icon(
+                    Icons.logout_rounded,
+                    color: AppColors.error,
+                  ),
                   onPressed: () async {
-                    final shouldLogout = await LogoutConfirmationDialog.show(context);
+                    final shouldLogout = await LogoutConfirmationDialog.show(
+                      context,
+                    );
                     if (shouldLogout == true && context.mounted) {
                       context.read<AuthBloc>().add(LogoutRequested());
                     }
@@ -279,7 +315,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -289,7 +328,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.blue2.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -298,7 +339,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           backgroundColor: AppColors.blue2,
                           child: Text(
                             initials.isEmpty ? 'P' : initials,
-                            style: TextStyles.headingBold.copyWith(fontSize: 28),
+                            style: TextStyles.headingBold.copyWith(
+                              fontSize: 28,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -315,16 +358,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.blue2.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.blue1, width: 1),
+                            border: Border.all(
+                              color: AppColors.blue1,
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(partner.role.icon, style: const TextStyle(fontSize: 16)),
+                              Text(
+                                partner.role.icon,
+                                style: const TextStyle(fontSize: 16),
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 partner.role.displayName,
@@ -343,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // Content based on Mode
-                  state.isEditing 
+                  state.isEditing
                       ? Form(
                           key: _formKey,
                           child: Column(
@@ -355,15 +407,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 children: [
                                   Expanded(
                                     child: OutlinedButton(
-                                      onPressed: state.isLoading 
-                                          ? null 
-                                          : () => _stateCubit.update(state.copyWith(isEditing: false)),
+                                      onPressed: state.isLoading
+                                          ? null
+                                          : () => _stateCubit.update(
+                                              state.copyWith(isEditing: false),
+                                            ),
                                       style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(color: AppColors.textMuted),
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        side: const BorderSide(
+                                          color: AppColors.textMuted,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                       ),
-                                      child: Text('Cancel', style: TextStyles.headingSemiBold.copyWith(color: AppColors.textMuted)),
+                                      child: Text(
+                                        'Cancel',
+                                        style: TextStyles.headingSemiBold
+                                            .copyWith(
+                                              color: AppColors.textMuted,
+                                            ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 16),
@@ -373,23 +441,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(12),
                                         gradient: const LinearGradient(
-                                          colors: [AppColors.blue1, AppColors.blue2],
+                                          colors: [
+                                            AppColors.blue1,
+                                            AppColors.blue2,
+                                          ],
                                         ),
                                       ),
                                       child: ElevatedButton(
-                                        onPressed: state.isLoading ? null : () => _saveProfile(partner),
+                                        onPressed: state.isLoading
+                                            ? null
+                                            : () => _saveProfile(partner),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.transparent,
                                           shadowColor: Colors.transparent,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
                                         ),
-                                        child: state.isLoading 
+                                        child: state.isLoading
                                             ? const SizedBox(
                                                 width: 24,
                                                 height: 24,
-                                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      color: Colors.white,
+                                                      strokeWidth: 2,
+                                                    ),
                                               )
-                                            : Text('Save Changes', style: TextStyles.headingBold.copyWith(fontSize: 16)),
+                                            : Text(
+                                                'Save Changes',
+                                                style: TextStyles.headingBold
+                                                    .copyWith(fontSize: 16),
+                                              ),
                                       ),
                                     ),
                                   ),
@@ -418,11 +503,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                                 child: Text(
                                   'Edit Profile',
-                                  style: TextStyles.headingBold.copyWith(fontSize: 16),
+                                  style: TextStyles.headingBold.copyWith(
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ),
@@ -453,27 +542,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               if (partner.role == PartnerType.doctor) ...[
-                _buildInfoRow('Specialization', partner.details['specialization'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Specialization',
+                  partner.details['specialization'] ?? 'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Reg Number', partner.details['reg_number'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Reg Number',
+                  partner.details['reg_number'] ?? 'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Clinic Name', partner.details['org_name'] ?? partner.details['clinic_name'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Clinic Name',
+                  partner.details['org_name'] ??
+                      partner.details['clinic_name'] ??
+                      'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Consultation Fee', '\$${partner.details['consultation_fee'] ?? 0.0}'),
-              ] else if (partner.role == PartnerType.medical) ...[
-                _buildInfoRow('License Number', partner.details['reg_number'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Consultation Fee',
+                  '\$${partner.details['consultation_fee'] ?? 0.0}',
+                ),
+              ] else if (partner.role == PartnerType.pharmacy) ...[
+                _buildInfoRow(
+                  'License Number',
+                  partner.details['reg_number'] ?? 'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Practice Name', partner.details['org_name'] ?? partner.details['clinic_hospital_name'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Practice Name',
+                  partner.details['org_name'] ??
+                      partner.details['clinic_hospital_name'] ??
+                      'Not specified',
+                ),
               ] else if (partner.role == PartnerType.laboratory) ...[
-                _buildInfoRow('Accreditation', partner.details['accreditation_number'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Accreditation',
+                  partner.details['accreditation_number'] ?? 'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Organization Name', partner.details['org_name'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Organization Name',
+                  partner.details['org_name'] ?? 'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Contact Person', partner.details['contact_person'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Contact Person',
+                  partner.details['contact_person'] ?? 'Not specified',
+                ),
               ] else if (partner.role == PartnerType.imagingCenter) ...[
-                _buildInfoRow('Accreditation', partner.details['accreditation_number'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Accreditation',
+                  partner.details['accreditation_number'] ?? 'Not specified',
+                ),
                 const Divider(color: AppColors.blue3, height: 24),
-                _buildInfoRow('Organization Name', partner.details['org_name'] ?? 'Not specified'),
+                _buildInfoRow(
+                  'Organization Name',
+                  partner.details['org_name'] ?? 'Not specified',
+                ),
               ],
             ],
           ),
@@ -490,9 +616,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Column(
             children: [
-              _buildInfoRow('Phone', partner.details['phone'] ?? 'Not specified'),
+              _buildInfoRow(
+                'Phone',
+                partner.details['phone'] ?? 'Not specified',
+              ),
               const Divider(color: AppColors.blue3, height: 24),
-              _buildInfoRow('Address', partner.details['address'] ?? 'Not specified'),
+              _buildInfoRow(
+                'Address',
+                partner.details['address'] ?? 'Not specified',
+              ),
             ],
           ),
         ),
@@ -507,16 +639,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Column(
             children: [
-              _buildInfoRow('Working Days', partner.workingDays?.join(', ') ?? 'Not specified'),
+              _buildInfoRow(
+                'Working Days',
+                partner.workingDays?.join(', ') ?? 'Not specified',
+              ),
               const Divider(color: AppColors.blue3, height: 24),
-              _buildInfoRow('Open / Close Time', 
+              _buildInfoRow(
+                'Open / Close Time',
                 partner.openTime != null && partner.closeTime != null
                     ? '${partner.openTime} - ${partner.closeTime}'
-                    : 'Not specified'),
+                    : 'Not specified',
+              ),
             ],
           ),
         ),
-        if (partner.role == PartnerType.laboratory || partner.role == PartnerType.imagingCenter) ...[
+        if (partner.role == PartnerType.laboratory ||
+            partner.role == PartnerType.imagingCenter) ...[
           const SizedBox(height: 24),
           _buildSectionTitle('Services'),
           const SizedBox(height: 12),
@@ -527,14 +665,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               border: Border.all(color: AppColors.blue2.withValues(alpha: 0.5)),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 8,
+              ),
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.blue2.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.layers_outlined, color: AppColors.blue1),
+                child: const Icon(
+                  Icons.layers_outlined,
+                  color: AppColors.blue1,
+                ),
               ),
               title: Text(
                 'Manage Services',
@@ -557,20 +701,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Edit mode fields builder
   Widget _buildEditFields(PartnerType role, ProfileScreenState state) {
-    final nameLabel = (role == PartnerType.laboratory) 
-        ? 'Laboratory Name' 
+    final nameLabel = (role == PartnerType.laboratory)
+        ? 'Laboratory Name'
         : (role == PartnerType.imagingCenter ? 'Center Name' : 'Full Name');
-        
-    final regLabel = (role == PartnerType.laboratory || role == PartnerType.imagingCenter) 
-        ? 'Accreditation Number' 
-        : (role == PartnerType.medical ? 'License / Registration Number' : 'Medical Registration Number');
+
+    final regLabel =
+        (role == PartnerType.laboratory || role == PartnerType.imagingCenter)
+        ? 'Accreditation Number'
+        : (role == PartnerType.pharmacy
+              ? 'License / Registration Number'
+              : 'Medical Registration Number');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Edit Details'),
         const SizedBox(height: 16),
-        
+
         _buildTextField(
           controller: _nameController,
           label: nameLabel,
@@ -615,15 +762,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         _buildTextField(
           controller: _clinicNameController,
-          label: role == PartnerType.doctor 
-              ? 'Clinic Name' 
-              : (role == PartnerType.medical ? 'Clinic / Hospital Name' : 'Organization Name'),
+          label: role == PartnerType.doctor
+              ? 'Clinic Name'
+              : (role == PartnerType.pharmacy
+                    ? 'Clinic / Hospital Name'
+                    : 'Organization Name'),
           hint: 'Enter organization/clinic name',
           validator: (v) => Validators.validateRequired(
-            v, 
-            role == PartnerType.doctor 
-                ? 'Clinic name' 
-                : (role == PartnerType.medical ? 'Practice name' : 'Organization name')
+            v,
+            role == PartnerType.doctor
+                ? 'Clinic name'
+                : (role == PartnerType.pharmacy
+                      ? 'Practice name'
+                      : 'Organization name'),
           ),
         ),
         const SizedBox(height: 16),
@@ -638,8 +789,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
         ],
 
-
-
         AddressAutocompleteField(
           controller: _addressController,
           label: 'Physical Address',
@@ -647,10 +796,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           initialLat: state.lat,
           initialLong: state.long,
           onLocationChanged: (address, lat, long) {
-            _stateCubit.update(_stateCubit.state.copyWith(
-              lat: lat,
-              long: long,
-            ));
+            _stateCubit.update(
+              _stateCubit.state.copyWith(lat: lat, long: long),
+            );
           },
           validator: (v) => Validators.validateRequired(v, 'Physical address'),
         ),
@@ -664,8 +812,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           validator: Validators.validatePhone,
         ),
         const SizedBox(height: 24),
-        
-        Text('Working Days', style: TextStyles.headingSemiBold.copyWith(fontSize: 14, color: AppColors.blue1)),
+
+        Text(
+          'Working Days',
+          style: TextStyles.headingSemiBold.copyWith(
+            fontSize: 14,
+            color: AppColors.blue1,
+          ),
+        ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
@@ -676,7 +830,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) {
+            children: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((
+              day,
+            ) {
               final isSelected = state.selectedDays.contains(day);
               return FilterChip(
                 label: Text(day),
@@ -692,7 +848,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
-                    color: isSelected ? AppColors.blue1 : AppColors.blue2.withValues(alpha: 0.3),
+                    color: isSelected
+                        ? AppColors.blue1
+                        : AppColors.blue2.withValues(alpha: 0.3),
                   ),
                 ),
                 onSelected: (selected) {
@@ -710,7 +868,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 24),
 
-        Text('Working Hours', style: TextStyles.headingSemiBold.copyWith(fontSize: 14, color: AppColors.blue1)),
+        Text(
+          'Working Hours',
+          style: TextStyles.headingSemiBold.copyWith(
+            fontSize: 14,
+            color: AppColors.blue1,
+          ),
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -738,7 +902,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1),
+      style: TextStyles.headingSemiBold.copyWith(
+        fontSize: 16,
+        color: AppColors.blue1,
+      ),
     );
   }
 
@@ -785,12 +952,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: hint,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             suffixIcon: enabled
                 ? null
-                : const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 18),
-            helperText: enabled ? null : 'Contact support to change specialization',
-            helperStyle: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                : const Icon(
+                    Icons.lock_outline,
+                    color: AppColors.textMuted,
+                    size: 18,
+                  ),
+            helperText: enabled
+                ? null
+                : 'Contact support to change specialization',
+            helperStyle: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+            ),
           ),
           validator: validator,
         ),
@@ -861,7 +1040,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontSize: 15,
                   ),
                 ),
-                const Icon(Icons.access_time_rounded, color: AppColors.blue1, size: 20),
+                const Icon(
+                  Icons.access_time_rounded,
+                  color: AppColors.blue1,
+                  size: 20,
+                ),
               ],
             ),
           ),
