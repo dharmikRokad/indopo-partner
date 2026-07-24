@@ -117,16 +117,6 @@ class _ChatContentState extends State<_ChatContent> {
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 100,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -233,13 +223,7 @@ class _ChatContentState extends State<_ChatContent> {
                 Expanded(
                   child: widget.isMedicalPartner
                       ? BlocConsumer<ChatBloc, ChatState>(
-                          listener: (context, state) {
-                            if (state is ChatLoaded) {
-                              WidgetsBinding.instance.addPostFrameCallback(
-                                (_) => _scrollToBottom(),
-                              );
-                            }
-                          },
+                          listener: (context, state) {},
                           builder: (context, state) {
                             if (state is ChatLoading) {
                               return const Center(
@@ -347,76 +331,6 @@ class _ChatContentState extends State<_ChatContent> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _MessageBubble extends StatelessWidget {
-  final ChatMessage message;
-
-  const _MessageBubble({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMe = message.isSentByMe;
-    final bubbleColor = isMe ? AppColors.blue2 : AppColors.surface;
-    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final margin = isMe
-        ? const EdgeInsets.only(left: 48, bottom: 12)
-        : const EdgeInsets.only(right: 48, bottom: 12);
-    final borderRadius = isMe
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomLeft: Radius.circular(16),
-          )
-        : const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomRight: Radius.circular(16),
-          );
-
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: alignment,
-        children: [
-          Container(
-            margin: margin,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: borderRadius,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (message.imageUrl != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      message.imageUrl!,
-                      width: 200,
-                      height: 120,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image, size: 48),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                Text(
-                  message.content,
-                  style: TextStyles.bodyRegular.copyWith(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

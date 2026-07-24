@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -13,15 +14,9 @@ class ThreadChatState {
   final List<ChatMessage> replies;
   final bool isLoading;
 
-  const ThreadChatState({
-    this.replies = const [],
-    this.isLoading = true,
-  });
+  const ThreadChatState({this.replies = const [], this.isLoading = true});
 
-  ThreadChatState copyWith({
-    List<ChatMessage>? replies,
-    bool? isLoading,
-  }) {
+  ThreadChatState copyWith({List<ChatMessage>? replies, bool? isLoading}) {
     return ThreadChatState(
       replies: replies ?? this.replies,
       isLoading: isLoading ?? this.isLoading,
@@ -53,6 +48,8 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
   late final ValueCubit<ThreadChatState> _threadCubit;
   late final TextEditingController _replyController;
   late final ScrollController _scrollController;
+  late final FocusNode _focusNode;
+  StreamSubscription<List<ChatMessage>>? _messagesStreamSub;
 
   @override
   void initState() {
@@ -60,11 +57,53 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
     _threadCubit = ValueCubit<ThreadChatState>(const ThreadChatState());
     _replyController = TextEditingController();
     _scrollController = ScrollController();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+
     _fetchThreadReplies();
+    _subscribeToRealtimeReplies();
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) {
+      _scrollToBottom(delayMs: 300);
+    }
+  }
+
+  void _subscribeToRealtimeReplies() {
+    final repo = context.read<SupabaseChatRepository>();
+    _messagesStreamSub = repo
+        .streamMessages(widget.chatId)
+        .listen(
+          (allMessages) {
+            if (!mounted) return;
+            final targetParentId = widget.parentMessageId.trim();
+            final replies = allMessages.where((m) {
+              if (m.parentMessageId == null ||
+                  m.parentMessageId!.trim().isEmpty) {
+                return false;
+              }
+              return m.parentMessageId!.trim() == targetParentId;
+            }).toList();
+
+            replies.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+            _threadCubit.update(
+              ThreadChatState(replies: replies, isLoading: false),
+            );
+            _scrollToBottom(delayMs: 200);
+          },
+          onError: (err) {
+            print('[ThreadChatScreen] Realtime stream error: $err');
+          },
+        );
   }
 
   @override
   void dispose() {
+    _messagesStreamSub?.cancel();
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
     _replyController.dispose();
     _scrollController.dispose();
     _threadCubit.close();
@@ -75,44 +114,61 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
     try {
       final repo = context.read<SupabaseChatRepository>();
       final result = await repo.fetchThreadReplies(widget.parentMessageId);
-      final List<ChatMessage> replies = (result['replies'] as List<ChatMessage>?) ?? [];
+      final List<ChatMessage> replies =
+          (result['replies'] as List<ChatMessage>?) ?? [];
 
       if (!mounted) return;
 
       if (replies.isNotEmpty) {
-        _threadCubit.update(ThreadChatState(replies: replies, isLoading: false));
-        _scrollToBottom();
+        replies.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        _threadCubit.update(
+          ThreadChatState(replies: replies, isLoading: false),
+        );
+        _scrollToBottom(delayMs: 300);
         return;
       }
 
       // Fallback fetch if empty thread replies
       final messages = await repo.fetchChatMessages(widget.chatId);
       final threadReplies = messages
-          .where((m) =>
-              m.parentMessageId == widget.parentMessageId ||
-              (m.appointmentId.isNotEmpty &&
-                  m.appointmentId == widget.parentMessageId))
+          .where(
+            (m) =>
+                m.parentMessageId == widget.parentMessageId ||
+                (m.appointmentId.isNotEmpty &&
+                    m.appointmentId == widget.parentMessageId),
+          )
           .toList();
 
+      threadReplies.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
       if (mounted) {
-        _threadCubit.update(ThreadChatState(replies: threadReplies, isLoading: false));
-        _scrollToBottom();
+        _threadCubit.update(
+          ThreadChatState(replies: threadReplies, isLoading: false),
+        );
+        _scrollToBottom(delayMs: 300);
       }
     } catch (_) {
       if (mounted) {
-        _threadCubit.update(ThreadChatState(replies: _threadCubit.state.replies, isLoading: false));
+        _threadCubit.update(
+          ThreadChatState(
+            replies: _threadCubit.state.replies,
+            isLoading: false,
+          ),
+        );
       }
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 100,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+  void _scrollToBottom({int delayMs = 100}) {
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _sendReply(String currentPartnerId) async {
@@ -120,6 +176,7 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
     if (text.isEmpty) return;
 
     _replyController.clear();
+    _focusNode.requestFocus();
     final repo = context.read<SupabaseChatRepository>();
 
     try {
@@ -134,9 +191,10 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
         timestamp: DateTime.now(),
       );
 
-      final updatedList = List<ChatMessage>.from(_threadCubit.state.replies)..add(replyMsg);
+      final updatedList = List<ChatMessage>.from(_threadCubit.state.replies)
+        ..add(replyMsg);
       _threadCubit.update(_threadCubit.state.copyWith(replies: updatedList));
-      _scrollToBottom();
+      _scrollToBottom(delayMs: 150);
 
       await repo.sendMessage(
         chatId: widget.chatId,
@@ -148,9 +206,9 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send reply: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to send reply: $e')));
       }
     }
   }
@@ -166,6 +224,7 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
     return BlocProvider.value(
       value: _threadCubit,
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         backgroundColor: AppColors.blue3,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -198,225 +257,255 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
             ],
           ),
         ),
-        body: Column(
-          children: [
-            // Sticky Parent Prescription Card Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: AppColors.blue1.withValues(alpha: 0.3),
-                    width: 1.5,
+        body: NotificationListener<SizeChangedLayoutNotification>(
+          onNotification: (_) {
+            _scrollToBottom(delayMs: 150);
+            return true;
+          },
+          child: SizeChangedLayoutNotifier(
+            child: Column(
+              children: [
+                // Sticky Parent Prescription Card Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.blue1.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.prescriptionUrl != null &&
-                      widget.prescriptionUrl!.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => Dialog(
-                            backgroundColor: Colors.transparent,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.network(
-                                widget.prescriptionUrl!,
-                                fit: BoxFit.contain,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.prescriptionUrl != null &&
+                          widget.prescriptionUrl!.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => Dialog(
+                                backgroundColor: Colors.transparent,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.network(
+                                    widget.prescriptionUrl!,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
                               ),
+                            );
+                          },
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              widget.prescriptionUrl!,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: AppColors.blue3,
+                                    child: const Icon(
+                                      Icons.picture_as_pdf,
+                                      color: AppColors.error,
+                                    ),
+                                  ),
                             ),
                           ),
-                        );
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          widget.prescriptionUrl!,
+                        )
+                      else
+                        Container(
                           width: 60,
                           height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                            width: 60,
-                            height: 60,
+                          decoration: BoxDecoration(
                             color: AppColors.blue3,
-                            child: const Icon(Icons.picture_as_pdf,
-                                color: AppColors.error),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.receipt_long_rounded,
+                            color: AppColors.blue1,
                           ),
                         ),
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: AppColors.blue3,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.receipt_long_rounded,
-                          color: AppColors.blue1),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.medication_rounded,
-                                size: 16, color: AppColors.blue1),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                '${widget.patientName ?? 'Patient'}\'s Prescription',
-                                style: TextStyles.headingSemiBold.copyWith(
-                                  fontSize: 13,
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.medication_rounded,
+                                  size: 16,
                                   color: AppColors.blue1,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    '${widget.patientName ?? 'Patient'}\'s Prescription',
+                                    style: TextStyles.headingSemiBold.copyWith(
+                                      fontSize: 13,
+                                      color: AppColors.blue1,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.notes != null && widget.notes!.isNotEmpty
+                                  ? '"${widget.notes}"'
+                                  : 'Patient uploaded prescription image/document for inquiry.',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyles.bodyRegular.copyWith(
+                                fontSize: 13,
+                                color: Colors.white,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.notes != null && widget.notes!.isNotEmpty
-                              ? '"${widget.notes}"'
-                              : 'Patient uploaded prescription image/document for inquiry.',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyles.bodyRegular.copyWith(
-                            fontSize: 13,
-                            color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Thread Reply Messages List with ValueCubit Reactive Builder
+                Expanded(
+                  child: BlocBuilder<ValueCubit<ThreadChatState>, ThreadChatState>(
+                    bloc: _threadCubit,
+                    builder: (context, state) {
+                      if (state.isLoading) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.blue1,
+                          ),
+                        );
+                      }
+
+                      if (state.replies.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No replies in this thread yet. Send a response below.',
+                            style: TextStyles.labelRegular.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: state.replies.length,
+                        itemBuilder: (context, index) {
+                          final msg = state.replies[index];
+                          final isMe =
+                              msg.isSentByMe ||
+                              msg.senderId == currentPartnerId;
+                          final bubbleColor = isMe
+                              ? AppColors.blue2
+                              : AppColors.surface;
+
+                          return Align(
+                            alignment: isMe
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.75,
+                              ),
+                              decoration: BoxDecoration(
+                                color: bubbleColor,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    msg.content,
+                                    style: TextStyles.bodyRegular.copyWith(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
+                                    style: TextStyles.labelRegular.copyWith(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+                // Reply Input Box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(
+                      top: BorderSide(color: AppColors.blue3, width: 2),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _replyController,
+                            focusNode: _focusNode,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: 'Reply to this prescription inquiry...',
+                              fillColor: AppColors.blue3,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            onSubmitted: (_) => _sendReply(currentPartnerId),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CircleAvatar(
+                          backgroundColor: AppColors.blue1,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            onPressed: () => _sendReply(currentPartnerId),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Thread Reply Messages List with ValueCubit Reactive Builder
-            Expanded(
-              child: BlocBuilder<ValueCubit<ThreadChatState>, ThreadChatState>(
-                bloc: _threadCubit,
-                builder: (context, state) {
-                  if (state.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: AppColors.blue1),
-                    );
-                  }
-
-                  if (state.replies.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No replies in this thread yet. Send a response below.',
-                        style: TextStyles.labelRegular.copyWith(color: AppColors.textMuted),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: state.replies.length,
-                    itemBuilder: (context, index) {
-                      final msg = state.replies[index];
-                      final isMe = msg.isSentByMe || msg.senderId == currentPartnerId;
-                      final bubbleColor = isMe ? AppColors.blue2 : AppColors.surface;
-
-                      return Align(
-                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          decoration: BoxDecoration(
-                            color: bubbleColor,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                msg.content,
-                                style: TextStyles.bodyRegular.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                                style: TextStyles.labelRegular.copyWith(
-                                  fontSize: 10,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-
-            // Reply Input Box
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(color: AppColors.blue3, width: 2),
                 ),
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _replyController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Reply to this prescription inquiry...',
-                          fillColor: AppColors.blue3,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        onSubmitted: (_) => _sendReply(currentPartnerId),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    CircleAvatar(
-                      backgroundColor: AppColors.blue1,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        onPressed: () => _sendReply(currentPartnerId),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
