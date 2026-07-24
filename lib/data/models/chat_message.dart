@@ -6,6 +6,7 @@ class ChatMessage {
   final String senderRole; // 'partner' or 'patient'
   final String content;
   final String? imageUrl;
+  final String? parentMessageId;
   final DateTime timestamp;
 
   ChatMessage({
@@ -16,6 +17,7 @@ class ChatMessage {
     required this.senderRole,
     required this.content,
     this.imageUrl,
+    this.parentMessageId,
     required this.timestamp,
   });
 
@@ -24,15 +26,18 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       id: json['id']?.toString() ?? '',
-      chatId: json['chat_id']?.toString() ?? '',
-      appointmentId: json['appointment_id']?.toString() ?? '',
-      senderId: json['sender_id']?.toString() ?? '',
-      senderRole: json['sender_role']?.toString() ?? 'patient',
+      chatId: json['chat_id']?.toString() ?? json['chatId']?.toString() ?? '',
+      appointmentId: json['appointment_id']?.toString() ?? json['appointmentId']?.toString() ?? '',
+      senderId: json['sender_id']?.toString() ?? json['senderId']?.toString() ?? '',
+      senderRole: json['sender_role']?.toString() ?? json['senderRole']?.toString() ?? 'patient',
       content: json['content']?.toString() ?? '',
-      imageUrl: json['image_url'] as String?,
+      imageUrl: json['image_url'] as String? ?? json['imageUrl'] as String?,
+      parentMessageId: json['parent_message_id'] as String? ?? json['parentMessageId'] as String?,
       timestamp: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
+          ? (DateTime.tryParse(json['created_at'] as String) ?? DateTime.now())
+          : (json['createdAt'] != null
+              ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
+              : DateTime.now()),
     );
   }
 
@@ -44,7 +49,9 @@ class ChatMessage {
       'sender_id': senderId,
       'sender_role': senderRole,
       'content': content,
-      'image_url': imageUrl,
+      if (imageUrl != null) 'image_url': imageUrl,
+      if (parentMessageId != null) 'parent_message_id': parentMessageId,
+      if (parentMessageId != null) 'parentMessageId': parentMessageId,
       'created_at': timestamp.toIso8601String(),
     };
   }

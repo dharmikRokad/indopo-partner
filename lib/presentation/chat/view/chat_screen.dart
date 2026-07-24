@@ -62,7 +62,7 @@ class ChatScreen extends StatelessWidget {
   }
 }
 
-class _ChatContent extends StatelessWidget {
+class _ChatContent extends StatefulWidget {
   final String chatId;
   final String appointmentId;
   final bool isMedicalPartner;
@@ -74,17 +74,65 @@ class _ChatContent extends StatelessWidget {
   });
 
   @override
+  State<_ChatContent> createState() => _ChatContentState();
+}
+
+class _ChatContentState extends State<_ChatContent> {
+  late final ScrollController _scrollController;
+  late final ValueCubit<ChatRequestState> _requestCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _requestCubit = ValueCubit<ChatRequestState>(const ChatRequestState());
+    _fetchRequestInfo();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _requestCubit.close();
+    super.dispose();
+  }
+
+  Future<void> _fetchRequestInfo() async {
+    try {
+      final repo = context.read<RequestRepository>();
+      final req = await repo.fetchRequestById(widget.appointmentId);
+      if (mounted) {
+        _requestCubit.update(
+          ChatRequestState(requestDetails: req, isLoadingRequest: false),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _requestCubit.update(
+          ChatRequestState(
+            requestDetails: _requestCubit.state.requestDetails,
+            isLoadingRequest: false,
+          ),
+        );
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent + 100,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final messageController = TextEditingController();
-    final scrollController = ScrollController();
-    final requestCubit = ValueCubit<ChatRequestState>(const ChatRequestState());
-
-    _fetchRequestInfo(context, requestCubit);
-
     return BlocProvider.value(
-      value: requestCubit,
+      value: _requestCubit,
       child: BlocBuilder<ValueCubit<ChatRequestState>, ChatRequestState>(
-        bloc: requestCubit,
+        bloc: _requestCubit,
         builder: (context, requestState) {
           final requestDetails = requestState.requestDetails;
           final isLoadingRequest = requestState.isLoadingRequest;
@@ -100,12 +148,7 @@ class _ChatContent extends StatelessWidget {
                   Icons.arrow_back_ios_new_rounded,
                   color: Colors.white,
                 ),
-                onPressed: () {
-                  messageController.dispose();
-                  scrollController.dispose();
-                  requestCubit.close();
-                  context.pop();
-                },
+                onPressed: () => context.pop(),
               ),
               title: isLoadingRequest
                   ? const Text(
@@ -163,7 +206,7 @@ class _ChatContent extends StatelessWidget {
             ),
             body: Column(
               children: [
-                if (!isMedicalPartner)
+                if (!widget.isMedicalPartner)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -188,12 +231,12 @@ class _ChatContent extends StatelessWidget {
                     ),
                   ),
                 Expanded(
-                  child: isMedicalPartner
+                  child: widget.isMedicalPartner
                       ? BlocConsumer<ChatBloc, ChatState>(
                           listener: (context, state) {
                             if (state is ChatLoaded) {
                               WidgetsBinding.instance.addPostFrameCallback(
-                                (_) => _scrollToBottom(scrollController),
+                                (_) => _scrollToBottom(),
                               );
                             }
                           },
@@ -211,8 +254,13 @@ class _ChatContent extends StatelessWidget {
                               );
                             }
                             if (state is ChatLoaded) {
-                              final messages = state.messages;
-                              if (messages.isEmpty) {
+                              final rootMessages = state.messages
+                                  .where((m) =>
+                                      m.parentMessageId == null ||
+                                      m.parentMessageId!.trim().isEmpty)
+                                  .toList();
+
+                              if (rootMessages.isEmpty) {
                                 return Center(
                                   child: Text(
                                     'Start of real-time message stream.',
@@ -220,31 +268,19 @@ class _ChatContent extends StatelessWidget {
                                   ),
                                 );
                               }
-                              return ListView.builder(
-                                controller: scrollController,
-                                padding: const EdgeInsets.all(16),
-                                itemCount: messages.length,
-                                itemBuilder: (context, index) {
-                                  final msg = messages[index];
-                                  final bool showAppointmentHeader =
-                                      index == 0 ||
-                                      messages[index - 1].appointmentId !=
-                                          msg.appointmentId;
 
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      if (showAppointmentHeader) ...[
-                                        _PrescriptionInquiryCard(
-                                          chatId: chatId,
-                                          appointmentId: msg.appointmentId,
-                                          requestDetails: requestDetails,
-                                          patientName: patientName,
-                                        ),
-                                      ],
-                                      _MessageBubble(message: msg),
-                                    ],
+                              return ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(16),
+                                itemCount: rootMessages.length,
+                                itemBuilder: (context, index) {
+                                  final msg = rootMessages[index];
+
+                                  return _PrescriptionInquiryCard(
+                                    chatId: widget.chatId,
+                                    rootMessageId: msg.id,
+                                    requestDetails: requestDetails,
+                                    patientName: patientName,
                                   );
                                 },
                               );
@@ -272,143 +308,11 @@ class _ChatContent extends StatelessWidget {
                           ),
                         ),
                 ),
-                AbsorbPointer(
-                  absorbing: !isMedicalPartner,
-                  child: Opacity(
-                    opacity: isMedicalPartner ? 1.0 : 0.3,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: AppColors.surface,
-                        border: Border(
-                          top: BorderSide(color: AppColors.blue3, width: 2),
-                        ),
-                      ),
-                      child: SafeArea(
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.add_photo_alternate_rounded,
-                                color: AppColors.blue1,
-                              ),
-                              onPressed: () => _sendSimulatedImage(
-                                context,
-                                scrollController,
-                              ),
-                            ),
-                            Expanded(
-                              child: TextField(
-                                controller: messageController,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  hintText: 'Type a message...',
-                                  fillColor: AppColors.blue3,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onSubmitted: (_) => _sendMessage(
-                                  context,
-                                  messageController,
-                                  scrollController,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            CircleAvatar(
-                              backgroundColor: AppColors.blue1,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.send_rounded,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                onPressed: () => _sendMessage(
-                                  context,
-                                  messageController,
-                                  scrollController,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           );
         },
       ),
-    );
-  }
-
-  Future<void> _fetchRequestInfo(
-    BuildContext context,
-    ValueCubit<ChatRequestState> requestCubit,
-  ) async {
-    try {
-      final repo = context.read<RequestRepository>();
-      final req = await repo.fetchRequestById(appointmentId);
-      requestCubit.update(
-        ChatRequestState(requestDetails: req, isLoadingRequest: false),
-      );
-    } catch (e) {
-      requestCubit.update(
-        ChatRequestState(
-          requestDetails: requestCubit.state.requestDetails,
-          isLoadingRequest: false,
-        ),
-      );
-    }
-  }
-
-  void _scrollToBottom(ScrollController scrollController) {
-    if (scrollController.hasClients) {
-      scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 100,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
-  void _sendMessage(
-    BuildContext context,
-    TextEditingController messageController,
-    ScrollController scrollController,
-  ) {
-    final text = messageController.text.trim();
-    if (text.isNotEmpty) {
-      context.read<ChatBloc>().add(SendMessage(content: text));
-      messageController.clear();
-      Future.delayed(
-        const Duration(milliseconds: 150),
-        () => _scrollToBottom(scrollController),
-      );
-    }
-  }
-
-  void _sendSimulatedImage(
-    BuildContext context,
-    ScrollController scrollController,
-  ) {
-    context.read<ChatBloc>().add(
-      const SendMessage(
-        content: 'Prescription Attachment',
-        imageUrl:
-            'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=300&auto=format&fit=crop',
-      ),
-    );
-    Future.delayed(
-      const Duration(milliseconds: 150),
-      () => _scrollToBottom(scrollController),
     );
   }
 }
@@ -485,13 +389,13 @@ class _MessageBubble extends StatelessWidget {
 
 class _PrescriptionInquiryCard extends StatelessWidget {
   final String chatId;
-  final String appointmentId;
+  final String rootMessageId;
   final RequestModel? requestDetails;
   final String patientName;
 
   const _PrescriptionInquiryCard({
     required this.chatId,
-    required this.appointmentId,
+    required this.rootMessageId,
     this.requestDetails,
     required this.patientName,
   });
@@ -510,7 +414,7 @@ class _PrescriptionInquiryCard extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) => ThreadChatScreen(
-                parentMessageId: appointmentId,
+                parentMessageId: rootMessageId,
                 chatId: chatId,
                 prescriptionUrl: imageUrl,
                 notes: notes,

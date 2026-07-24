@@ -20,6 +20,53 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     on<AcceptRequest>(_onAcceptRequest);
     on<RejectRequest>(_onRejectRequest);
     on<CompleteRequest>(_onCompleteRequest);
+    on<StartPrescriptionChat>(_onStartPrescriptionChat);
+  }
+
+  Future<void> _onStartPrescriptionChat(
+    StartPrescriptionChat event,
+    Emitter<RequestDetailState> emit,
+  ) async {
+    final currentRequest = state is RequestDetailLoaded
+        ? (state as RequestDetailLoaded).request
+        : null;
+
+    emit(RequestDetailLoading());
+    try {
+      String? chatId;
+      if (_supabaseChatRepository != null) {
+        chatId = await _supabaseChatRepository.openPrescriptionChat(
+          patientId: event.patientId ?? currentRequest?.patientId ?? '',
+          prescriptionUrl: event.prescriptionUrl ??
+              (currentRequest?.attachments.isNotEmpty == true
+                  ? currentRequest!.attachments.first
+                  : ''),
+          notes: event.notes ?? currentRequest?.description,
+          partnerId: event.partnerId,
+          notificationId: event.notificationId ?? currentRequest?.notificationId ?? event.id,
+        );
+      }
+
+      final req = currentRequest ??
+          RequestModel(
+            id: event.id,
+            patientId: event.patientId,
+            notificationId: event.notificationId,
+            chatId: chatId,
+            patientName: 'Patient',
+            patientAge: 30,
+            patientGender: 'Other',
+            patientContact: '',
+            description: event.notes ?? '',
+            attachments: event.prescriptionUrl != null ? [event.prescriptionUrl!] : [],
+            timestamp: DateTime.now(),
+            status: RequestStatus.inProgress,
+          );
+
+      emit(RequestActionSuccess(req, 'start_chat', chatId: chatId));
+    } catch (e) {
+      emit(RequestDetailFailure(e.toString()));
+    }
   }
 
   Future<void> _onFetchRequestDetail(

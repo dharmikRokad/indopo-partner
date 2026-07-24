@@ -166,6 +166,12 @@ class NotificationModel {
         metadata?['appointmentId']?.toString() ??
         id;
 
+    final pId = patientId.isNotEmpty
+        ? patientId
+        : (patient?.id.isNotEmpty == true
+            ? patient!.id
+            : (metadata?['patientId']?.toString() ?? ''));
+
     final pName = patient?.fullName.isNotEmpty == true
         ? patient!.fullName
         : (metadata?['patientName']?.toString() ?? 'Unknown Patient');
@@ -183,6 +189,9 @@ class NotificationModel {
 
     return RequestModel(
       id: inquiryId,
+      patientId: pId.isNotEmpty ? pId : null,
+      notificationId: id,
+      chatId: metadata?['chatId']?.toString(),
       patientName: pName,
       patientAge: (metadata?['patientAge'] is int) ? metadata!['patientAge'] as int : 30,
       patientGender: metadata?['patientGender']?.toString() ?? 'Other',

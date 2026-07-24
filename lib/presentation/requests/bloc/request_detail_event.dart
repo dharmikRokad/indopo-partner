@@ -53,3 +53,31 @@ class CompleteRequest extends RequestDetailEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class StartPrescriptionChat extends RequestDetailEvent {
+  final String id;
+  final String? partnerId;
+  final String? patientId;
+  final String? prescriptionUrl;
+  final String? notes;
+  final String? notificationId;
+
+  const StartPrescriptionChat({
+    required this.id,
+    this.partnerId,
+    this.patientId,
+    this.prescriptionUrl,
+    this.notes,
+    this.notificationId,
+  });
+
+  @override
+  List<Object?> get props => [
+        id,
+        partnerId,
+        patientId,
+        prescriptionUrl,
+        notes,
+        notificationId,
+      ];
+}

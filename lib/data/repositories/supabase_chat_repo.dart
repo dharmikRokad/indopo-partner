@@ -9,15 +9,13 @@ import 'app_config_repo.dart';
 class SupabaseChatRepository {
   final ApiClient _apiClient;
   final SupabaseClient? _client;
-  final AppConfigRepository _appConfigRepo;
 
   SupabaseChatRepository({
     required ApiClient apiClient,
     SupabaseClient? client,
-    required AppConfigRepository appConfigRepo,
+    AppConfigRepository? appConfigRepo,
   })  : _apiClient = apiClient,
-        _client = client,
-        _appConfigRepo = appConfigRepo;
+        _client = client;
 
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 
@@ -110,6 +108,61 @@ class SupabaseChatRepository {
     throw Exception('Failed to initialize prescription thread');
   }
 
+  /// Opens/Initializes prescription chat room & thread and marks notification as read if provided.
+  Future<String> openPrescriptionChat({
+    required String patientId,
+    required String prescriptionUrl,
+    String? notes,
+    String? partnerId,
+    String? notificationId,
+  }) async {
+    String? chatId;
+
+    // 1. Try initPrescriptionThread backend REST API
+    if (patientId.isNotEmpty) {
+      try {
+        final resData = await initPrescriptionThread(
+          patientId: patientId,
+          prescriptionUrl: prescriptionUrl,
+          notes: notes,
+        );
+        chatId = resData['chatId']?.toString() ?? resData['chat']?['id']?.toString();
+      } catch (e) {
+        print('[SupabaseChatRepository] openPrescriptionChat initPrescriptionThread error: $e');
+      }
+    }
+
+    // 2. Fallback to getOrCreateChatRoom if chatId was not retrieved from REST API
+    if ((chatId == null || chatId.isEmpty) &&
+        patientId.isNotEmpty &&
+        partnerId != null &&
+        partnerId.isNotEmpty) {
+      try {
+        final room = await getOrCreateChatRoom(
+          patientId: patientId,
+          partnerId: partnerId,
+        );
+        chatId = room.id;
+      } catch (e) {
+        print('[SupabaseChatRepository] openPrescriptionChat getOrCreateChatRoom error: $e');
+      }
+    }
+
+    // 3. Mark notification as read if notificationId is provided
+    if (notificationId != null && notificationId.isNotEmpty) {
+      try {
+        await _apiClient.patch(ApiEndpoints.notificationRead(notificationId));
+      } catch (e) {
+        print('[SupabaseChatRepository] openPrescriptionChat markNotificationAsRead error: $e');
+      }
+    }
+
+    if (chatId != null && chatId.isNotEmpty) {
+      return chatId;
+    }
+    throw Exception('Failed to open prescription chat room');
+  }
+
   /// Fetches main root messages for a chat room via Backend REST API (GET /api/chat/:chatId/messages)
   Future<List<ChatMessage>> fetchChatMessages(String chatId) async {
     try {
@@ -184,7 +237,7 @@ class SupabaseChatRepository {
         });
   }
 
-  /// Sends a chat message via Backend REST API (POST /api/chat/send) and updates real-time Supabase table
+  /// Sends a chat message via Backend REST API (POST /api/chat/send)
   Future<void> sendMessage({
     required String chatId,
     required String appointmentId,
@@ -195,58 +248,28 @@ class SupabaseChatRepository {
     String? parentMessageId,
   }) async {
     try {
-      // 1. Send via Backend REST API
-      try {
-        await _apiClient.post(
-          ApiEndpoints.sendMessage,
-          data: {
-            'chatId': chatId,
-            'content': content,
-            if (parentMessageId != null) 'parentMessageId': parentMessageId,
-          },
+      final String? validParentId =
+          (parentMessageId != null && parentMessageId.trim().isNotEmpty)
+              ? parentMessageId.trim()
+              : null;
+
+      final response = await _apiClient.post(
+        ApiEndpoints.sendMessage,
+        data: {
+          'chatId': chatId,
+          'content': content,
+          if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+          if (validParentId != null) 'parentMessageId': validParentId,
+        },
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+          'Failed to send message: ${response.statusCode} - ${response.data}',
         );
-      } catch (apiErr) {
-        print('[SupabaseChatRepository] sendMessage REST API error, writing to Supabase: $apiErr');
       }
-
-      // 2. Insert into Supabase table to ensure real-time stream sync across connected clients
-      final now = DateTime.now();
-      final messageData = {
-        'chat_id': chatId,
-        'appointment_id': appointmentId,
-        'sender_id': senderId,
-        'sender_role': senderRole,
-        'content': content,
-        'image_url': imageUrl,
-        'created_at': now.toIso8601String(),
-      };
-
-      await _supabase.from('messages').insert(messageData);
-
-      // 3. Update chat room last message & unread count
-      final chatRow = await _supabase
-          .from('chats')
-          .select()
-          .eq('id', chatId)
-          .maybeSingle();
-
-      int partnerUnread = chatRow?['partner_unread_count'] as int? ?? 0;
-      int patientUnread = chatRow?['patient_unread_count'] as int? ?? 0;
-
-      if (senderRole == 'patient') {
-        partnerUnread += 1;
-      } else {
-        patientUnread += 1;
-      }
-
-      await _supabase.from('chats').update({
-        'last_message': content,
-        'last_message_time': now.toIso8601String(),
-        'partner_unread_count': partnerUnread,
-        'patient_unread_count': patientUnread,
-      }).eq('id', chatId);
     } catch (e) {
-      print('[SupabaseChatRepository] sendMessage error: $e');
+      print('[SupabaseChatRepository] sendMessage API error: $e');
       rethrow;
     }
   }

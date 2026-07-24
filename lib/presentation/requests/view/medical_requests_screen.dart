@@ -8,6 +8,8 @@ import '../../../core/theme/text_styles.dart';
 import 'package:indopo_partner/data/models/partner_type.dart';
 import '../../../data/models/request_model.dart';
 import '../../../data/repositories/request_repo.dart';
+import '../../../data/repositories/supabase_chat_repo.dart';
+import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
@@ -219,13 +221,55 @@ class _MedicalRequestsContent extends StatelessWidget {
   }
 }
 
-class _MedicalRequestCard extends StatelessWidget {
+class _MedicalRequestCard extends StatefulWidget {
   final RequestModel request;
 
   const _MedicalRequestCard({required this.request});
 
   @override
+  State<_MedicalRequestCard> createState() => _MedicalRequestCardState();
+}
+
+class _MedicalRequestCardState extends State<_MedicalRequestCard> {
+  bool _isLoadingChat = false;
+
+  Future<void> _handleGoToChat() async {
+    setState(() => _isLoadingChat = true);
+
+    try {
+      final authState = context.read<AuthBloc>().state;
+      String? partnerId;
+      if (authState is AuthSuccess) {
+        partnerId = authState.partner.id;
+      }
+
+      final supabaseRepo = context.read<SupabaseChatRepository>();
+      final chatId = await supabaseRepo.openPrescriptionChat(
+        patientId: widget.request.patientId ?? '',
+        prescriptionUrl: widget.request.attachments.isNotEmpty
+            ? widget.request.attachments.first
+            : '',
+        notes: widget.request.description,
+        partnerId: partnerId,
+        notificationId: widget.request.notificationId ?? widget.request.id,
+      );
+
+      if (!mounted) return;
+      context.push(
+        '${AppRoutes.chat.replaceAll(':id', chatId)}?appointmentId=${widget.request.id}',
+      );
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Failed to open chat: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingChat = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final request = widget.request;
     final formattedTime =
         '${request.timestamp.day}/${request.timestamp.month}/${request.timestamp.year} ${request.timestamp.hour.toString().padLeft(2, '0')}:${request.timestamp.minute.toString().padLeft(2, '0')}';
 
@@ -354,8 +398,8 @@ class _MedicalRequestCard extends StatelessWidget {
                           color: AppColors.blue3,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Row(
-                          children: const [
+                        child: const Row(
+                          children: [
                             Icon(Icons.picture_as_pdf, color: AppColors.error),
                             SizedBox(width: 8),
                             Text('Prescription PDF Attached', style: TextStyle(fontSize: 13)),
@@ -371,8 +415,8 @@ class _MedicalRequestCard extends StatelessWidget {
                       color: AppColors.blue3,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Row(
-                      children: const [
+                    child: const Row(
+                      children: [
                         Icon(Icons.receipt_rounded, color: AppColors.blue1, size: 20),
                         SizedBox(width: 8),
                         Text(
@@ -413,13 +457,18 @@ class _MedicalRequestCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      context.push(
-                        '${AppRoutes.chat.replaceAll(':id', request.id)}?appointmentId=${request.id}',
-                      );
-                    },
-                    icon: const Icon(Icons.chat_bubble_rounded, size: 16),
-                    label: const Text('Go to Chat'),
+                    onPressed: _isLoadingChat ? null : _handleGoToChat,
+                    icon: _isLoadingChat
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.chat_bubble_rounded, size: 16),
+                    label: Text(_isLoadingChat ? 'Opening...' : 'Go to Chat'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.blue1,
                       foregroundColor: Colors.white,

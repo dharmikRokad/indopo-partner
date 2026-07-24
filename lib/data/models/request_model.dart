@@ -32,6 +32,9 @@ enum RequestStatus {
 
 class RequestModel {
   final String id;
+  final String? patientId;
+  final String? notificationId;
+  final String? chatId;
   final String patientName;
   final int patientAge;
   final String patientGender;
@@ -44,6 +47,9 @@ class RequestModel {
 
   RequestModel({
     required this.id,
+    this.patientId,
+    this.notificationId,
+    this.chatId,
     required this.patientName,
     required this.patientAge,
     required this.patientGender,
@@ -79,6 +85,9 @@ class RequestModel {
 
     return RequestModel(
       id: json['id'] as String? ?? '',
+      patientId: json['patientId'] as String? ?? json['patient_id'] as String?,
+      notificationId: json['notificationId'] as String? ?? json['notification_id'] as String?,
+      chatId: json['chatId'] as String? ?? json['chat_id'] as String?,
       patientName: json['patientName'] as String? ?? 'Unknown Patient',
       patientAge: json['patientAge'] as int? ?? 30,
       patientGender: json['patientGender'] as String? ?? 'Other',
@@ -96,6 +105,9 @@ class RequestModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (patientId != null) 'patient_id': patientId,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (chatId != null) 'chat_id': chatId,
       'patient_name': patientName,
       'patient_age': patientAge,
       'patient_gender': patientGender,
@@ -110,6 +122,9 @@ class RequestModel {
 
   RequestModel copyWith({
     String? id,
+    String? patientId,
+    String? notificationId,
+    String? chatId,
     String? patientName,
     int? patientAge,
     String? patientGender,
@@ -123,6 +138,9 @@ class RequestModel {
   }) {
     return RequestModel(
       id: id ?? this.id,
+      patientId: patientId ?? this.patientId,
+      notificationId: notificationId ?? this.notificationId,
+      chatId: chatId ?? this.chatId,
       patientName: patientName ?? this.patientName,
       patientAge: patientAge ?? this.patientAge,
       patientGender: patientGender ?? this.patientGender,

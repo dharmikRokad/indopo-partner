@@ -56,11 +56,9 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
     final authState = context.read<AuthBloc>().state;
     PartnerType partnerRole = PartnerType.doctor;
     String? partnerId;
-    String? partnerName;
     if (authState is AuthSuccess) {
       partnerRole = authState.partner.role;
       partnerId = authState.partner.id;
-      partnerName = authState.partner.name;
     }
 
     return Scaffold(
@@ -97,6 +95,11 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                 context,
                 'Appointment confirmed successfully',
               );
+              final targetId = state.chatId ?? widget.id;
+              context.replace(
+                '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}',
+              );
+            } else if (state.actionType == 'start_chat') {
               final targetId = state.chatId ?? widget.id;
               context.replace(
                 '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}',
@@ -341,7 +344,56 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
               ),
 
               // Action buttons
-              if (request.status == RequestStatus.newRequest)
+              if (partnerRole == PartnerType.pharmacy)
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Container(
+                      height: 56,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.blue1, AppColors.blue2],
+                        ),
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          context.read<RequestDetailBloc>().add(
+                                StartPrescriptionChat(
+                                  id: widget.id,
+                                  partnerId: partnerId,
+                                  patientId: req.patientId,
+                                  prescriptionUrl: req.attachments.isNotEmpty
+                                      ? req.attachments.first
+                                      : null,
+                                  notes: req.description,
+                                  notificationId:
+                                      req.notificationId ?? widget.id,
+                                ),
+                              );
+                        },
+                        icon: const Icon(Icons.chat_bubble_rounded,
+                            color: Colors.white),
+                        label: Text(
+                          'Go to Chat',
+                          style: TextStyles.headingBold.copyWith(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else if (request.status == RequestStatus.newRequest)
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -384,31 +436,18 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                             ),
                             child: ElevatedButton(
                               onPressed: () {
-                                if (partnerRole == PartnerType.pharmacy) {
-                                  context.read<RequestDetailBloc>().add(
-                                    AcceptRequest(
-                                      widget.id,
-                                      partnerId: partnerId,
-                                      partnerName: partnerName,
-                                      patientId: req.id,
-                                      patientName: req.patientName,
-                                    ),
-                                  );
-                                } else {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (modalContext) =>
-                                        AssignAppointmentDialog(
-                                          requestId: widget.id,
-                                          onConfirmed: () {
-                                            context
-                                                .pop(); // Close detail screen after appointment scheduled
-                                          },
-                                        ),
-                                  );
-                                }
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (modalContext) =>
+                                      AssignAppointmentDialog(
+                                    requestId: widget.id,
+                                    onConfirmed: () {
+                                      context.pop();
+                                    },
+                                  ),
+                                );
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
@@ -461,7 +500,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        // Complete / Open Chat Button
+                        // Complete Button
                         Expanded(
                           child: Container(
                             height: 56,
@@ -473,15 +512,9 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                             ),
                             child: ElevatedButton(
                               onPressed: () {
-                                if (partnerRole == PartnerType.pharmacy) {
-                                  context.push(
-                                    AppRoutes.chat.replaceAll(':id', widget.id),
-                                  );
-                                } else {
-                                  context.read<RequestDetailBloc>().add(
-                                    CompleteRequest(widget.id),
-                                  );
-                                }
+                                context.read<RequestDetailBloc>().add(
+                                      CompleteRequest(widget.id),
+                                    );
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
@@ -491,9 +524,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                                 ),
                               ),
                               child: Text(
-                                partnerRole == PartnerType.pharmacy
-                                    ? 'Open Chat'
-                                    : 'Complete',
+                                'Complete',
                                 style: TextStyles.headingBold.copyWith(
                                   fontSize: 16,
                                 ),
