@@ -180,14 +180,20 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.patientName ?? 'Prescription Thread',
-                  style: TextStyles.headingSemiBold.copyWith(fontSize: 16)),
               Text(
-                'Prescription Thread Replies',
+                widget.patientName ?? 'Prescription Inquiry',
+                style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+              ),
+              Text(
+                widget.notes != null && widget.notes!.isNotEmpty
+                    ? '"${widget.notes}"'
+                    : '📷 Prescription Inquiry Thread',
                 style: TextStyles.labelRegular.copyWith(
                   fontSize: 11,
                   color: AppColors.blue1,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -209,19 +215,39 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.prescriptionUrl != null && widget.prescriptionUrl!.isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        widget.prescriptionUrl!,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+                  if (widget.prescriptionUrl != null &&
+                      widget.prescriptionUrl!.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(
+                                widget.prescriptionUrl!,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          widget.prescriptionUrl!,
                           width: 60,
                           height: 60,
-                          color: AppColors.blue3,
-                          child: const Icon(Icons.picture_as_pdf, color: AppColors.error),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            width: 60,
+                            height: 60,
+                            color: AppColors.blue3,
+                            child: const Icon(Icons.picture_as_pdf,
+                                color: AppColors.error),
+                          ),
                         ),
                       ),
                     )
@@ -233,7 +259,8 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
                         color: AppColors.blue3,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.receipt_long_rounded, color: AppColors.blue1),
+                      child: const Icon(Icons.receipt_long_rounded,
+                          color: AppColors.blue1),
                     ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -242,13 +269,18 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.medication_rounded, size: 16, color: AppColors.blue1),
+                            const Icon(Icons.medication_rounded,
+                                size: 16, color: AppColors.blue1),
                             const SizedBox(width: 4),
-                            Text(
-                              'Root Prescription Inquiry',
-                              style: TextStyles.headingSemiBold.copyWith(
-                                fontSize: 13,
-                                color: AppColors.blue1,
+                            Expanded(
+                              child: Text(
+                                '${widget.patientName ?? 'Patient'}\'s Prescription',
+                                style: TextStyles.headingSemiBold.copyWith(
+                                  fontSize: 13,
+                                  color: AppColors.blue1,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

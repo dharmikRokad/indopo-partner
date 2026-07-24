@@ -59,6 +59,13 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       _streamSub = supabaseRepo.streamPartnerChats(partnerId).listen(
         (realtimeChats) {
           if (mounted) {
+            realtimeChats.sort((a, b) {
+              final aTime =
+                  a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final bTime =
+                  b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return bTime.compareTo(aTime);
+            });
             setState(() {
               _chats = realtimeChats;
               _isLoading = false;
@@ -66,7 +73,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           }
         },
         onError: (err) {
-          print('[ChatsListScreen] Supabase stream error, falling back to REST: $err');
+          print(
+              '[ChatsListScreen] Supabase stream error, falling back to REST: $err');
           if (mounted && _isLoading) {
             setState(() => _isLoading = false);
           }
@@ -79,6 +87,13 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     final supabaseRepo = context.read<SupabaseChatRepository>();
     try {
       final updated = await supabaseRepo.fetchMyChats();
+      updated.sort((a, b) {
+        final aTime =
+            a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bTime =
+            b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bTime.compareTo(aTime);
+      });
       if (mounted) {
         setState(() => _chats = updated);
       }

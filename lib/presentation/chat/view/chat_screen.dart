@@ -255,10 +255,34 @@ class _ChatContentState extends State<_ChatContent> {
                             }
                             if (state is ChatLoaded) {
                               final rootMessages = state.messages
-                                  .where((m) =>
-                                      m.parentMessageId == null ||
-                                      m.parentMessageId!.trim().isEmpty)
+                                  .where(
+                                    (m) =>
+                                        m.parentMessageId == null ||
+                                        m.parentMessageId!.trim().isEmpty,
+                                  )
                                   .toList();
+
+                              rootMessages.sort((a, b) {
+                                final aReplies = state.messages.where(
+                                    (m) => m.id == a.id || m.parentMessageId == a.id);
+                                DateTime aLatest = a.timestamp;
+                                for (final m in aReplies) {
+                                  if (m.timestamp.isAfter(aLatest)) {
+                                    aLatest = m.timestamp;
+                                  }
+                                }
+
+                                final bReplies = state.messages.where(
+                                    (m) => m.id == b.id || m.parentMessageId == b.id);
+                                DateTime bLatest = b.timestamp;
+                                for (final m in bReplies) {
+                                  if (m.timestamp.isAfter(bLatest)) {
+                                    bLatest = m.timestamp;
+                                  }
+                                }
+
+                                return bLatest.compareTo(aLatest);
+                              });
 
                               if (rootMessages.isEmpty) {
                                 return Center(
@@ -275,12 +299,23 @@ class _ChatContentState extends State<_ChatContent> {
                                 itemCount: rootMessages.length,
                                 itemBuilder: (context, index) {
                                   final msg = rootMessages[index];
+                                  final replies = state.messages
+                                      .where((m) => m.parentMessageId == msg.id)
+                                      .toList();
+                                  final replyCount = replies.length;
+                                  final unreadCount = replies
+                                      .where((m) =>
+                                          m.senderRole.toLowerCase() ==
+                                          'patient')
+                                      .length;
 
                                   return _PrescriptionInquiryCard(
                                     chatId: widget.chatId,
-                                    rootMessageId: msg.id,
+                                    rootMessage: msg,
                                     requestDetails: requestDetails,
                                     patientName: patientName,
+                                    replyCount: replyCount,
+                                    unreadCount: unreadCount,
                                   );
                                 },
                               );
@@ -389,22 +424,34 @@ class _MessageBubble extends StatelessWidget {
 
 class _PrescriptionInquiryCard extends StatelessWidget {
   final String chatId;
-  final String rootMessageId;
+  final ChatMessage rootMessage;
   final RequestModel? requestDetails;
   final String patientName;
+  final int replyCount;
+  final int unreadCount;
 
   const _PrescriptionInquiryCard({
     required this.chatId,
-    required this.rootMessageId,
+    required this.rootMessage,
     this.requestDetails,
     required this.patientName,
+    this.replyCount = 0,
+    this.unreadCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasAttachment = requestDetails?.attachments.isNotEmpty ?? false;
-    final imageUrl = hasAttachment ? requestDetails!.attachments.first : null;
-    final notes = requestDetails?.description;
+    final String? imageUrl =
+        (rootMessage.imageUrl != null && rootMessage.imageUrl!.isNotEmpty)
+            ? rootMessage.imageUrl
+            : (requestDetails?.attachments.isNotEmpty == true
+                ? requestDetails!.attachments.first
+                : null);
+
+    final String notes = (rootMessage.content.isNotEmpty &&
+            rootMessage.content != '📷 Prescription Inquiry')
+        ? rootMessage.content
+        : (requestDetails?.description ?? '');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -414,7 +461,7 @@ class _PrescriptionInquiryCard extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) => ThreadChatScreen(
-                parentMessageId: rootMessageId,
+                parentMessageId: rootMessage.id,
                 chatId: chatId,
                 prescriptionUrl: imageUrl,
                 notes: notes,
@@ -430,8 +477,10 @@ class _PrescriptionInquiryCard extends StatelessWidget {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.blue1.withValues(alpha: 0.6),
-              width: 1.5,
+              color: unreadCount > 0
+                  ? AppColors.error
+                  : AppColors.blue1.withValues(alpha: 0.6),
+              width: unreadCount > 0 ? 2.0 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
@@ -447,71 +496,125 @@ class _PrescriptionInquiryCard extends StatelessWidget {
               Row(
                 children: [
                   const Icon(
-                    Icons.receipt_long_rounded,
+                    Icons.medication_rounded,
                     color: AppColors.blue1,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Prescription Inquiry Card',
+                      notes.isNotEmpty
+                          ? notes
+                          : '$patientName\'s Prescription Request',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyles.headingSemiBold.copyWith(
                         fontSize: 14,
-                        color: AppColors.blue1,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.blue3,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'Thread',
-                      style: TextStyles.labelRegular.copyWith(
-                        fontSize: 11,
-                        color: AppColors.blue1,
-                        fontWeight: FontWeight.bold,
+                  const SizedBox(width: 8),
+                  if (unreadCount > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$unreadCount new ${unreadCount == 1 ? 'reply' : 'replies'}',
+                            style: TextStyles.labelRegular.copyWith(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (replyCount > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.blue1.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.blue1.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Text(
+                        '$replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
+                        style: TextStyles.labelRegular.copyWith(
+                          fontSize: 11,
+                          color: AppColors.blue1,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.blue3,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Thread',
+                        style: TextStyles.labelRegular.copyWith(
+                          fontSize: 11,
+                          color: AppColors.blue1,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 10),
-              if (imageUrl != null) ...[
+              if (imageUrl != null && imageUrl.isNotEmpty) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.network(
                     imageUrl,
-                    height: 140,
+                    height: 150,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 60,
                       color: AppColors.blue3,
-                      child: const Center(
-                        child: Icon(
-                          Icons.picture_as_pdf,
-                          color: AppColors.error,
-                          size: 36,
-                        ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.picture_as_pdf, color: AppColors.error),
+                          SizedBox(width: 8),
+                          Text(
+                            'Prescription Document Attached',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              if (notes != null && notes.isNotEmpty) ...[
-                Text(
-                  'Notes: "$notes"',
-                  style: TextStyles.bodyRegular.copyWith(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 10),
