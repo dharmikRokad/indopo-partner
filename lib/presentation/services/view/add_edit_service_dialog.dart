@@ -163,7 +163,7 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                 const SizedBox(height: 20),
 
                 // Price
-                _buildLabel('Price'),
+                _buildLabel('Price (₹)'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _priceController,

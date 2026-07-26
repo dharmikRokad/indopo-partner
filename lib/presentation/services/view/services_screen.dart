@@ -355,7 +355,7 @@ class _ServicesContentState extends State<_ServicesContent> {
                   ),
                 ),
                 Text(
-                  service.price,
+                  '₹${service.price}',
                   style: TextStyles.headingBold.copyWith(color: AppColors.blue1, fontSize: 20),
                 ),
               ],

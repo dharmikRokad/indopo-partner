@@ -561,7 +561,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(color: AppColors.blue3, height: 24),
                 _buildInfoRow(
                   'Consultation Fee',
-                  '\$${partner.details['consultation_fee'] ?? 0.0}',
+                  '₹${partner.details['consultation_fee'] ?? 0.0}',
                 ),
               ] else if (partner.role == PartnerType.pharmacy) ...[
                 _buildInfoRow(
@@ -736,7 +736,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           _buildTextField(
             controller: _consultationFeeController,
-            label: 'Consultation Fee (\$)',
+            label: 'Consultation Fee (₹)',
             hint: 'Enter consultation fee',
             keyboardType: TextInputType.number,
             validator: (v) {
