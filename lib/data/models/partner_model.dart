@@ -15,6 +15,7 @@ class PartnerModel {
   final double? long;
   final String? orgAddress;
   final bool isAvailable;
+  final bool isActive;
 
   String get name =>
       details['full_name'] as String? ??
@@ -37,6 +38,7 @@ class PartnerModel {
     this.long,
     this.orgAddress,
     this.isAvailable = true,
+    this.isActive = true,
   });
 
   factory PartnerModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +69,8 @@ class PartnerModel {
       orgAddress: orgAddressStr,
       isAvailable:
           json['isAvailable'] as bool? ?? json['is_available'] as bool? ?? true,
+      isActive:
+          json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
     );
   }
 
@@ -148,7 +152,10 @@ class PartnerModel {
           ? double.parse(json['long'])
           : (json['long'] as num?)?.toDouble(),
       orgAddress: orgAddressStr,
-      isAvailable: json['isAvailable'] as bool? ?? true,
+      isAvailable:
+          json['isAvailable'] as bool? ?? json['is_available'] as bool? ?? true,
+      isActive:
+          json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
     );
   }
 
@@ -167,6 +174,7 @@ class PartnerModel {
       'long': long,
       'orgAddress': orgAddress,
       'isAvailable': isAvailable,
+      'isActive': isActive,
     };
   }
 
@@ -184,6 +192,7 @@ class PartnerModel {
     double? long,
     String? orgAddress,
     bool? isAvailable,
+    bool? isActive,
   }) {
     return PartnerModel(
       id: id ?? this.id,
@@ -199,6 +208,7 @@ class PartnerModel {
       long: long ?? this.long,
       orgAddress: orgAddress ?? this.orgAddress,
       isAvailable: isAvailable ?? this.isAvailable,
+      isActive: isActive ?? this.isActive,
     );
   }
 

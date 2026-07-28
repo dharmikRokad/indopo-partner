@@ -12,6 +12,10 @@ import '../bloc/notification_bloc.dart';
 import '../bloc/notification_state.dart';
 import '../bloc/notification_event.dart';
 import '../../../core/presentation/bloc/value_cubit.dart';
+import '../../../data/repositories/supabase_chat_repo.dart';
+import '../../chat/bloc/thread_bloc.dart';
+import '../../chat/bloc/thread_event.dart';
+import '../../chat/view/thread_chat_screen.dart';
 
 class NotificationOverlayWrapper extends StatefulWidget {
   final Widget child;
@@ -67,28 +71,69 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
   void _handleNotificationRedirection(NotificationModel notification) {
     final authState = context.read<AuthBloc>().state;
     PartnerType? partnerRole;
+    String partnerId = '';
     if (authState is AuthSuccess) {
       partnerRole = authState.partner.role;
+      partnerId = authState.partner.id;
     }
 
     final metadata = notification.metadata ?? {};
-    final appointmentId =
+    final String? chatId =
+        metadata['chatId']?.toString() ?? metadata['chat_id']?.toString();
+    final String? parentMessageId = metadata['parentMessageId']?.toString() ??
+        metadata['parent_message_id']?.toString();
+    final String? appointmentId =
         metadata['appointmentId']?.toString() ?? metadata['id']?.toString();
 
-    // Check notification type and partner role for appropriate page redirection
+    // 1. Direct Chat & Thread Navigation
+    if (chatId != null && chatId.isNotEmpty) {
+      if (parentMessageId != null && parentMessageId.isNotEmpty) {
+        // Open Root Chat Screen first
+        context.push(AppRoutes.chat.replaceAll(':id', chatId));
+
+        // Push specific Thread Screen
+        final repo = context.read<SupabaseChatRepository>();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (_) => ThreadBloc(repo: repo)
+                ..add(InitThreadStream(
+                  chatId: chatId,
+                  parentMessageId: parentMessageId,
+                  partnerId: partnerId,
+                )),
+              child: ThreadChatScreen(
+                parentMessageId: parentMessageId,
+                chatId: chatId,
+                notes: metadata['notes']?.toString() ?? notification.message,
+                prescriptionUrl: metadata['prescriptionUrl']?.toString() ??
+                    metadata['imageUrl']?.toString(),
+                patientName: notification.patient?.fullName,
+              ),
+            ),
+          ),
+        );
+      } else {
+        context.push(AppRoutes.chat.replaceAll(':id', chatId));
+      }
+      return;
+    }
+
+    // 2. Prescription Inquiry / Pharmacy Partner
     if (notification.type == NotificationType.prescriptionInquiry ||
         partnerRole == PartnerType.pharmacy) {
-      // Redirect medical/pharmacy partner to prescriptions page
       context.go(AppRoutes.requestList);
+      return;
+    }
+
+    // 3. Doctor/Lab/Imaging partner appointment requests/details
+    if (appointmentId != null &&
+        appointmentId.isNotEmpty &&
+        appointmentId != notification.id) {
+      context.push(AppRoutes.requestDetail.replaceAll(':id', appointmentId));
     } else {
-      // Redirect doctor/lab/imaging partner to appointment requests/details
-      if (appointmentId != null &&
-          appointmentId.isNotEmpty &&
-          appointmentId != notification.id) {
-        context.push(AppRoutes.requestDetail.replaceAll(':id', appointmentId));
-      } else {
-        context.go(AppRoutes.requestList);
-      }
+      context.go(AppRoutes.requestList);
     }
   }
 
@@ -97,7 +142,17 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     return BlocListener<NotificationBloc, NotificationState>(
       listener: (context, state) {
         if (state is NotificationForegroundReceived) {
-          _showBanner(state.notification);
+          final metadata = state.notification.metadata ?? {};
+          final bool isChatMessage = metadata.containsKey('chatId') ||
+              metadata.containsKey('chat_id') ||
+              metadata.containsKey('parentMessageId') ||
+              metadata.containsKey('parent_message_id') ||
+              state.notification.type == NotificationType.prescriptionInquiry;
+
+          // Do NOT show custom overlay banner for chat messages
+          if (!isChatMessage) {
+            _showBanner(state.notification);
+          }
         } else if (state is NotificationOpened) {
           _handleNotificationRedirection(state.notification);
         }

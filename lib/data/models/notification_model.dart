@@ -187,11 +187,16 @@ class NotificationModel {
       attachmentList = [metadata!['prescriptionUrl'].toString()];
     }
 
+    final tokenNo = metadata?['tokenNumber']?.toString() ??
+        metadata?['token_number']?.toString() ??
+        metadata?['token']?.toString();
+
     return RequestModel(
       id: inquiryId,
       patientId: pId.isNotEmpty ? pId : null,
       notificationId: id,
       chatId: metadata?['chatId']?.toString(),
+      tokenNumber: tokenNo,
       patientName: pName,
       patientAge: (metadata?['patientAge'] is int) ? metadata!['patientAge'] as int : 30,
       patientGender: metadata?['patientGender']?.toString() ?? 'Other',

@@ -23,10 +23,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AvailabilityToggled>(_onAvailabilityToggled);
   }
 
-  void _onPartnerUpdated(
+  Future<void> _onPartnerUpdated(
     PartnerUpdated event,
     Emitter<AuthState> emit,
-  ) {
+  ) async {
+    if (!event.partner.isActive) {
+      await _authRepository.logout();
+      emit(const AccountSuspended('Account is suspended, contact support'));
+      return;
+    }
     emit(AuthSuccess(event.partner));
   }
 
@@ -37,7 +42,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final partner = await _authRepository.checkActiveSession();
       if (partner != null) {
-        emit(AuthSuccess(partner));
+        if (!partner.isActive) {
+          emit(const AccountSuspended('Account is suspended, contact support'));
+        } else {
+          emit(AuthSuccess(partner));
+        }
       } else {
         final cachedRoleKey = _localStorage.getSelectedRole();
         final cachedRole = cachedRoleKey != null 

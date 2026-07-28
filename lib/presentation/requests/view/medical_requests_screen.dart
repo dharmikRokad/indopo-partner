@@ -384,28 +384,54 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                 ],
                 const SizedBox(height: 12),
                 if (request.attachments.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
+                  GestureDetector(
+                    onTap: () => _showPrescriptionSheet(
+                      context,
                       request.attachments.first,
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 60,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.blue3,
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
                           borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            request.attachments.first,
+                            height: 140,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              height: 60,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.blue3,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.picture_as_pdf, color: AppColors.error),
+                                  SizedBox(width: 8),
+                                  Text('Prescription PDF Attached', style: TextStyle(fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.picture_as_pdf, color: AppColors.error),
-                            SizedBox(width: 8),
-                            Text('Prescription PDF Attached', style: TextStyle(fontSize: 13)),
-                          ],
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.zoom_in_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   )
                 else
@@ -484,6 +510,116 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  static void _showPrescriptionSheet(BuildContext context, String imageUrl) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0D1117),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Title row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.image_search_rounded,
+                        color: AppColors.blue1, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Prescription Image',
+                      style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white54),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              // Zoomable image
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 5.0,
+                    child: Center(
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.blue1,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.broken_image_rounded,
+                                color: Colors.white38, size: 64),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Unable to load image',
+                              style: TextStyles.labelRegular.copyWith(
+                                color: Colors.white38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Hint
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16, top: 8),
+                child: Text(
+                  'Pinch to zoom • Drag to pan',
+                  style: TextStyles.labelRegular.copyWith(
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

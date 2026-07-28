@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/chat_message.dart';
 import '../../../data/repositories/supabase_chat_repo.dart';
@@ -6,19 +7,17 @@ import 'chat_event.dart';
 import 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
-  final SupabaseChatRepository _supabaseChatRepository;
+  final SupabaseChatRepository _repo;
   StreamSubscription<List<ChatMessage>>? _messagesSubscription;
 
   String? _chatId;
-  String? _appointmentId;
   String? _partnerId;
 
-  ChatBloc({
-    required SupabaseChatRepository supabaseChatRepository,
-  })  : _supabaseChatRepository = supabaseChatRepository,
+  ChatBloc({required SupabaseChatRepository repo})
+      : _repo = repo,
         super(ChatInitial()) {
     on<InitChatStream>(_onInitChatStream);
-    on<StreamUpdated>(_onStreamUpdated);
+    on<ChatStreamUpdated>(_onChatStreamUpdated);
     on<SendMessage>(_onSendMessage);
   }
 
@@ -27,37 +26,31 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     _chatId = event.chatId;
-    _appointmentId = event.appointmentId;
     _partnerId = event.partnerId;
 
     emit(ChatLoading());
-
     await _messagesSubscription?.cancel();
 
-    // Mark partner unread count as 0 when viewing this chat
-    await _supabaseChatRepository.markPartnerUnreadAsRead(_chatId!);
+    // Reset partner unread count when entering the chat
+    await _repo.markPartnerChatsUnreadAsRead(_chatId!);
 
-    _messagesSubscription = _supabaseChatRepository
-        .streamMessages(_chatId!)
-        .listen(
-          (messages) => add(StreamUpdated(messages)),
-          onError: (err) {
-            if (!isClosed) {
-              add(StreamUpdated(const []));
-            }
-          },
-        );
+    _messagesSubscription = _repo.streamRootMessages(_chatId!).listen(
+      (messages) => add(ChatStreamUpdated(messages)),
+      onError: (err) {
+        debugPrint('[ChatBloc] stream error: $err');
+        if (!isClosed) add(const ChatStreamUpdated([]));
+      },
+    );
   }
 
-  void _onStreamUpdated(
-    StreamUpdated event,
+  void _onChatStreamUpdated(
+    ChatStreamUpdated event,
     Emitter<ChatState> emit,
   ) {
-    if (_chatId == null || _appointmentId == null) return;
+    if (_chatId == null) return;
     emit(ChatLoaded(
-      messages: event.messages,
+      rootMessages: event.messages,
       chatId: _chatId!,
-      appointmentId: _appointmentId!,
     ));
   }
 
@@ -65,20 +58,20 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SendMessage event,
     Emitter<ChatState> emit,
   ) async {
-    if (_chatId == null || _appointmentId == null || _partnerId == null) return;
+    if (_chatId == null || _partnerId == null) return;
 
     try {
-      await _supabaseChatRepository.sendMessage(
+      await _repo.sendMessage(
         chatId: _chatId!,
-        appointmentId: _appointmentId!,
         senderId: _partnerId!,
-        senderRole: 'partner',
+        senderRole: 'PARTNER',
         content: event.content,
         imageUrl: event.imageUrl,
+        isPrescription: event.isPrescription,
       );
     } catch (e) {
-      print('[ChatBloc] SendMessage error: $e');
-      // If error occurs (e.g. limit reached), emit failure temporarily or log
+      debugPrint('[ChatBloc] SendMessage error: $e');
+      // Optionally emit ChatFailure here — for now silently log
     }
   }
 

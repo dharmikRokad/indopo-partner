@@ -52,7 +52,10 @@ class AppRouter {
       }
 
       // 2. Not Authenticated States
-      if (authState is Unauthenticated || authState is RoleChosen || authState is AuthFailure) {
+      if (authState is Unauthenticated ||
+          authState is RoleChosen ||
+          authState is AuthFailure ||
+          authState is AccountSuspended) {
         if (currentLoc == AppRoutes.login) {
           return null;
         }
@@ -129,8 +132,7 @@ class AppRouter {
         path: AppRoutes.chat,
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          final appointmentId = state.uri.queryParameters['appointmentId'];
-          return ChatScreen(id: id, appointmentId: appointmentId);
+          return ChatScreen(id: id);
         },
       ),
       GoRoute(

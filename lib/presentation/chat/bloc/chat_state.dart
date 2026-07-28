@@ -13,24 +13,17 @@ class ChatInitial extends ChatState {}
 class ChatLoading extends ChatState {}
 
 class ChatLoaded extends ChatState {
-  final List<ChatMessage> messages;
+  /// Root messages only (parent_message_id IS NULL), sorted ascending.
+  final List<ChatMessage> rootMessages;
   final String chatId;
-  final String appointmentId;
 
   const ChatLoaded({
-    required this.messages,
+    required this.rootMessages,
     required this.chatId,
-    required this.appointmentId,
   });
 
-  int get patientMessageCount =>
-      messages.where((m) => m.senderRole == 'patient' && m.appointmentId == appointmentId).length;
-
-  int get partnerMessageCount =>
-      messages.where((m) => m.senderRole == 'partner' && m.appointmentId == appointmentId).length;
-
   @override
-  List<Object?> get props => [messages, chatId, appointmentId];
+  List<Object?> get props => [rootMessages, chatId];
 }
 
 class ChatFailure extends ChatState {

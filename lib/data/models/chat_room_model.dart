@@ -46,23 +46,59 @@ class ChatRoomModel {
   }
 
   factory ChatRoomModel.fromJson(Map<String, dynamic> json) {
+    final rawPatientName = json['patient_name'] ??
+        json['patientName'] ??
+        json['patient']?['name'] ??
+        json['patient']?['fullName'] ??
+        'Patient';
+
+    final rawPatientPhoto = json['patient_photo_url'] ??
+        json['patientPhotoUrl'] ??
+        json['patient']?['photoUrl'] ??
+        json['patient']?['profilePic'];
+
+    final rawPartnerName = json['partner_name'] ??
+        json['partnerName'] ??
+        json['partner']?['name'] ??
+        'Pharmacy Partner';
+
+    final rawPartnerPhoto = json['partner_photo_url'] ??
+        json['partnerPhotoUrl'] ??
+        json['partner']?['photoUrl'];
+
+    final rawLastMessage = json['last_message'] ?? json['lastMessage'];
+
+    DateTime? parsedTime;
+    final timeVal = json['last_message_time'] ?? json['lastMessageTime'];
+    if (timeVal != null) {
+      parsedTime = DateTime.tryParse(timeVal.toString())?.toLocal();
+    }
+
+    int parseCount(dynamic val) {
+      if (val is int) return val;
+      if (val != null) return int.tryParse(val.toString()) ?? 0;
+      return 0;
+    }
+
+    DateTime parsedCreatedAt = DateTime.now();
+    final createdVal = json['created_at'] ?? json['createdAt'];
+    if (createdVal != null) {
+      parsedCreatedAt = DateTime.tryParse(createdVal.toString())?.toLocal() ?? DateTime.now();
+    }
+
     return ChatRoomModel(
       id: json['id']?.toString() ?? '',
-      patientId: json['patient_id']?.toString() ?? '',
-      partnerId: json['partner_id']?.toString() ?? '',
-      patientName: json['patient_name']?.toString() ?? 'Patient',
-      patientPhotoUrl: json['patient_photo_url'] as String?,
-      partnerName: json['partner_name']?.toString() ?? 'Pharmacy Partner',
-      partnerPhotoUrl: json['partner_photo_url'] as String?,
-      lastMessage: json['last_message'] as String?,
-      lastMessageTime: json['last_message_time'] != null
-          ? DateTime.parse(json['last_message_time'] as String)
-          : null,
-      partnerUnreadCount: json['partner_unread_count'] as int? ?? 0,
-      patientUnreadCount: json['patient_unread_count'] as int? ?? 0,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
+      patientId: json['patient_id']?.toString() ?? json['patientId']?.toString() ?? '',
+      partnerId: json['partner_id']?.toString() ?? json['partnerId']?.toString() ?? '',
+      patientName: rawPatientName.toString(),
+      patientPhotoUrl: rawPatientPhoto?.toString(),
+      partnerName: rawPartnerName.toString(),
+      partnerPhotoUrl: rawPartnerPhoto?.toString(),
+      lastMessage: rawLastMessage?.toString(),
+      lastMessageTime: parsedTime,
+      partnerUnreadCount: parseCount(json['partner_unread_count'] ?? json['partnerUnreadCount']),
+      patientUnreadCount: parseCount(json['patient_unread_count'] ?? json['patientUnreadCount']),
+      createdAt: parsedCreatedAt,
     );
   }
 

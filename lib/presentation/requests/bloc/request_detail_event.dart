@@ -81,3 +81,12 @@ class StartPrescriptionChat extends RequestDetailEvent {
         notificationId,
       ];
 }
+
+class AppointmentConfirmed extends RequestDetailEvent {
+  final dynamic appointment;
+
+  const AppointmentConfirmed(this.appointment);
+
+  @override
+  List<Object?> get props => [appointment];
+}

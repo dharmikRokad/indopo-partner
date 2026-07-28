@@ -32,7 +32,7 @@ class AssignAppointmentState {
 
 class AssignAppointmentDialog extends StatelessWidget {
   final String requestId;
-  final VoidCallback onConfirmed;
+  final ValueChanged<AppointmentModel> onConfirmed;
 
   const AssignAppointmentDialog({
     super.key,
@@ -56,7 +56,7 @@ class AssignAppointmentDialog extends StatelessWidget {
 
 class _AssignAppointmentContent extends StatefulWidget {
   final String requestId;
-  final VoidCallback onConfirmed;
+  final ValueChanged<AppointmentModel> onConfirmed;
 
   const _AssignAppointmentContent({
     required this.requestId,
@@ -176,7 +176,7 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
             context,
             AppStrings.appointmentConfirmedToast.replaceAll('{id}', state.appointment.appointmentNumber),
           );
-          widget.onConfirmed();
+          widget.onConfirmed(state.appointment);
         } else if (state is AppointmentFailed) {
           AppSnackBar.showError(context, state.message);
         }

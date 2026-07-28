@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide LocalStorage;
+import 'package:supabase_flutter/supabase_flutter.dart' hide LocalStorage, AuthState;
 import 'core/constants/app_strings.dart';
 import 'core/network/api_client.dart';
 import 'core/network/token_manager.dart';
@@ -19,6 +19,8 @@ import 'data/repositories/service_repo.dart';
 import 'data/repositories/supabase_chat_repo.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
+import 'presentation/auth/bloc/auth_state.dart';
+import 'core/presentation/widgets/app_snackbar.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
 import 'presentation/notifications/bloc/notification_event.dart';
 import 'presentation/notifications/view/notification_overlay_wrapper.dart';
@@ -71,7 +73,6 @@ void main() async {
   final appConfigRepository = AppConfigRepository();
   final supabaseChatRepository = SupabaseChatRepository(
     apiClient: apiClient,
-    appConfigRepo: appConfigRepository,
   );
 
   // Trigger dropdown values load immediately when the user opens the app
@@ -149,7 +150,14 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
         theme: AppTheme.darkTheme,
         routerConfig: _appRouter.router,
         builder: (context, child) {
-          return NotificationOverlayWrapper(child: child!);
+          return BlocListener<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is AccountSuspended) {
+                AppSnackBar.showError(context, state.message);
+              }
+            },
+            child: NotificationOverlayWrapper(child: child!),
+          );
         },
       ),
     );

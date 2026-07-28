@@ -21,7 +21,11 @@ class AuthRepository {
       final response = await _apiClient.get(ApiEndpoints.profile);
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
-        return PartnerModel.fromApiJson(resData);
+        final partner = PartnerModel.fromApiJson(resData);
+        if (!partner.isActive) {
+          await logout();
+        }
+        return partner;
       }
     } catch (e, s) {
       print('[AuthRepository] checkActiveSession error: $e');
@@ -58,6 +62,10 @@ class AuthRepository {
         final partnerJson = resData['partner'] as Map<String, dynamic>;
 
         final partner = PartnerModel.fromApiJson(partnerJson);
+
+        if (!partner.isActive) {
+          throw Exception('Account is suspended, contact support');
+        }
 
         // Role validation check
         if (partner.role != selectedRole) {

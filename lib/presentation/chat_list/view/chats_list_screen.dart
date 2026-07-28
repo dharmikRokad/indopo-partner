@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,103 +8,37 @@ import '../../../data/models/chat_room_model.dart';
 import '../../../data/repositories/supabase_chat_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../bloc/chat_list_bloc.dart';
+import '../bloc/chat_list_event.dart';
+import '../bloc/chat_list_state.dart';
 
-class ChatsListScreen extends StatefulWidget {
+class ChatsListScreen extends StatelessWidget {
   const ChatsListScreen({super.key});
 
   @override
-  State<ChatsListScreen> createState() => _ChatsListScreenState();
+  Widget build(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    final String partnerId =
+        authState is AuthSuccess ? authState.partner.id : '';
+
+    return BlocProvider(
+      create: (_) => ChatListBloc(repo: context.read<SupabaseChatRepository>())
+        ..add(InitChatListStream(partnerId: partnerId)),
+      child: const _ChatsListContent(),
+    );
+  }
 }
 
-class _ChatsListScreenState extends State<ChatsListScreen> {
-  List<ChatRoomModel> _chats = [];
-  bool _isLoading = true;
-  StreamSubscription<List<ChatRoomModel>>? _streamSub;
+class _ChatsListContent extends StatelessWidget {
+  const _ChatsListContent();
 
-  @override
-  void initState() {
-    super.initState();
-    _initChats();
-  }
-
-  Future<void> _initChats() async {
+  Future<void> _onRefresh(BuildContext context) async {
     final authState = context.read<AuthBloc>().state;
-    String partnerId = '';
-    if (authState is AuthSuccess) {
-      partnerId = authState.partner.id;
-    }
-
-    final supabaseRepo = context.read<SupabaseChatRepository>();
-
-    // 1. Initial fetch via REST API (GET /api/chat/my-chats)
-    try {
-      final initialChats = await supabaseRepo.fetchMyChats();
-      if (mounted && initialChats.isNotEmpty) {
-        setState(() {
-          _chats = initialChats;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('[ChatsListScreen] REST fetch error: $e');
-    } finally {
-      if (mounted && _isLoading) {
-        setState(() => _isLoading = false);
-      }
-    }
-
-    // 2. Real-time stream subscription from Supabase with graceful fallback
-    if (partnerId.isNotEmpty) {
-      _streamSub = supabaseRepo.streamPartnerChats(partnerId).listen(
-        (realtimeChats) {
-          if (mounted) {
-            realtimeChats.sort((a, b) {
-              final aTime =
-                  a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-              final bTime =
-                  b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-              return bTime.compareTo(aTime);
-            });
-            setState(() {
-              _chats = realtimeChats;
-              _isLoading = false;
-            });
-          }
-        },
-        onError: (err) {
-          print(
-              '[ChatsListScreen] Supabase stream error, falling back to REST: $err');
-          if (mounted && _isLoading) {
-            setState(() => _isLoading = false);
-          }
-        },
-      );
-    }
-  }
-
-  Future<void> _refreshChats() async {
-    final supabaseRepo = context.read<SupabaseChatRepository>();
-    try {
-      final updated = await supabaseRepo.fetchMyChats();
-      updated.sort((a, b) {
-        final aTime =
-            a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bTime =
-            b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bTime.compareTo(aTime);
-      });
-      if (mounted) {
-        setState(() => _chats = updated);
-      }
-    } catch (e) {
-      print('[ChatsListScreen] _refreshChats error: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _streamSub?.cancel();
-    super.dispose();
+    final String partnerId =
+        authState is AuthSuccess ? authState.partner.id : '';
+    context.read<ChatListBloc>().add(InitChatListStream(partnerId: partnerId));
+    // Small delay so the pull-to-refresh indicator resolves gracefully
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   @override
@@ -121,24 +54,50 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: _refreshChats,
+        onRefresh: () => _onRefresh(context),
         color: AppColors.blue1,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildBody(),
+          child: BlocBuilder<ChatListBloc, ChatListState>(
+            builder: (context, state) {
+              if (state is ChatListLoading || state is ChatListInitial) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.blue1),
+                );
+              }
+
+              if (state is ChatListError) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.35),
+                    Center(
+                      child: Text(
+                        'Failed to load chats. Pull to refresh.',
+                        style: TextStyles.bodyRegular
+                            .copyWith(color: AppColors.textMuted),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              if (state is ChatListLoaded) {
+                return _buildList(context, state.chats);
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.blue1),
-      );
-    }
-
-    if (_chats.isEmpty) {
+  Widget _buildList(BuildContext context, List<ChatRoomModel> chats) {
+    if (chats.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -162,16 +121,14 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'No active chats',
-                  style: TextStyles.headingSemiBold.copyWith(
-                    fontSize: 18,
-                  ),
+                  style:
+                      TextStyles.headingSemiBold.copyWith(fontSize: 18),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'When prescription inquiries are initialized, real-time chats appear here.',
-                  style: TextStyles.bodyRegular.copyWith(
-                    color: AppColors.textMuted,
-                  ),
+                  'When prescription inquiries are initialised, real-time chats appear here.',
+                  style: TextStyles.bodyRegular
+                      .copyWith(color: AppColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -184,44 +141,67 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _chats.length,
+      itemCount: chats.length,
       itemBuilder: (context, index) {
-        final room = _chats[index];
-        final hasUnread = room.partnerUnreadCount > 0;
-        final String timeStr = room.lastMessageTime != null
-            ? '${room.lastMessageTime!.hour.toString().padLeft(2, '0')}:${room.lastMessageTime!.minute.toString().padLeft(2, '0')}'
-            : '';
+        final room = chats[index];
+        return _ChatListTile(room: room);
+      },
+    );
+  }
+}
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: InkWell(
-            onTap: () =>
-                context.push(AppRoutes.chat.replaceAll(':id', room.id)),
+class _ChatListTile extends StatelessWidget {
+  final ChatRoomModel room;
+
+  const _ChatListTile({required this.room});
+
+  String _formatTime(DateTime? time) {
+    if (time == null) return '';
+    return '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasUnread = room.partnerUnreadCount > 0;
+    final String timeStr = _formatTime(room.lastMessageTime);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () async {
+          // Reset unread count immediately then navigate
+          context
+              .read<SupabaseChatRepository>()
+              .markPartnerChatsUnreadAsRead(room.id);
+          await GoRouter.of(context)
+              .push(AppRoutes.chat.replaceAll(':id', room.id));
+          // Stream update will automatically reflect the reset count
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: hasUnread
-                      ? AppColors.blue1
-                      : AppColors.blue2.withValues(alpha: 0.5),
-                  width: hasUnread ? 1.5 : 1.0,
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (room.patientPhotoUrl != null &&
-                      room.patientPhotoUrl!.isNotEmpty)
-                    CircleAvatar(
+            border: Border.all(
+              color: hasUnread
+                  ? AppColors.blue1
+                  : AppColors.blue2.withValues(alpha: 0.5),
+              width: hasUnread ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Avatar
+              room.patientPhotoUrl != null &&
+                      room.patientPhotoUrl!.isNotEmpty
+                  ? CircleAvatar(
                       radius: 24,
-                      backgroundImage: NetworkImage(
-                        room.patientPhotoUrl!,
-                      ),
+                      backgroundImage:
+                          NetworkImage(room.patientPhotoUrl!),
                     )
-                  else
-                    CircleAvatar(
+                  : CircleAvatar(
                       radius: 24,
                       backgroundColor: AppColors.blue2,
                       child: Text(
@@ -232,90 +212,87 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                         ),
                       ),
                     ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(width: 16),
+              // Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                room.patientName,
-                                style: TextStyles.headingSemiBold
-                                    .copyWith(
-                                      fontSize: 16,
-                                      fontWeight: hasUnread
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                        Expanded(
+                          child: Text(
+                            room.patientName,
+                            style:
+                                TextStyles.headingSemiBold.copyWith(
+                              fontSize: 16,
+                              fontWeight: hasUnread
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
-                            if (timeStr.isNotEmpty)
-                              Text(
-                                timeStr,
-                                style: TextStyles.labelRegular.copyWith(
-                                  fontSize: 11,
-                                  color: hasUnread
-                                      ? AppColors.blue1
-                                      : AppColors.textMuted,
-                                ),
-                              ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                room.lastMessage ?? 'No messages yet',
-                                style: TextStyles.labelRegular.copyWith(
-                                  fontSize: 13,
-                                  color: hasUnread
-                                      ? Colors.white
-                                      : AppColors.textMuted,
-                                  fontWeight: hasUnread
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                        if (timeStr.isNotEmpty)
+                          Text(
+                            timeStr,
+                            style: TextStyles.labelRegular.copyWith(
+                              fontSize: 11,
+                              color: hasUnread
+                                  ? AppColors.blue1
+                                  : AppColors.textMuted,
                             ),
-                            if (hasUnread) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.blue1,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  '${room.partnerUnreadCount}',
-                                  style: TextStyles.labelRegular
-                                      .copyWith(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                          ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            room.lastMessage ?? 'No messages yet',
+                            style: TextStyles.labelRegular.copyWith(
+                              fontSize: 13,
+                              color: hasUnread
+                                  ? Colors.white
+                                  : AppColors.textMuted,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (hasUnread) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppColors.blue1,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${room.partnerUnreadCount}',
+                              style: TextStyles.labelRegular.copyWith(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

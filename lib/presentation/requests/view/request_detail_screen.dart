@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../data/models/appointment_model.dart';
 import '../../../data/models/partner_type.dart';
 import '../../../data/models/request_model.dart';
 import '../../../data/repositories/request_repo.dart';
@@ -248,23 +249,19 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                             color: AppColors.surface,
                             child: ListTile(
                               leading: const Icon(
-                                Icons.picture_as_pdf,
-                                color: AppColors.error,
+                                Icons.image_outlined,
+                                color: AppColors.blue1,
                               ),
                               title: Text(
                                 url.split('/').last,
                                 style: TextStyles.bodyRegular,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               trailing: const Icon(
-                                Icons.download,
+                                Icons.remove_red_eye_rounded,
                                 color: AppColors.blue1,
                               ),
-                              onTap: () {
-                                AppSnackBar.showInfo(
-                                  context,
-                                  'Simulated download: ${url.split('/').last}',
-                                );
-                              },
+                              onTap: () => _showPrescriptionSheet(context, url),
                             ),
                           ),
                         ),
@@ -338,6 +335,69 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                           ),
                         ],
                       ),
+
+                      // Token Number for Doctor, Lab, and Imaging Center
+                      if (partnerRole == PartnerType.doctor ||
+                          partnerRole == PartnerType.laboratory ||
+                          partnerRole == PartnerType.imagingCenter) ...[
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.blue2,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.blue1.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.confirmation_number_outlined,
+                                    color: AppColors.blue1,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Token Number',
+                                    style: TextStyles.bodyMedium.copyWith(
+                                      fontSize: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.blue1,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  req.tokenNumber != null &&
+                                          req.tokenNumber!.isNotEmpty
+                                      ? '#${req.tokenNumber}'
+                                      : 'N/A',
+                                  style: TextStyles.headingBold.copyWith(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -443,8 +503,14 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                                   builder: (modalContext) =>
                                       AssignAppointmentDialog(
                                     requestId: widget.id,
-                                    onConfirmed: () {
+                                    onConfirmed: (AppointmentModel confirmedAppt) {
                                       context.pop();
+                                      context.read<RequestDetailBloc>().add(
+                                            AppointmentConfirmed(confirmedAppt),
+                                          );
+                                      context.read<RequestDetailBloc>().add(
+                                            FetchRequestDetail(widget.id),
+                                          );
                                     },
                                   ),
                                 );
@@ -618,6 +684,116 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showPrescriptionSheet(BuildContext context, String imageUrl) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0D1117),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Title row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.image_search_rounded,
+                        color: AppColors.blue1, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Prescription Image',
+                      style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white54),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              // Zoomable image
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 5.0,
+                    child: Center(
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.blue1,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.broken_image_rounded,
+                                color: Colors.white38, size: 64),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Unable to load image',
+                              style: TextStyles.labelRegular.copyWith(
+                                color: Colors.white38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Hint
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16, top: 8),
+                child: Text(
+                  'Pinch to zoom • Drag to pan',
+                  style: TextStyles.labelRegular.copyWith(
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -35,6 +35,7 @@ class RequestModel {
   final String? patientId;
   final String? notificationId;
   final String? chatId;
+  final String? tokenNumber;
   final String patientName;
   final int patientAge;
   final String patientGender;
@@ -50,6 +51,7 @@ class RequestModel {
     this.patientId,
     this.notificationId,
     this.chatId,
+    this.tokenNumber,
     required this.patientName,
     required this.patientAge,
     required this.patientGender,
@@ -83,11 +85,20 @@ class RequestModel {
       mappedStatus = RequestStatus.cancelled;
     }
 
+    final tokenNo = json['tokenNumber']?.toString() ??
+        json['token_number']?.toString() ??
+        json['token']?.toString() ??
+        json['tokenNo']?.toString() ??
+        json['token_no']?.toString() ??
+        json['appointmentNumber']?.toString() ??
+        json['appointment_number']?.toString();
+
     return RequestModel(
       id: json['id'] as String? ?? '',
       patientId: json['patientId'] as String? ?? json['patient_id'] as String?,
       notificationId: json['notificationId'] as String? ?? json['notification_id'] as String?,
       chatId: json['chatId'] as String? ?? json['chat_id'] as String?,
+      tokenNumber: tokenNo,
       patientName: json['patientName'] as String? ?? 'Unknown Patient',
       patientAge: json['patientAge'] as int? ?? 30,
       patientGender: json['patientGender'] as String? ?? 'Other',
@@ -108,6 +119,7 @@ class RequestModel {
       if (patientId != null) 'patient_id': patientId,
       if (notificationId != null) 'notification_id': notificationId,
       if (chatId != null) 'chat_id': chatId,
+      if (tokenNumber != null) 'token_number': tokenNumber,
       'patient_name': patientName,
       'patient_age': patientAge,
       'patient_gender': patientGender,
@@ -125,6 +137,7 @@ class RequestModel {
     String? patientId,
     String? notificationId,
     String? chatId,
+    String? tokenNumber,
     String? patientName,
     int? patientAge,
     String? patientGender,
@@ -141,6 +154,7 @@ class RequestModel {
       patientId: patientId ?? this.patientId,
       notificationId: notificationId ?? this.notificationId,
       chatId: chatId ?? this.chatId,
+      tokenNumber: tokenNumber ?? this.tokenNumber,
       patientName: patientName ?? this.patientName,
       patientAge: patientAge ?? this.patientAge,
       patientGender: patientGender ?? this.patientGender,

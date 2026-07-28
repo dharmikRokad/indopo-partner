@@ -56,3 +56,12 @@ class AuthFailure extends AuthState {
   @override
   List<Object?> get props => [message, selectedRole];
 }
+
+class AccountSuspended extends AuthState {
+  final String message;
+
+  const AccountSuspended([this.message = 'Account is suspended, contact support']);
+
+  @override
+  List<Object?> get props => [message];
+}

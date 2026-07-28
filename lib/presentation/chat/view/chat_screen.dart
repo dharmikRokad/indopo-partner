@@ -2,37 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/presentation/bloc/value_cubit.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/chat_message.dart';
 import '../../../data/models/partner_type.dart';
-import '../../../data/models/request_model.dart';
-import '../../../data/repositories/request_repo.dart';
 import '../../../data/repositories/supabase_chat_repo.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
+import '../bloc/thread_bloc.dart';
+import '../bloc/thread_event.dart';
 import 'thread_chat_screen.dart';
 
-class ChatRequestState {
-  final RequestModel? requestDetails;
-  final bool isLoadingRequest;
-  const ChatRequestState({this.requestDetails, this.isLoadingRequest = true});
-}
-
 class ChatScreen extends StatelessWidget {
+  /// [id] is the chat room ID.
   final String id;
-  final String? appointmentId;
 
-  const ChatScreen({super.key, required this.id, this.appointmentId});
+  const ChatScreen({super.key, required this.id});
 
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
-    bool isMedicalPartner = false;
     String partnerId = '';
+    bool isMedicalPartner = false;
 
     if (authState is AuthSuccess) {
       partnerId = authState.partner.id;
@@ -41,21 +34,13 @@ class ChatScreen extends StatelessWidget {
           role == PartnerType.doctor || role == PartnerType.pharmacy;
     }
 
-    final supabaseRepo = context.read<SupabaseChatRepository>();
-    final targetAppointmentId = appointmentId ?? id;
-
     return BlocProvider(
-      create: (context) => ChatBloc(supabaseChatRepository: supabaseRepo)
-        ..add(
-          InitChatStream(
-            chatId: id,
-            appointmentId: targetAppointmentId,
-            partnerId: partnerId,
-          ),
-        ),
+      create: (_) =>
+          ChatBloc(repo: context.read<SupabaseChatRepository>())
+            ..add(InitChatStream(chatId: id, partnerId: partnerId)),
       child: _ChatContent(
         chatId: id,
-        appointmentId: targetAppointmentId,
+        partnerId: partnerId,
         isMedicalPartner: isMedicalPartner,
       ),
     );
@@ -64,12 +49,12 @@ class ChatScreen extends StatelessWidget {
 
 class _ChatContent extends StatefulWidget {
   final String chatId;
-  final String appointmentId;
+  final String partnerId;
   final bool isMedicalPartner;
 
   const _ChatContent({
     required this.chatId,
-    required this.appointmentId,
+    required this.partnerId,
     required this.isMedicalPartner,
   });
 
@@ -79,258 +64,167 @@ class _ChatContent extends StatefulWidget {
 
 class _ChatContentState extends State<_ChatContent> {
   late final ScrollController _scrollController;
-  late final ValueCubit<ChatRequestState> _requestCubit;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _requestCubit = ValueCubit<ChatRequestState>(const ChatRequestState());
-    _fetchRequestInfo();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _requestCubit.close();
     super.dispose();
-  }
-
-  Future<void> _fetchRequestInfo() async {
-    try {
-      final repo = context.read<RequestRepository>();
-      final req = await repo.fetchRequestById(widget.appointmentId);
-      if (mounted) {
-        _requestCubit.update(
-          ChatRequestState(requestDetails: req, isLoadingRequest: false),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        _requestCubit.update(
-          ChatRequestState(
-            requestDetails: _requestCubit.state.requestDetails,
-            isLoadingRequest: false,
-          ),
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _requestCubit,
-      child: BlocBuilder<ValueCubit<ChatRequestState>, ChatRequestState>(
-        bloc: _requestCubit,
-        builder: (context, requestState) {
-          final requestDetails = requestState.requestDetails;
-          final isLoadingRequest = requestState.isLoadingRequest;
-          final String patientName = requestDetails?.patientName ?? 'Patient';
-
-          return Scaffold(
-            backgroundColor: AppColors.blue3,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                ),
-                onPressed: () => context.pop(),
-              ),
-              title: isLoadingRequest
-                  ? const Text(
-                      'Loading chat...',
-                      style: TextStyle(fontSize: 16),
-                    )
-                  : Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppColors.blue2,
-                          child: Text(
-                            requestDetails?.patientInitials ?? 'P',
-                            style: TextStyles.headingBold.copyWith(
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                patientName,
-                                style: TextStyles.headingSemiBold.copyWith(
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.success,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Live Stream',
-                                    style: TextStyles.labelRegular.copyWith(
-                                      fontSize: 11,
-                                      color: AppColors.success,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+    return Scaffold(
+      backgroundColor: AppColors.blue3,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+          ),
+          onPressed: () => context.pop(),
+        ),
+        title: Row(
+          children: [
+            const CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.blue2,
+              child: Icon(Icons.person, color: Colors.white, size: 18),
             ),
-            body: Column(
-              children: [
-                if (!widget.isMedicalPartner)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Prescription Inquiries',
+                    style:
+                        TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Live Stream',
+                        style: TextStyles.labelRegular.copyWith(
+                          fontSize: 11,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          if (!widget.isMedicalPartner)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              color: AppColors.error.withValues(alpha: 0.2),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_rounded, color: AppColors.error),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Access Restricted: Chat features are only available for Doctor and Pharmacy partner profiles.',
+                      style: TextStyles.bodyRegular.copyWith(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    color: AppColors.error.withValues(alpha: 0.2),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.lock_rounded, color: AppColors.error),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Access Restricted: Chat features are only available for Doctor and Medical partner profiles.',
-                            style: TextStyles.bodyRegular.copyWith(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: widget.isMedicalPartner
+                ? BlocBuilder<ChatBloc, ChatState>(
+                    builder: (context, state) {
+                      if (state is ChatLoading || state is ChatInitial) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.blue1),
+                        );
+                      }
+                      if (state is ChatFailure) {
+                        return Center(
+                          child: Text('Error: ${state.message}'),
+                        );
+                      }
+                      if (state is ChatLoaded) {
+                        final rootMessages = state.rootMessages;
+
+                        if (rootMessages.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No prescription inquiries yet.',
+                              style: TextStyles.labelRegular.copyWith(
+                                  color: AppColors.textMuted),
                             ),
-                          ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: rootMessages.length,
+                          itemBuilder: (context, index) {
+                            final msg = rootMessages[index];
+                            return _PrescriptionInquiryCard(
+                              chatId: widget.chatId,
+                              partnerId: widget.partnerId,
+                              rootMessage: msg,
+                            );
+                          },
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.forum_rounded,
+                          size: 64,
+                          color: AppColors.surface,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Chat Disabled',
+                          style: TextStyles.headingSemiBold.copyWith(
+                              color: AppColors.textMuted),
                         ),
                       ],
                     ),
                   ),
-                Expanded(
-                  child: widget.isMedicalPartner
-                      ? BlocConsumer<ChatBloc, ChatState>(
-                          listener: (context, state) {},
-                          builder: (context, state) {
-                            if (state is ChatLoading) {
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.blue1,
-                                ),
-                              );
-                            }
-                            if (state is ChatFailure) {
-                              return Center(
-                                child: Text('Error: ${state.message}'),
-                              );
-                            }
-                            if (state is ChatLoaded) {
-                              final rootMessages = state.messages
-                                  .where(
-                                    (m) =>
-                                        m.parentMessageId == null ||
-                                        m.parentMessageId!.trim().isEmpty,
-                                  )
-                                  .toList();
-
-                              rootMessages.sort((a, b) {
-                                final aReplies = state.messages.where(
-                                    (m) => m.id == a.id || m.parentMessageId == a.id);
-                                DateTime aLatest = a.timestamp;
-                                for (final m in aReplies) {
-                                  if (m.timestamp.isAfter(aLatest)) {
-                                    aLatest = m.timestamp;
-                                  }
-                                }
-
-                                final bReplies = state.messages.where(
-                                    (m) => m.id == b.id || m.parentMessageId == b.id);
-                                DateTime bLatest = b.timestamp;
-                                for (final m in bReplies) {
-                                  if (m.timestamp.isAfter(bLatest)) {
-                                    bLatest = m.timestamp;
-                                  }
-                                }
-
-                                return bLatest.compareTo(aLatest);
-                              });
-
-                              if (rootMessages.isEmpty) {
-                                return Center(
-                                  child: Text(
-                                    'Start of real-time message stream.',
-                                    style: TextStyles.labelRegular,
-                                  ),
-                                );
-                              }
-
-                              return ListView.builder(
-                                controller: _scrollController,
-                                padding: const EdgeInsets.all(16),
-                                itemCount: rootMessages.length,
-                                itemBuilder: (context, index) {
-                                  final msg = rootMessages[index];
-                                  final replies = state.messages
-                                      .where((m) => m.parentMessageId == msg.id)
-                                      .toList();
-                                  final replyCount = replies.length;
-                                  final unreadCount = replies
-                                      .where((m) =>
-                                          m.senderRole.toLowerCase() ==
-                                          'patient')
-                                      .length;
-
-                                  return _PrescriptionInquiryCard(
-                                    chatId: widget.chatId,
-                                    rootMessage: msg,
-                                    requestDetails: requestDetails,
-                                    patientName: patientName,
-                                    replyCount: replyCount,
-                                    unreadCount: unreadCount,
-                                  );
-                                },
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        )
-                      : Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.forum_rounded,
-                                size: 64,
-                                color: AppColors.surface,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Chat Disabled',
-                                style: TextStyles.headingSemiBold.copyWith(
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -338,51 +232,64 @@ class _ChatContentState extends State<_ChatContent> {
 
 class _PrescriptionInquiryCard extends StatelessWidget {
   final String chatId;
+  final String partnerId;
   final ChatMessage rootMessage;
-  final RequestModel? requestDetails;
-  final String patientName;
-  final int replyCount;
-  final int unreadCount;
 
   const _PrescriptionInquiryCard({
     required this.chatId,
+    required this.partnerId,
     required this.rootMessage,
-    this.requestDetails,
-    required this.patientName,
-    this.replyCount = 0,
-    this.unreadCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    final String? imageUrl =
-        (rootMessage.imageUrl != null && rootMessage.imageUrl!.isNotEmpty)
-            ? rootMessage.imageUrl
-            : (requestDetails?.attachments.isNotEmpty == true
-                ? requestDetails!.attachments.first
-                : null);
-
-    final String notes = (rootMessage.content.isNotEmpty &&
-            rootMessage.content != '📷 Prescription Inquiry')
+    final int replyCount = rootMessage.replyCount;
+    final int unreadCount = rootMessage.unreadReplyCount;
+    final String? imageUrl = rootMessage.imageUrl?.isNotEmpty == true
+        ? rootMessage.imageUrl
+        : null;
+    final String notes = rootMessage.content.isNotEmpty &&
+            rootMessage.content != '📷 Prescription Inquiry'
         ? rootMessage.content
-        : (requestDetails?.description ?? '');
+        : '';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          // Mark this thread's unread replies as read before navigating
+          await context
+              .read<SupabaseChatRepository>()
+              .markThreadUnreadAsRead(rootMessage.id);
+
+          if (!context.mounted) return;
+
+          await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ThreadChatScreen(
-                parentMessageId: rootMessage.id,
-                chatId: chatId,
-                prescriptionUrl: imageUrl,
-                notes: notes,
-                patientName: patientName,
+              builder: (_) => BlocProvider(
+                create: (_) => ThreadBloc(
+                  repo: context.read<SupabaseChatRepository>(),
+                )..add(InitThreadStream(
+                    chatId: chatId,
+                    parentMessageId: rootMessage.id,
+                    partnerId: partnerId,
+                  )),
+                child: ThreadChatScreen(
+                  parentMessageId: rootMessage.id,
+                  chatId: chatId,
+                  prescriptionUrl: imageUrl,
+                  notes: notes.isNotEmpty ? notes : null,
+                ),
               ),
             ),
           );
+
+          // Re-mark as read on return (in case more came in)
+          if (!context.mounted) return;
+          context
+              .read<SupabaseChatRepository>()
+              .markThreadUnreadAsRead(rootMessage.id);
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -419,7 +326,7 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                     child: Text(
                       notes.isNotEmpty
                           ? notes
-                          : '$patientName\'s Prescription Request',
+                          : '📷 Prescription Inquiry',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyles.headingSemiBold.copyWith(
@@ -429,84 +336,33 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Unread / reply badge
                   if (unreadCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$unreadCount new ${unreadCount == 1 ? 'reply' : 'replies'}',
-                            style: TextStyles.labelRegular.copyWith(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                    _Badge(
+                      label:
+                          '$unreadCount new ${unreadCount == 1 ? 'reply' : 'replies'}',
+                      backgroundColor: AppColors.error,
+                      showDot: true,
                     )
                   else if (replyCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.blue1.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: AppColors.blue1.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Text(
-                        '$replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
-                        style: TextStyles.labelRegular.copyWith(
-                          fontSize: 11,
-                          color: AppColors.blue1,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    _Badge(
+                      label:
+                          '$replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
+                      backgroundColor:
+                          AppColors.blue1.withValues(alpha: 0.2),
+                      borderColor: AppColors.blue1.withValues(alpha: 0.5),
+                      textColor: AppColors.blue1,
                     )
                   else
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.blue3,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Thread',
-                        style: TextStyles.labelRegular.copyWith(
-                          fontSize: 11,
-                          color: AppColors.blue1,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    _Badge(
+                      label: 'Thread',
+                      backgroundColor: AppColors.blue3,
+                      textColor: AppColors.blue1,
                     ),
                 ],
               ),
               const SizedBox(height: 10),
-              if (imageUrl != null && imageUrl.isNotEmpty) ...[
+              if (imageUrl != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.network(
@@ -517,14 +373,17 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 60,
                       color: AppColors.blue3,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12),
                       child: const Row(
                         children: [
-                          Icon(Icons.picture_as_pdf, color: AppColors.error),
+                          Icon(Icons.picture_as_pdf,
+                              color: AppColors.error),
                           SizedBox(width: 8),
                           Text(
                             'Prescription Document Attached',
-                            style: TextStyle(color: Colors.white, fontSize: 13),
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 13),
                           ),
                         ],
                       ),
@@ -566,6 +425,60 @@ class _PrescriptionInquiryCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color backgroundColor;
+  final Color? borderColor;
+  final Color textColor;
+  final bool showDot;
+
+  const _Badge({
+    required this.label,
+    required this.backgroundColor,
+    this.borderColor,
+    this.textColor = Colors.white,
+    this.showDot = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: borderColor != null
+            ? Border.all(color: borderColor!)
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showDot) ...[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyles.labelRegular.copyWith(
+              fontSize: 11,
+              color: textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

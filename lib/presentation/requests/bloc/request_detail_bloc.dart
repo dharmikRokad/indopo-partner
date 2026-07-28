@@ -21,6 +21,25 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     on<RejectRequest>(_onRejectRequest);
     on<CompleteRequest>(_onCompleteRequest);
     on<StartPrescriptionChat>(_onStartPrescriptionChat);
+    on<AppointmentConfirmed>(_onAppointmentConfirmed);
+  }
+
+  void _onAppointmentConfirmed(
+    AppointmentConfirmed event,
+    Emitter<RequestDetailState> emit,
+  ) {
+    final currentReq = state is RequestDetailLoaded
+        ? (state as RequestDetailLoaded).request
+        : (state is RequestActionSuccess ? (state as RequestActionSuccess).request : null);
+
+    if (currentReq != null) {
+      final token = event.appointment.appointmentNumber?.toString();
+      final updated = currentReq.copyWith(
+        status: RequestStatus.inProgress,
+        tokenNumber: token,
+      );
+      emit(RequestDetailLoaded(updated));
+    }
   }
 
   Future<void> _onStartPrescriptionChat(
