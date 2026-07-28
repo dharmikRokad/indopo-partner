@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:equatable/equatable.dart';
 
 abstract class ProfileSetupEvent extends Equatable {
@@ -18,9 +19,10 @@ class ProfileStepChanged extends ProfileSetupEvent {
 
 class ProfileSubmitted extends ProfileSetupEvent {
   final Map<String, dynamic> details;
+  final File? profilePictureFile;
 
-  const ProfileSubmitted(this.details);
+  const ProfileSubmitted(this.details, {this.profilePictureFile});
 
   @override
-  List<Object?> get props => [details];
+  List<Object?> get props => [details, profilePictureFile];
 }

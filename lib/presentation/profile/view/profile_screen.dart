@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
@@ -19,6 +21,7 @@ import '../../../core/presentation/bloc/value_cubit.dart';
 class ProfileScreenState {
   final bool isEditing;
   final bool isLoading;
+  final File? selectedImageFile;
   final List<String> selectedModalities;
   final List<String> selectedDays;
   final TimeOfDay? openTime;
@@ -29,6 +32,7 @@ class ProfileScreenState {
   const ProfileScreenState({
     this.isEditing = false,
     this.isLoading = false,
+    this.selectedImageFile,
     this.selectedModalities = const [],
     this.selectedDays = const [],
     this.openTime,
@@ -40,6 +44,7 @@ class ProfileScreenState {
   ProfileScreenState copyWith({
     bool? isEditing,
     bool? isLoading,
+    File? selectedImageFile,
     List<String>? selectedModalities,
     List<String>? selectedDays,
     TimeOfDay? openTime,
@@ -50,6 +55,7 @@ class ProfileScreenState {
     return ProfileScreenState(
       isEditing: isEditing ?? this.isEditing,
       isLoading: isLoading ?? this.isLoading,
+      selectedImageFile: selectedImageFile ?? this.selectedImageFile,
       selectedModalities: selectedModalities ?? this.selectedModalities,
       selectedDays: selectedDays ?? this.selectedDays,
       openTime: openTime ?? this.openTime,
@@ -166,6 +172,107 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '$hours:$minutes';
   }
 
+  Future<void> _pickProfileImage(PartnerModel partner, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        final file = File(picked.path);
+        _stateCubit.update(_stateCubit.state.copyWith(selectedImageFile: file));
+
+        if (!_stateCubit.state.isEditing) {
+          await _uploadProfilePicture(partner, file);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Failed to select image: $e');
+      }
+    }
+  }
+
+  Future<void> _uploadProfilePicture(PartnerModel partner, File file) async {
+    _stateCubit.update(_stateCubit.state.copyWith(isLoading: true));
+    try {
+      final savedPartner = await context.read<ProfileRepository>().saveProfile(
+        partner,
+        profilePictureFile: file,
+      );
+      if (!mounted) return;
+      context.read<AuthBloc>().add(PartnerUpdated(savedPartner));
+      AppSnackBar.showSuccess(context, 'Profile picture updated successfully!');
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Failed to update profile picture: $e');
+      }
+    } finally {
+      _stateCubit.update(_stateCubit.state.copyWith(isLoading: false));
+    }
+  }
+
+  void _showImagePickerModal(BuildContext context, PartnerModel partner) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.blue3,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: 20.0,
+              horizontal: 24.0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Update Profile Picture',
+                  style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: const Icon(
+                    Icons.photo_library_outlined,
+                    color: AppColors.blue1,
+                  ),
+                  title: Text(
+                    'Choose from Gallery',
+                    style: TextStyles.bodyMedium,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickProfileImage(partner, ImageSource.gallery);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.camera_alt_outlined,
+                    color: AppColors.blue1,
+                  ),
+                  title: Text(
+                    'Take a Photo',
+                    style: TextStyles.bodyMedium,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickProfileImage(partner, ImageSource.camera);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _saveProfile(PartnerModel partner) async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -247,7 +354,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final savedPartner = await context.read<ProfileRepository>().saveProfile(
         updatedPartner,
+        profilePictureFile: currentState.selectedImageFile,
       );
+      if (!mounted) return;
 
       // Update global AuthBloc
       context.read<AuthBloc>().add(PartnerUpdated(savedPartner));
@@ -256,7 +365,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       _stateCubit.update(_stateCubit.state.copyWith(isEditing: false));
     } catch (e) {
-      AppSnackBar.showError(context, 'Failed to update profile: $e');
+      if (mounted) {
+        AppSnackBar.showError(context, 'Failed to update profile: $e');
+      }
     } finally {
       _stateCubit.update(_stateCubit.state.copyWith(isLoading: false));
     }
@@ -334,15 +445,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: AppColors.blue2,
-                          child: Text(
-                            initials.isEmpty ? 'P' : initials,
-                            style: TextStyles.headingBold.copyWith(
-                              fontSize: 28,
+                        Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: () => _showImagePickerModal(context, partner),
+                              child: CircleAvatar(
+                                radius: 44,
+                                backgroundColor: AppColors.blue2,
+                                backgroundImage: state.selectedImageFile != null
+                                    ? FileImage(state.selectedImageFile!)
+                                        as ImageProvider
+                                    : (partner.profilePicture != null &&
+                                            partner.profilePicture!.isNotEmpty
+                                        ? NetworkImage(partner.profilePicture!)
+                                        : null),
+                                child: (state.selectedImageFile == null &&
+                                        (partner.profilePicture == null ||
+                                            partner.profilePicture!.isEmpty))
+                                    ? Text(
+                                        initials.isEmpty ? 'P' : initials,
+                                        style: TextStyles.headingBold.copyWith(
+                                          fontSize: 28,
+                                        ),
+                                      )
+                                    : null,
+                              ),
                             ),
-                          ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () =>
+                                    _showImagePickerModal(context, partner),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.blue1,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.surface,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         Text(

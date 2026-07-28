@@ -14,6 +14,7 @@ class PartnerModel {
   final double? lat;
   final double? long;
   final String? orgAddress;
+  final String? profilePicture;
   final bool isAvailable;
   final bool isActive;
 
@@ -37,6 +38,7 @@ class PartnerModel {
     this.lat,
     this.long,
     this.orgAddress,
+    this.profilePicture,
     this.isAvailable = true,
     this.isActive = true,
   });
@@ -49,6 +51,11 @@ class PartnerModel {
     final details = json['details'] as Map<String, dynamic>? ?? const {};
     final orgAddressStr =
         json['orgAddress'] as String? ?? details['address'] as String? ?? '';
+    final profilePic = json['profilePicture'] as String? ??
+        json['profile_picture'] as String? ??
+        json['avatar'] as String? ??
+        details['profile_picture'] as String? ??
+        details['profilePicture'] as String?;
 
     return PartnerModel(
       id: json['id'] as String? ?? '',
@@ -67,6 +74,7 @@ class PartnerModel {
       lat: (json['lat'] as num?)?.toDouble(),
       long: (json['long'] as num?)?.toDouble(),
       orgAddress: orgAddressStr,
+      profilePicture: profilePic,
       isAvailable:
           json['isAvailable'] as bool? ?? json['is_available'] as bool? ?? true,
       isActive:
@@ -133,6 +141,11 @@ class PartnerModel {
         .map((e) => ServiceModel.fromJson(e as Map<String, dynamic>))
         .toList();
 
+    final profilePic = json['profilePicture'] as String? ??
+        json['profile_picture'] as String? ??
+        json['avatar'] as String? ??
+        json['doctorProfile']?['profilePicture'] as String?;
+
     return PartnerModel(
       id: json['id'] as String? ?? '',
       email: json['email'] as String? ?? '',
@@ -152,8 +165,9 @@ class PartnerModel {
           ? double.parse(json['long'])
           : (json['long'] as num?)?.toDouble(),
       orgAddress: orgAddressStr,
+      profilePicture: profilePic,
       isAvailable:
-          json['isAvailable'] as bool? ?? json['is_available'] as bool? ?? true,
+          json['isAvailable'] as bool? ?? json['is_active'] as bool? ?? true,
       isActive:
           json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
     );
@@ -173,6 +187,7 @@ class PartnerModel {
       'lat': lat,
       'long': long,
       'orgAddress': orgAddress,
+      'profilePicture': profilePicture,
       'isAvailable': isAvailable,
       'isActive': isActive,
     };
@@ -191,6 +206,7 @@ class PartnerModel {
     double? lat,
     double? long,
     String? orgAddress,
+    String? profilePicture,
     bool? isAvailable,
     bool? isActive,
   }) {
@@ -207,6 +223,7 @@ class PartnerModel {
       lat: lat ?? this.lat,
       long: long ?? this.long,
       orgAddress: orgAddress ?? this.orgAddress,
+      profilePicture: profilePicture ?? this.profilePicture,
       isAvailable: isAvailable ?? this.isAvailable,
       isActive: isActive ?? this.isActive,
     );

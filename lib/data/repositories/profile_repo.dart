@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
@@ -30,7 +31,10 @@ class ProfileRepository {
     return null;
   }
 
-  Future<PartnerModel> saveProfile(PartnerModel partner) async {
+  Future<PartnerModel> saveProfile(
+    PartnerModel partner, {
+    File? profilePictureFile,
+  }) async {
     final details = partner.details;
     final role = partner.role;
 
@@ -60,7 +64,19 @@ class ProfileRepository {
     }
 
     try {
-      final response = await _apiClient.patch(ApiEndpoints.profile, data: body);
+      final Response response;
+      if (profilePictureFile != null) {
+        final fileName = profilePictureFile.path.split(RegExp(r'[/\\]')).last;
+        final formDataMap = Map<String, dynamic>.from(body);
+        formDataMap['profilePicture'] = await MultipartFile.fromFile(
+          profilePictureFile.path,
+          filename: fileName,
+        );
+        final formData = FormData.fromMap(formDataMap);
+        response = await _apiClient.patch(ApiEndpoints.profile, data: formData);
+      } else {
+        response = await _apiClient.patch(ApiEndpoints.profile, data: body);
+      }
 
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
@@ -82,6 +98,7 @@ class ProfileRepository {
           lat: apiPartner.lat ?? partner.lat,
           long: apiPartner.long ?? partner.long,
           orgAddress: apiPartner.orgAddress ?? partner.orgAddress,
+          profilePicture: apiPartner.profilePicture ?? partner.profilePicture,
         );
       }
     } catch (e) {

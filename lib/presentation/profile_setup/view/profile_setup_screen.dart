@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../core/theme/text_styles.dart';
@@ -16,20 +18,24 @@ import '../bloc/profile_setup_state.dart';
 import '../../../core/presentation/bloc/value_cubit.dart';
 
 class ProfileSetupScreenState {
-  final String uploadedPhotoPath;
+  final String? uploadedPhotoPath;
+  final File? selectedImageFile;
   final List<String> selectedModalities;
 
   const ProfileSetupScreenState({
-    this.uploadedPhotoPath = 'Simulated_Image_Path.jpg',
+    this.uploadedPhotoPath,
+    this.selectedImageFile,
     this.selectedModalities = const [],
   });
 
   ProfileSetupScreenState copyWith({
     String? uploadedPhotoPath,
+    File? selectedImageFile,
     List<String>? selectedModalities,
   }) {
     return ProfileSetupScreenState(
       uploadedPhotoPath: uploadedPhotoPath ?? this.uploadedPhotoPath,
+      selectedImageFile: selectedImageFile ?? this.selectedImageFile,
       selectedModalities: selectedModalities ?? this.selectedModalities,
     );
   }
@@ -105,12 +111,95 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
     super.dispose();
   }
 
+  Future<void> _pickProfileImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        final file = File(picked.path);
+        _stateCubit.update(
+          _stateCubit.state.copyWith(
+            selectedImageFile: file,
+            uploadedPhotoPath: picked.name,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Failed to select image: $e');
+      }
+    }
+  }
+
+  void _showImagePickerModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.blue3,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: 20.0,
+              horizontal: 24.0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Select Profile Picture Source',
+                  style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: const Icon(
+                    Icons.photo_library_outlined,
+                    color: AppColors.blue1,
+                  ),
+                  title: Text(
+                    'Choose from Gallery',
+                    style: TextStyles.bodyMedium,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickProfileImage(ImageSource.gallery);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.camera_alt_outlined,
+                    color: AppColors.blue1,
+                  ),
+                  title: Text(
+                    'Take a Photo',
+                    style: TextStyles.bodyMedium,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickProfileImage(ImageSource.camera);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _submitProfile() {
     if (_step2FormKey.currentState?.validate() ?? false) {
       final details = <String, dynamic>{
         'address': _addressController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'visual_profile': _stateCubit.state.uploadedPhotoPath,
+        'visual_profile': _stateCubit.state.uploadedPhotoPath ?? '',
       };
 
       switch (widget.partner.role) {
@@ -137,7 +226,12 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
           break;
       }
 
-      context.read<ProfileSetupBloc>().add(ProfileSubmitted(details));
+      context.read<ProfileSetupBloc>().add(
+            ProfileSubmitted(
+              details,
+              profilePictureFile: _stateCubit.state.selectedImageFile,
+            ),
+          );
     }
   }
 
@@ -594,86 +688,90 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
         ),
         const SizedBox(height: 12),
         // Premium upload card design
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.blue2,
-              style: BorderStyle.solid,
+        InkWell(
+          onTap: () => _showImagePickerModal(context),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.blue2,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.blue3,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.blue1),
+                  ),
+                  child: state.selectedImageFile != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(11),
+                          child: Image.file(
+                            state.selectedImageFile!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.image_outlined,
+                          color: AppColors.blue1,
+                          size: 28,
+                        ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.selectedImageFile != null
+                            ? 'Change photo'
+                            : 'Upload photo',
+                        style: TextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'JPG or PNG. Max size 2MB',
+                        style: TextStyles.labelRegular.copyWith(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => _showImagePickerModal(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.blue2,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                  child: Text(state.selectedImageFile != null ? 'Change' : 'Browse'),
+                ),
+              ],
             ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.blue3,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.blue1),
-                ),
-                child: const Icon(
-                  Icons.image_outlined,
-                  color: AppColors.blue1,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Upload file',
-                      style: TextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'JPG or PNG. Max size 2MB',
-                      style: TextStyles.labelRegular.copyWith(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  // Simulate image upload
-                  _stateCubit.update(
-                    state.copyWith(
-                      uploadedPhotoPath:
-                          'indopo_profile_photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                    ),
-                  );
-                  AppSnackBar.showInfo(
-                    context,
-                    '$photoLabel simulated upload complete!',
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.blue2,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  textStyle: const TextStyle(fontSize: 12),
-                ),
-                child: const Text('Browse'),
-              ),
-            ],
-          ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'Selected: ${state.uploadedPhotoPath}',
-          style: TextStyles.labelRegular.copyWith(
-            fontSize: 12,
-            fontStyle: FontStyle.italic,
+        if (state.uploadedPhotoPath != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Selected: ${state.uploadedPhotoPath}',
+            style: TextStyles.labelRegular.copyWith(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

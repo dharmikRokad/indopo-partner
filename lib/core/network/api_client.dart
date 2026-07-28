@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../error/exceptions.dart';
 import 'api_endpoints.dart';
-import 'token_manager.dart';
+import 'auth_interceptor.dart';
 
 class ApiClient {
   final Dio _dio;
@@ -16,57 +16,8 @@ class ApiClient {
       'Accept': 'application/json',
     };
 
-    // Add interceptor to attach JWT token and handle token refreshing on 401
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          final token = TokenManager.instance.token;
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-          return handler.next(options);
-        },
-        onError: (DioException error, handler) async {
-          if (error.response?.statusCode == 401) {
-            final refreshToken = TokenManager.instance.refreshToken;
-            if (refreshToken != null && refreshToken.isNotEmpty) {
-              try {
-                final refreshDio = Dio();
-                refreshDio.options.baseUrl = ApiEndpoints.baseUrl;
-                final response = await refreshDio.post(
-                  ApiEndpoints.refreshToken,
-                  data: {'refreshToken': refreshToken},
-                );
-
-                if (response.statusCode == 200 && response.data != null) {
-                  final resData = response.data['data'] as Map<String, dynamic>;
-                  final newAccessToken = resData['accessToken'] as String;
-                  final newRefreshToken = resData['refreshToken'] as String;
-
-                  await TokenManager.instance.saveToken(
-                    token: newAccessToken,
-                    email: TokenManager.instance.email ?? '',
-                    rememberMe: true,
-                  );
-                  await TokenManager.instance.saveRefreshToken(newRefreshToken);
-
-                  final options = error.requestOptions;
-                  options.headers['Authorization'] = 'Bearer $newAccessToken';
-
-                  final retryResponse = await _dio.fetch(options);
-                  return handler.resolve(retryResponse);
-                }
-              } catch (e) {
-                print('Silent token refresh failed: $e');
-                await TokenManager.instance.clearToken();
-                TokenManager.instance.notifySessionExpired();
-              }
-            }
-          }
-          return handler.next(error);
-        },
-      ),
-    );
+    // Add AuthInterceptor (QueuedInterceptor) for token headers & refresh flow
+    _dio.interceptors.add(AuthInterceptor(_dio));
 
     // Add Pretty Dio Logger for API requests/responses debugging
     _dio.interceptors.add(

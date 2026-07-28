@@ -41,7 +41,10 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
         details: event.details,
       );
 
-      final result = await _profileRepository.saveProfile(updatedPartner);
+      final result = await _profileRepository.saveProfile(
+        updatedPartner,
+        profilePictureFile: event.profilePictureFile,
+      );
       emit(ProfileSetupSuccess(result));
     } catch (e) {
       emit(ProfileSetupFailure(e.toString(), currentStep));
