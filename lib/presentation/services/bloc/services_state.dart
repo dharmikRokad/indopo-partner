@@ -1,43 +1,57 @@
+import 'package:equatable/equatable.dart';
 import '../../../data/models/service_model.dart';
 
-abstract class ServicesState {
-  const ServicesState();
-}
+enum ServicesStatus { initial, loading, loaded, failure }
 
-class ServicesInitial extends ServicesState {}
+class ServicesState extends Equatable {
+  static const Object _kNoChange = Object();
 
-class ServicesLoading extends ServicesState {}
-
-class ServicesLoaded extends ServicesState {
+  final ServicesStatus status;
   final List<ServiceModel> allServices;
   final List<ServiceModel> filteredServices;
   final String selectedCategory;
   final List<String> categories;
+  final String? errorMessage;
 
-  const ServicesLoaded({
-    required this.allServices,
-    required this.filteredServices,
-    required this.selectedCategory,
-    required this.categories,
+  const ServicesState({
+    this.status = ServicesStatus.initial,
+    this.allServices = const [],
+    this.filteredServices = const [],
+    this.selectedCategory = 'All',
+    this.categories = const [],
+    this.errorMessage,
   });
 
-  ServicesLoaded copyWith({
+  factory ServicesState.initial() =>
+      const ServicesState(status: ServicesStatus.initial);
+
+  ServicesState copyWith({
+    ServicesStatus? status,
     List<ServiceModel>? allServices,
     List<ServiceModel>? filteredServices,
     String? selectedCategory,
     List<String>? categories,
+    Object? errorMessage = _kNoChange,
   }) {
-    return ServicesLoaded(
+    return ServicesState(
+      status: status ?? this.status,
       allServices: allServices ?? this.allServices,
       filteredServices: filteredServices ?? this.filteredServices,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       categories: categories ?? this.categories,
+      errorMessage: errorMessage == _kNoChange
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
-}
 
-class ServicesFailure extends ServicesState {
-  final String message;
-
-  const ServicesFailure(this.message);
+  @override
+  List<Object?> get props => [
+        status,
+        allServices,
+        filteredServices,
+        selectedCategory,
+        categories,
+        errorMessage,
+      ];
 }

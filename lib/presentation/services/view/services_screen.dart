@@ -20,13 +20,14 @@ class ServicesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
-    if (authState is! AuthSuccess) {
+    if (authState.status != AuthBlocStatus.authenticated ||
+        authState.partner == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final partner = authState.partner;
+    final partner = authState.partner!;
 
     return BlocProvider(
       create: (context) => ServicesBloc(
@@ -118,8 +119,9 @@ class _ServicesContentState extends State<_ServicesContent> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthBloc>().state as AuthSuccess;
+    final authState = context.read<AuthBloc>().state;
     final partner = authState.partner;
+    if (partner == null) return const SizedBox.shrink();
 
     return Scaffold(
       backgroundColor: AppColors.blue3,
@@ -136,7 +138,7 @@ class _ServicesContentState extends State<_ServicesContent> {
             Text('Manage Services', style: TextStyles.headingSemiBold.copyWith(fontSize: 18)),
             BlocBuilder<ServicesBloc, ServicesState>(
               builder: (context, state) {
-                if (state is ServicesLoaded) {
+                if (state.status == ServicesStatus.loaded) {
                   final count = state.allServices.length;
                   return Text(
                     '$count ${count == 1 ? 'service' : 'services'} total',
@@ -151,11 +153,11 @@ class _ServicesContentState extends State<_ServicesContent> {
       ),
       body: BlocBuilder<ServicesBloc, ServicesState>(
         builder: (context, state) {
-          if (state is ServicesLoading) {
+          if (state.status == ServicesStatus.loading) {
             return const Center(child: CircularProgressIndicator(color: AppColors.blue1));
           }
 
-          if (state is ServicesFailure) {
+          if (state.status == ServicesStatus.failure) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -170,7 +172,7 @@ class _ServicesContentState extends State<_ServicesContent> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      state.message,
+                      state.errorMessage ?? 'Unknown error',
                       style: TextStyles.labelRegular,
                       textAlign: TextAlign.center,
                     ),
@@ -194,7 +196,7 @@ class _ServicesContentState extends State<_ServicesContent> {
             );
           }
 
-          if (state is ServicesLoaded) {
+          if (state.status == ServicesStatus.loaded) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -258,7 +260,7 @@ class _ServicesContentState extends State<_ServicesContent> {
       ),
       floatingActionButton: BlocBuilder<ServicesBloc, ServicesState>(
         builder: (context, state) {
-          if (state is ServicesLoaded) {
+          if (state.status == ServicesStatus.loaded) {
             return FloatingActionButton(
               onPressed: () => _openAddServiceDialog(state.categories, partner.id),
               backgroundColor: AppColors.blue1,

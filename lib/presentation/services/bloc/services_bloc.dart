@@ -22,7 +22,7 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
   })  : _serviceRepository = serviceRepository,
         _dropdownRepository = dropdownRepository,
         _authBloc = authBloc,
-        super(ServicesInitial()) {
+        super(ServicesState.initial()) {
     on<LoadServices>(_onLoadServices);
     on<AddService>(_onAddService);
     on<UpdateService>(_onUpdateService);
@@ -32,9 +32,10 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
   }
 
   PartnerModel get _currentPartner {
-    final state = _authBloc.state;
-    if (state is AuthSuccess) {
-      return state.partner;
+    final authState = _authBloc.state;
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
+      return authState.partner!;
     }
     throw Exception('User is not authenticated');
   }
@@ -44,69 +45,84 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
     return ['All', ...categories];
   }
 
-  Future<void> _onLoadServices(LoadServices event, Emitter<ServicesState> emit) async {
-    emit(ServicesLoading());
+  Future<void> _onLoadServices(
+      LoadServices event, Emitter<ServicesState> emit) async {
+    emit(state.copyWith(status: ServicesStatus.loading, errorMessage: null));
     try {
       final services = await _serviceRepository.fetchServices();
       final categories = _getCategories(event.role);
-      
+
       // Update local AuthBloc with the loaded services
       final updatedPartner = _currentPartner.copyWith(services: services);
       _authBloc.add(PartnerUpdated(updatedPartner));
 
-      emit(ServicesLoaded(
+      emit(state.copyWith(
+        status: ServicesStatus.loaded,
         allServices: services,
         filteredServices: services,
         selectedCategory: 'All',
         categories: categories,
+        errorMessage: null,
       ));
     } catch (e) {
-      emit(ServicesFailure(e.toString()));
+      emit(state.copyWith(
+        status: ServicesStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 
-  Future<void> _onAddService(AddService event, Emitter<ServicesState> emit) async {
-    final currentState = state;
-    if (currentState is! ServicesLoaded) return;
+  Future<void> _onAddService(
+      AddService event, Emitter<ServicesState> emit) async {
+    if (state.status != ServicesStatus.loaded) return;
+    final savedState = state;
 
-    emit(ServicesLoading());
+    emit(state.copyWith(status: ServicesStatus.loading));
     try {
       // 1. Add via repository
       final addedService = await _serviceRepository.addService(event.service);
-      
+
       // 2. Prepare updated list
-      final updatedServices = List<ServiceModel>.from(currentState.allServices)..add(addedService);
-      
+      final updatedServices =
+          List<ServiceModel>.from(savedState.allServices)..add(addedService);
+
       // 3. Update AuthBloc
       final partner = _currentPartner.copyWith(services: updatedServices);
       _authBloc.add(PartnerUpdated(partner));
 
       // 4. Apply filtering and emit loaded state
       final categories = _getCategories(partner.role);
-      emit(ServicesLoaded(
+      emit(state.copyWith(
+        status: ServicesStatus.loaded,
         allServices: updatedServices,
-        filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
-        selectedCategory: currentState.selectedCategory,
+        filteredServices:
+            _applyFilter(updatedServices, savedState.selectedCategory),
+        selectedCategory: savedState.selectedCategory,
         categories: categories,
+        errorMessage: null,
       ));
     } catch (e) {
-      emit(ServicesFailure('Failed to add service: $e'));
-      // Emit the previous state after failure to let the user retry
-      emit(currentState);
+      emit(state.copyWith(
+        status: ServicesStatus.failure,
+        errorMessage: 'Failed to add service: $e',
+      ));
+      // Restore previous state after failure
+      emit(savedState);
     }
   }
 
-  Future<void> _onUpdateService(UpdateService event, Emitter<ServicesState> emit) async {
-    final currentState = state;
-    if (currentState is! ServicesLoaded) return;
+  Future<void> _onUpdateService(
+      UpdateService event, Emitter<ServicesState> emit) async {
+    if (state.status != ServicesStatus.loaded) return;
+    final savedState = state;
 
-    emit(ServicesLoading());
+    emit(state.copyWith(status: ServicesStatus.loading));
     try {
       // 1. Update via repository
       final updatedService = await _serviceRepository.editService(event.service);
-      
+
       // 2. Prepare updated list
-      final updatedServices = currentState.allServices.map((e) {
+      final updatedServices = savedState.allServices.map((e) {
         return e.id == updatedService.id ? updatedService : e;
       }).toList();
 
@@ -116,29 +132,37 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
 
       // 4. Apply filtering and emit loaded state
       final categories = _getCategories(partner.role);
-      emit(ServicesLoaded(
+      emit(state.copyWith(
+        status: ServicesStatus.loaded,
         allServices: updatedServices,
-        filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
-        selectedCategory: currentState.selectedCategory,
+        filteredServices:
+            _applyFilter(updatedServices, savedState.selectedCategory),
+        selectedCategory: savedState.selectedCategory,
         categories: categories,
+        errorMessage: null,
       ));
     } catch (e) {
-      emit(ServicesFailure('Failed to update service: $e'));
-      emit(currentState);
+      emit(state.copyWith(
+        status: ServicesStatus.failure,
+        errorMessage: 'Failed to update service: $e',
+      ));
+      emit(savedState);
     }
   }
 
-  Future<void> _onToggleAvailability(ToggleAvailability event, Emitter<ServicesState> emit) async {
-    final currentState = state;
-    if (currentState is! ServicesLoaded) return;
+  Future<void> _onToggleAvailability(
+      ToggleAvailability event, Emitter<ServicesState> emit) async {
+    if (state.status != ServicesStatus.loaded) return;
+    final savedState = state;
 
-    emit(ServicesLoading());
+    emit(state.copyWith(status: ServicesStatus.loading));
     try {
       // 1. Toggle via repository
-      final updatedService = await _serviceRepository.toggleAvailability(event.id, event.isAvailable);
-      
+      final updatedService = await _serviceRepository.toggleAvailability(
+          event.id, event.isAvailable);
+
       // 2. Prepare updated list
-      final updatedServices = currentState.allServices.map((e) {
+      final updatedServices = savedState.allServices.map((e) {
         return e.id == updatedService.id ? updatedService : e;
       }).toList();
 
@@ -148,29 +172,37 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
 
       // 4. Apply filtering and emit loaded state
       final categories = _getCategories(partner.role);
-      emit(ServicesLoaded(
+      emit(state.copyWith(
+        status: ServicesStatus.loaded,
         allServices: updatedServices,
-        filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
-        selectedCategory: currentState.selectedCategory,
+        filteredServices:
+            _applyFilter(updatedServices, savedState.selectedCategory),
+        selectedCategory: savedState.selectedCategory,
         categories: categories,
+        errorMessage: null,
       ));
     } catch (e) {
-      emit(ServicesFailure('Failed to toggle availability: $e'));
-      emit(currentState);
+      emit(state.copyWith(
+        status: ServicesStatus.failure,
+        errorMessage: 'Failed to toggle availability: $e',
+      ));
+      emit(savedState);
     }
   }
 
-  Future<void> _onDeleteService(DeleteService event, Emitter<ServicesState> emit) async {
-    final currentState = state;
-    if (currentState is! ServicesLoaded) return;
+  Future<void> _onDeleteService(
+      DeleteService event, Emitter<ServicesState> emit) async {
+    if (state.status != ServicesStatus.loaded) return;
+    final savedState = state;
 
-    emit(ServicesLoading());
+    emit(state.copyWith(status: ServicesStatus.loading));
     try {
       // 1. Delete via repository
       await _serviceRepository.deleteService(event.id);
-      
+
       // 2. Prepare updated list
-      final updatedServices = currentState.allServices.where((e) => e.id != event.id).toList();
+      final updatedServices =
+          savedState.allServices.where((e) => e.id != event.id).toList();
 
       // 3. Update AuthBloc
       final partner = _currentPartner.copyWith(services: updatedServices);
@@ -178,27 +210,31 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
 
       // 4. Apply filtering and emit loaded state
       final categories = _getCategories(partner.role);
-      emit(ServicesLoaded(
+      emit(state.copyWith(
+        status: ServicesStatus.loaded,
         allServices: updatedServices,
-        filteredServices: _applyFilter(updatedServices, currentState.selectedCategory),
-        selectedCategory: currentState.selectedCategory,
+        filteredServices:
+            _applyFilter(updatedServices, savedState.selectedCategory),
+        selectedCategory: savedState.selectedCategory,
         categories: categories,
+        errorMessage: null,
       ));
     } catch (e) {
-      emit(ServicesFailure('Failed to delete service: $e'));
-      emit(currentState);
+      emit(state.copyWith(
+        status: ServicesStatus.failure,
+        errorMessage: 'Failed to delete service: $e',
+      ));
+      emit(savedState);
     }
   }
 
-  void _onFilterServicesByCategory(FilterServicesByCategory event, Emitter<ServicesState> emit) {
-    final currentState = state;
-    if (currentState is! ServicesLoaded) return;
+  void _onFilterServicesByCategory(
+      FilterServicesByCategory event, Emitter<ServicesState> emit) {
+    if (state.status != ServicesStatus.loaded) return;
 
-    emit(ServicesLoaded(
-      allServices: currentState.allServices,
-      filteredServices: _applyFilter(currentState.allServices, event.category),
+    emit(state.copyWith(
+      filteredServices: _applyFilter(state.allServices, event.category),
       selectedCategory: event.category,
-      categories: currentState.categories,
     ));
   }
 
@@ -206,6 +242,9 @@ class ServicesBloc extends Bloc<ServicesEvent, ServicesState> {
     if (category == 'All') {
       return services;
     }
-    return services.where((element) => element.category.toLowerCase() == category.toLowerCase()).toList();
+    return services
+        .where((element) =>
+            element.category.toLowerCase() == category.toLowerCase())
+        .toList();
   }
 }

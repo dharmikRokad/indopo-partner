@@ -19,7 +19,9 @@ class ChatsListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
     final String partnerId =
-        authState is AuthSuccess ? authState.partner.id : '';
+        authState.status == AuthBlocStatus.authenticated && authState.partner != null
+            ? authState.partner!.id
+            : '';
 
     return BlocProvider(
       create: (_) => ChatListBloc(repo: context.read<SupabaseChatRepository>())
@@ -35,7 +37,9 @@ class _ChatsListContent extends StatelessWidget {
   Future<void> _onRefresh(BuildContext context) async {
     final authState = context.read<AuthBloc>().state;
     final String partnerId =
-        authState is AuthSuccess ? authState.partner.id : '';
+        authState.status == AuthBlocStatus.authenticated && authState.partner != null
+            ? authState.partner!.id
+            : '';
     context.read<ChatListBloc>().add(InitChatListStream(partnerId: partnerId));
     // Small delay so the pull-to-refresh indicator resolves gracefully
     await Future.delayed(const Duration(milliseconds: 500));
@@ -60,13 +64,13 @@ class _ChatsListContent extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: BlocBuilder<ChatListBloc, ChatListState>(
             builder: (context, state) {
-              if (state is ChatListLoading || state is ChatListInitial) {
+              if (state.status == ChatListStatus.loading || state.status == ChatListStatus.initial) {
                 return const Center(
                   child: CircularProgressIndicator(color: AppColors.blue1),
                 );
               }
 
-              if (state is ChatListError) {
+              if (state.status == ChatListStatus.error) {
                 return ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
@@ -84,7 +88,7 @@ class _ChatsListContent extends StatelessWidget {
                 );
               }
 
-              if (state is ChatListLoaded) {
+              if (state.status == ChatListStatus.loaded) {
                 return _buildList(context, state.chats);
               }
 

@@ -170,19 +170,19 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
   Widget build(BuildContext context) {
     return BlocConsumer<AppointmentBloc, AppointmentState>(
       listener: (context, state) {
-        if (state is AppointmentAssigned) {
+        if (state.status == AppointmentStatus.assigned && state.appointment != null) {
           // Success toast
           AppSnackBar.showSuccess(
             context,
-            AppStrings.appointmentConfirmedToast.replaceAll('{id}', state.appointment.appointmentNumber),
+            AppStrings.appointmentConfirmedToast.replaceAll('{id}', state.appointment!.appointmentNumber),
           );
-          widget.onConfirmed(state.appointment);
-        } else if (state is AppointmentFailed) {
-          AppSnackBar.showError(context, state.message);
+          widget.onConfirmed(state.appointment!);
+        } else if (state.status == AppointmentStatus.failure) {
+          AppSnackBar.showError(context, state.errorMessage ?? 'Failed to assign appointment');
         }
       },
       builder: (context, state) {
-        final bool isLoading = state is AppointmentLoading;
+        final bool isLoading = state.status == AppointmentStatus.loading;
 
         return BlocBuilder<ValueCubit<AssignAppointmentState>, AssignAppointmentState>(
           bloc: _stateCubit,

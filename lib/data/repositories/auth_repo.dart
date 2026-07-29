@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/network/token_manager.dart';
@@ -142,6 +143,59 @@ class AuthRepository {
     } catch (e) {
       print('[AuthRepository] updateAvailability error: $e');
       rethrow;
+    }
+  }
+
+  /// Request password reset link to be sent to user's email.
+  Future<String> requestForgotPassword({required String email}) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.forgotPassword,
+        data: {
+          'email': email.trim(),
+          'redirectTo': 'indopo-partner://reset-password',
+        },
+      );
+
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        final message =
+            responseData['message']?.toString() ??
+            'Password reset email sent successfully.';
+        return message;
+      }
+      return 'Password reset email sent successfully.';
+    } catch (e) {
+      print('[AuthRepository] requestForgotPassword error: $e');
+      final cleanMsg = e.toString().replaceAll('Exception: ', '');
+      throw Exception(cleanMsg);
+    }
+  }
+
+  /// Reset password using the recovery access token from deep link.
+  Future<String> resetPassword({
+    required String accessToken,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.resetPassword,
+        data: {'password': newPassword},
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        final message =
+            responseData['message']?.toString() ??
+            'Password has been reset successfully.';
+        return message;
+      }
+      return 'Password has been reset successfully.';
+    } catch (e) {
+      print('[AuthRepository] resetPassword error: $e');
+      final cleanMsg = e.toString().replaceAll('Exception: ', '');
+      throw Exception(cleanMsg);
     }
   }
 }

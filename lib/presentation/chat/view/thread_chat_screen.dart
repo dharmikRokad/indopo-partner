@@ -83,8 +83,8 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
   Widget build(BuildContext context) {
     String currentPartnerId = '';
     final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess) {
-      currentPartnerId = authState.partner.id;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      currentPartnerId = authState.partner!.id;
     }
 
     return Scaffold(
@@ -123,7 +123,7 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
       ),
       body: BlocConsumer<ThreadBloc, ThreadState>(
         listener: (context, state) {
-          if (state is ThreadLoaded) {
+          if (state.status == ThreadStatus.loaded) {
             _scrollToBottom(delayMs: 200);
           }
         },
@@ -164,22 +164,22 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
   }
 
   Widget _buildRepliesList(ThreadState state, String currentPartnerId) {
-    if (state is ThreadLoading || state is ThreadInitial) {
+    if (state.status == ThreadStatus.loading || state.status == ThreadStatus.initial) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.blue1),
       );
     }
 
-    if (state is ThreadFailure) {
+    if (state.status == ThreadStatus.failure) {
       return Center(
         child: Text(
-          'Failed to load thread: ${state.message}',
+          'Failed to load thread: ${state.errorMessage}',
           style: TextStyles.labelRegular.copyWith(color: AppColors.textMuted),
         ),
       );
     }
 
-    if (state is ThreadLoaded) {
+    if (state.status == ThreadStatus.loaded) {
       if (state.replies.isEmpty) {
         return Center(
           child: Text(

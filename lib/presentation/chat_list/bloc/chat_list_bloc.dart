@@ -12,7 +12,7 @@ class ChatListBloc extends Bloc<ChatListEvent, ChatListState> {
 
   ChatListBloc({required SupabaseChatRepository repo})
       : _repo = repo,
-        super(ChatListInitial()) {
+        super(ChatListState.initial()) {
     on<InitChatListStream>(_onInitChatListStream);
     on<ChatListStreamUpdated>(_onChatListStreamUpdated);
   }
@@ -21,7 +21,7 @@ class ChatListBloc extends Bloc<ChatListEvent, ChatListState> {
     InitChatListStream event,
     Emitter<ChatListState> emit,
   ) async {
-    emit(ChatListLoading());
+    emit(state.copyWith(status: ChatListStatus.loading));
     await _subscription?.cancel();
 
     _subscription = _repo.streamPartnerChats(event.partnerId).listen(
@@ -44,7 +44,10 @@ class ChatListBloc extends Bloc<ChatListEvent, ChatListState> {
       final bTime = b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
       return bTime.compareTo(aTime);
     });
-    emit(ChatListLoaded(chats: chats));
+    emit(state.copyWith(
+      status: ChatListStatus.loaded,
+      chats: chats,
+    ));
   }
 
   @override

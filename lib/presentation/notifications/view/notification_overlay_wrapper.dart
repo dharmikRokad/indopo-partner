@@ -72,9 +72,9 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     final authState = context.read<AuthBloc>().state;
     PartnerType? partnerRole;
     String partnerId = '';
-    if (authState is AuthSuccess) {
-      partnerRole = authState.partner.role;
-      partnerId = authState.partner.id;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      partnerRole = authState.partner!.role;
+      partnerId = authState.partner!.id;
     }
 
     final metadata = notification.metadata ?? {};
@@ -141,20 +141,20 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
   Widget build(BuildContext context) {
     return BlocListener<NotificationBloc, NotificationState>(
       listener: (context, state) {
-        if (state is NotificationForegroundReceived) {
-          final metadata = state.notification.metadata ?? {};
+        if (state.status == NotificationStatus.foregroundReceived && state.notification != null) {
+          final metadata = state.notification!.metadata ?? {};
           final bool isChatMessage = metadata.containsKey('chatId') ||
               metadata.containsKey('chat_id') ||
               metadata.containsKey('parentMessageId') ||
               metadata.containsKey('parent_message_id') ||
-              state.notification.type == NotificationType.prescriptionInquiry;
+              state.notification!.type == NotificationType.prescriptionInquiry;
 
           // Do NOT show custom overlay banner for chat messages
           if (!isChatMessage) {
-            _showBanner(state.notification);
+            _showBanner(state.notification!);
           }
-        } else if (state is NotificationOpened) {
-          _handleNotificationRedirection(state.notification);
+        } else if (state.status == NotificationStatus.opened && state.notification != null) {
+          _handleNotificationRedirection(state.notification!);
         }
       },
       child: BlocBuilder<ValueCubit<NotificationModel?>, NotificationModel?>(

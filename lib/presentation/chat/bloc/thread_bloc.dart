@@ -16,7 +16,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
 
   ThreadBloc({required SupabaseChatRepository repo})
       : _repo = repo,
-        super(ThreadInitial()) {
+        super(ThreadState.initial()) {
     on<InitThreadStream>(_onInitThreadStream);
     on<ThreadStreamUpdated>(_onThreadStreamUpdated);
     on<SendThreadReply>(_onSendThreadReply);
@@ -30,7 +30,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     _parentMessageId = event.parentMessageId;
     _partnerId = event.partnerId;
 
-    emit(ThreadLoading());
+    emit(state.copyWith(status: ThreadStatus.loading));
     await _repliesSubscription?.cancel();
 
     // Mark unread replies as read when partner opens the thread
@@ -51,9 +51,10 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     Emitter<ThreadState> emit,
   ) {
     if (_parentMessageId == null) return;
-    emit(ThreadLoaded(
+    emit(state.copyWith(
+      status: ThreadStatus.loaded,
       replies: event.replies,
-      parentMessageId: _parentMessageId!,
+      parentMessageId: _parentMessageId,
     ));
   }
 

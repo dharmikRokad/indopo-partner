@@ -45,8 +45,8 @@ class _RequestListContentState extends State<_RequestListContent>
     super.initState();
     final authState = context.read<AuthBloc>().state;
     bool isMedical = false;
-    if (authState is AuthSuccess) {
-      isMedical = authState.partner.role == PartnerType.pharmacy;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      isMedical = authState.partner!.role == PartnerType.pharmacy;
     }
     _activeTabs = isMedical
         ? [
@@ -93,8 +93,8 @@ class _RequestListContentState extends State<_RequestListContent>
     String roleBadge = '🩺 Doctor';
     bool isAvailable = false;
 
-    if (authState is AuthSuccess) {
-      final p = authState.partner;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      final p = authState.partner!;
       partnerName =
           p.details['full_name'] ??
           p.details['lab_name'] ??
@@ -107,7 +107,7 @@ class _RequestListContentState extends State<_RequestListContent>
     return BlocBuilder<RequestListBloc, RequestListState>(
       builder: (context, state) {
         bool hasUnreadDot = false;
-        if (state is RequestListLoaded) {
+        if (state.status == RequestListStatus.loaded) {
           hasUnreadDot = state.hasUnreadNew;
         }
 
@@ -215,13 +215,13 @@ class _RequestListContentState extends State<_RequestListContent>
   }
 
   Widget _buildTabList(RequestStatus status, RequestListState state) {
-    if (state is RequestListLoading) {
+    if (state.status == RequestListStatus.loading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.blue1),
       );
     }
 
-    if (state is RequestListFailure) {
+    if (state.status == RequestListStatus.failure) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -234,7 +234,7 @@ class _RequestListContentState extends State<_RequestListContent>
             const SizedBox(height: 12),
             Text('Error loading requests', style: TextStyles.headingSemiBold),
             const SizedBox(height: 4),
-            Text(state.message, style: TextStyles.labelRegular),
+            Text(state.errorMessage ?? 'Unknown error', style: TextStyles.labelRegular),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
@@ -247,9 +247,9 @@ class _RequestListContentState extends State<_RequestListContent>
       );
     }
 
-    if (state is RequestListLoaded) {
+    if (state.status == RequestListStatus.loaded) {
       // Safety check to ensure we only render items for this tab's requested status
-      if (state.status != status) {
+      if (state.requestStatus != status) {
         return const Center(
           child: CircularProgressIndicator(color: AppColors.blue1),
         );

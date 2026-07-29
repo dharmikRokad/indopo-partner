@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
@@ -56,25 +57,18 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.blue3,
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthFailure) {
-            AppSnackBar.showError(context, state.message);
+          if (state.status == AuthBlocStatus.error) {
+            AppSnackBar.showError(context, state.errorMessage ?? 'Login failed');
+          } else if (state.status == AuthBlocStatus.forgotPasswordSuccess) {
+            AppSnackBar.showSuccess(context, state.successMessage ?? 'Reset link sent');
+          } else if (state.status == AuthBlocStatus.forgotPasswordFailure) {
+            AppSnackBar.showError(context, state.errorMessage ?? 'Failed to send reset link');
           }
         },
         builder: (context, state) {
           // Determine active selected role
-          PartnerType? selectedRole;
-          bool isLoading = false;
-
-          if (state is RoleChosen) {
-            selectedRole = state.selectedRole;
-          } else if (state is AuthLoading) {
-            selectedRole = state.selectedRole;
-            isLoading = true;
-          } else if (state is AuthFailure) {
-            selectedRole = state.selectedRole;
-          } else if (state is Unauthenticated) {
-            selectedRole = state.selectedRole;
-          }
+          PartnerType? selectedRole = state.selectedRole;
+          final bool isLoading = state.status == AuthBlocStatus.loading;
 
           final bool isRoleSelected = selectedRole != null;
 
@@ -233,11 +227,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                 );
                               },
                             ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPasswordBottomSheet,
+                                child: Text(
+                                  AppStrings.forgotPassword,
+                                  style: TextStyles.bodyMedium.copyWith(
+                                    color: AppColors.blue1,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 24),
 
                     // CTA Login button
                     BlocBuilder<ValueCubit<bool>, bool>(
@@ -276,6 +284,122 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+  }
+
+  void _showForgotPasswordBottomSheet() {
+    final resetEmailController =
+        TextEditingController(text: _usernameController.text.trim());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24.0),
+            decoration: const BoxDecoration(
+              color: AppColors.blue3,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(
+                top: BorderSide(color: AppColors.blue2, width: 1.5),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppStrings.forgotPassword,
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(bottomSheetContext),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter your email address and we will send you a link to reset your password.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: resetEmailController,
+                  style: const TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.emailAddress,
+                    hintText: AppStrings.emailAddress,
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(
+                      colors: [AppColors.blue1, AppColors.blue2],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final email = resetEmailController.text.trim();
+                      if (email.isEmpty) {
+                        AppSnackBar.showError(
+                          context,
+                          'Please enter your email address.',
+                        );
+                        return;
+                      }
+                      Navigator.pop(bottomSheetContext);
+                      context.read<AuthBloc>().add(
+                            ForgotPasswordRequested(email: email),
+                          );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Send Reset Link',
+                      style: TextStyles.headingBold.copyWith(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

@@ -1,36 +1,41 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/chat_message.dart';
 
-abstract class ChatState extends Equatable {
-  const ChatState();
+enum ChatStatus { initial, loading, loaded, failure }
 
-  @override
-  List<Object?> get props => [];
-}
+class ChatState extends Equatable {
+  static const Object _kNoChange = Object();
 
-class ChatInitial extends ChatState {}
-
-class ChatLoading extends ChatState {}
-
-class ChatLoaded extends ChatState {
-  /// Root messages only (parent_message_id IS NULL), sorted ascending.
+  final ChatStatus status;
   final List<ChatMessage> rootMessages;
-  final String chatId;
+  final String? chatId;
+  final String? errorMessage;
 
-  const ChatLoaded({
-    required this.rootMessages,
-    required this.chatId,
+  const ChatState({
+    this.status = ChatStatus.initial,
+    this.rootMessages = const [],
+    this.chatId,
+    this.errorMessage,
   });
 
+  factory ChatState.initial() => const ChatState(status: ChatStatus.initial);
+
+  ChatState copyWith({
+    ChatStatus? status,
+    List<ChatMessage>? rootMessages,
+    Object? chatId = _kNoChange,
+    Object? errorMessage = _kNoChange,
+  }) {
+    return ChatState(
+      status: status ?? this.status,
+      rootMessages: rootMessages ?? this.rootMessages,
+      chatId: chatId == _kNoChange ? this.chatId : chatId as String?,
+      errorMessage: errorMessage == _kNoChange
+          ? this.errorMessage
+          : errorMessage as String?,
+    );
+  }
+
   @override
-  List<Object?> get props => [rootMessages, chatId];
-}
-
-class ChatFailure extends ChatState {
-  final String message;
-
-  const ChatFailure(this.message);
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [status, rootMessages, chatId, errorMessage];
 }

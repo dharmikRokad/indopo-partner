@@ -42,8 +42,8 @@ class _MedicalRequestsContent extends StatelessWidget {
     String roleBadge = '💊 Medical';
     bool isAvailable = false;
 
-    if (authState is AuthSuccess) {
-      final p = authState.partner;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      final p = authState.partner!;
       partnerName = p.details['full_name'] ??
           p.details['pharmacy_name'] ??
           p.details['lab_name'] ??
@@ -110,13 +110,13 @@ class _MedicalRequestsContent extends StatelessWidget {
       ),
       body: BlocBuilder<RequestListBloc, RequestListState>(
         builder: (context, state) {
-          if (state is RequestListLoading) {
+          if (state.status == RequestListStatus.loading) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.blue1),
             );
           }
 
-          if (state is RequestListFailure) {
+          if (state.status == RequestListStatus.failure) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -130,7 +130,7 @@ class _MedicalRequestsContent extends StatelessWidget {
                   Text('Error loading prescription requests',
                       style: TextStyles.headingSemiBold),
                   const SizedBox(height: 4),
-                  Text(state.message, style: TextStyles.labelRegular),
+                  Text(state.errorMessage ?? 'Unknown error', style: TextStyles.labelRegular),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
@@ -145,7 +145,7 @@ class _MedicalRequestsContent extends StatelessWidget {
             );
           }
 
-          if (state is RequestListLoaded) {
+          if (state.status == RequestListStatus.loaded) {
             final requests = state.requests;
 
             if (requests.isEmpty) {
@@ -239,8 +239,8 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
     try {
       final authState = context.read<AuthBloc>().state;
       String? partnerId;
-      if (authState is AuthSuccess) {
-        partnerId = authState.partner.id;
+      if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+        partnerId = authState.partner!.id;
       }
 
       final supabaseRepo = context.read<SupabaseChatRepository>();

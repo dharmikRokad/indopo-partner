@@ -25,6 +25,11 @@ import 'presentation/notifications/bloc/notification_bloc.dart';
 import 'presentation/notifications/bloc/notification_event.dart';
 import 'presentation/notifications/view/notification_overlay_wrapper.dart';
 import 'package:indopo_partner/core/services/push_notification_service.dart';
+import 'core/deeplink/cubit/deep_link_cubit.dart';
+import 'core/deeplink/cubit/deep_link_state.dart';
+import 'core/deeplink/models/deep_link_data.dart';
+import 'core/deeplink/services/deep_link_service.dart';
+import 'core/constants/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +65,9 @@ void main() async {
 
   // 1.5 Initialize Push Notification Service
   await PushNotificationService.instance.initialize();
+
+  // 1.6 Initialize Deep Link Service
+  await DeepLinkService.instance.initialize();
 
   // 2. Initialize API Client
   final apiClient = ApiClient();
@@ -105,6 +113,7 @@ class IndopoPartnerApp extends StatefulWidget {
 class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
   late AuthBloc _authBloc;
   late NotificationBloc _notificationBloc;
+  late DeepLinkCubit _deepLinkCubit;
   late AppRouter _appRouter;
   StreamSubscription? _sessionExpirySubscription;
 
@@ -118,6 +127,7 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
     );
 
     _notificationBloc = NotificationBloc()..add(InitNotifications());
+    _deepLinkCubit = DeepLinkCubit();
 
     // 5. Initialize GoRouter Router configuration
     _appRouter = AppRouter(_authBloc);
@@ -134,6 +144,7 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
     _sessionExpirySubscription?.cancel();
     _authBloc.close();
     _notificationBloc.close();
+    _deepLinkCubit.close();
     super.dispose();
   }
 
@@ -143,22 +154,45 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
       providers: [
         BlocProvider<AuthBloc>.value(value: _authBloc),
         BlocProvider<NotificationBloc>.value(value: _notificationBloc),
+        BlocProvider<DeepLinkCubit>.value(value: _deepLinkCubit),
       ],
-      child: MaterialApp.router(
-        title: AppStrings.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        routerConfig: _appRouter.router,
-        builder: (context, child) {
-          return BlocListener<AuthBloc, AuthState>(
-            listener: (context, state) {
-              if (state is AccountSuspended) {
-                AppSnackBar.showError(context, state.message);
+      child: BlocListener<DeepLinkCubit, DeepLinkState>(
+        listener: (context, state) {
+          final link = state.pendingDeepLink;
+          if (link != null) {
+            if (link.type == DeepLinkType.resetPassword) {
+              final token = link.token;
+              if (token != null && token.isNotEmpty) {
+                _appRouter.router.go(
+                  '${AppRoutes.resetPassword}?token=${Uri.encodeComponent(token)}',
+                );
+              } else {
+                _appRouter.router.go(AppRoutes.login);
+                AppSnackBar.showError(
+                  context,
+                  'Something went wrong: Invalid or missing password reset token.',
+                );
               }
-            },
-            child: NotificationOverlayWrapper(child: child!),
-          );
+            }
+            _deepLinkCubit.consumeDeepLink();
+          }
         },
+        child: MaterialApp.router(
+          title: AppStrings.appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+          routerConfig: _appRouter.router,
+          builder: (context, child) {
+            return BlocListener<AuthBloc, AuthState>(
+              listener: (context, state) {
+                if (state.status == AuthBlocStatus.accountSuspended) {
+                  AppSnackBar.showError(context, state.errorMessage ?? 'Account suspended');
+                }
+              },
+              child: NotificationOverlayWrapper(child: child!),
+            );
+          },
+        ),
       ),
     );
   }

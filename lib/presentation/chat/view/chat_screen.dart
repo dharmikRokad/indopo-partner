@@ -27,9 +27,9 @@ class ChatScreen extends StatelessWidget {
     String partnerId = '';
     bool isMedicalPartner = false;
 
-    if (authState is AuthSuccess) {
-      partnerId = authState.partner.id;
-      final role = authState.partner.role;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      partnerId = authState.partner!.id;
+      final role = authState.partner!.role;
       isMedicalPartner =
           role == PartnerType.doctor || role == PartnerType.pharmacy;
     }
@@ -164,18 +164,18 @@ class _ChatContentState extends State<_ChatContent> {
             child: widget.isMedicalPartner
                 ? BlocBuilder<ChatBloc, ChatState>(
                     builder: (context, state) {
-                      if (state is ChatLoading || state is ChatInitial) {
+                      if (state.status == ChatStatus.loading || state.status == ChatStatus.initial) {
                         return const Center(
                           child: CircularProgressIndicator(
                               color: AppColors.blue1),
                         );
                       }
-                      if (state is ChatFailure) {
+                      if (state.status == ChatStatus.failure) {
                         return Center(
-                          child: Text('Error: ${state.message}'),
+                          child: Text('Error: ${state.errorMessage}'),
                         );
                       }
-                      if (state is ChatLoaded) {
+                      if (state.status == ChatStatus.loaded) {
                         final rootMessages = state.rootMessages;
 
                         if (rootMessages.isEmpty) {

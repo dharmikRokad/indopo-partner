@@ -15,7 +15,12 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     RequestModel? request,
   })  : _requestRepository = requestRepository,
         _supabaseChatRepository = supabaseChatRepository,
-        super(request != null ? RequestDetailLoaded(request) : RequestDetailInitial()) {
+        super(request != null
+            ? RequestDetailState.initial().copyWith(
+                status: RequestDetailStatus.loaded,
+                request: request,
+              )
+            : RequestDetailState.initial()) {
     on<FetchRequestDetail>(_onFetchRequestDetail);
     on<AcceptRequest>(_onAcceptRequest);
     on<RejectRequest>(_onRejectRequest);
@@ -28,17 +33,17 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     AppointmentConfirmed event,
     Emitter<RequestDetailState> emit,
   ) {
-    final currentReq = state is RequestDetailLoaded
-        ? (state as RequestDetailLoaded).request
-        : (state is RequestActionSuccess ? (state as RequestActionSuccess).request : null);
-
+    final currentReq = state.request;
     if (currentReq != null) {
       final token = event.appointment.appointmentNumber?.toString();
       final updated = currentReq.copyWith(
         status: RequestStatus.inProgress,
         tokenNumber: token,
       );
-      emit(RequestDetailLoaded(updated));
+      emit(state.copyWith(
+        status: RequestDetailStatus.loaded,
+        request: updated,
+      ));
     }
   }
 
@@ -46,11 +51,12 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     StartPrescriptionChat event,
     Emitter<RequestDetailState> emit,
   ) async {
-    final currentRequest = state is RequestDetailLoaded
-        ? (state as RequestDetailLoaded).request
-        : null;
+    final currentRequest = state.request;
 
-    emit(RequestDetailLoading());
+    emit(state.copyWith(
+      status: RequestDetailStatus.loading,
+      errorMessage: null,
+    ));
     try {
       String? chatId;
       if (_supabaseChatRepository != null) {
@@ -62,7 +68,8 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
                   : ''),
           notes: event.notes ?? currentRequest?.description,
           partnerId: event.partnerId,
-          notificationId: event.notificationId ?? currentRequest?.notificationId ?? event.id,
+          notificationId:
+              event.notificationId ?? currentRequest?.notificationId ?? event.id,
         );
       }
 
@@ -77,14 +84,24 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
             patientGender: 'Other',
             patientContact: '',
             description: event.notes ?? '',
-            attachments: event.prescriptionUrl != null ? [event.prescriptionUrl!] : [],
+            attachments:
+                event.prescriptionUrl != null ? [event.prescriptionUrl!] : [],
             timestamp: DateTime.now(),
             status: RequestStatus.inProgress,
           );
 
-      emit(RequestActionSuccess(req, 'start_chat', chatId: chatId));
+      emit(state.copyWith(
+        status: RequestDetailStatus.actionSuccess,
+        request: req,
+        actionType: 'start_chat',
+        chatId: chatId,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(RequestDetailFailure(e.toString()));
+      emit(state.copyWith(
+        status: RequestDetailStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 
@@ -92,12 +109,22 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     FetchRequestDetail event,
     Emitter<RequestDetailState> emit,
   ) async {
-    emit(RequestDetailLoading());
+    emit(state.copyWith(
+      status: RequestDetailStatus.loading,
+      errorMessage: null,
+    ));
     try {
       final request = await _requestRepository.fetchRequestById(event.id);
-      emit(RequestDetailLoaded(request));
+      emit(state.copyWith(
+        status: RequestDetailStatus.loaded,
+        request: request,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(RequestDetailFailure(e.toString()));
+      emit(state.copyWith(
+        status: RequestDetailStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 
@@ -105,7 +132,10 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     AcceptRequest event,
     Emitter<RequestDetailState> emit,
   ) async {
-    emit(RequestDetailLoading());
+    emit(state.copyWith(
+      status: RequestDetailStatus.loading,
+      errorMessage: null,
+    ));
     try {
       // 1. Update appointment status in primary backend repository
       final request = await _requestRepository.updateRequestStatus(
@@ -131,9 +161,18 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
         }
       }
 
-      emit(RequestActionSuccess(request, 'accept', chatId: chatId));
+      emit(state.copyWith(
+        status: RequestDetailStatus.actionSuccess,
+        request: request,
+        actionType: 'accept',
+        chatId: chatId,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(RequestDetailFailure(e.toString()));
+      emit(state.copyWith(
+        status: RequestDetailStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 
@@ -141,16 +180,28 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     RejectRequest event,
     Emitter<RequestDetailState> emit,
   ) async {
-    emit(RequestDetailLoading());
+    emit(state.copyWith(
+      status: RequestDetailStatus.loading,
+      errorMessage: null,
+    ));
     try {
       final request = await _requestRepository.updateRequestStatus(
         event.id,
         RequestStatus.cancelled,
         rejectionReason: event.reason,
       );
-      emit(RequestActionSuccess(request, 'reject'));
+      emit(state.copyWith(
+        status: RequestDetailStatus.actionSuccess,
+        request: request,
+        actionType: 'reject',
+        chatId: null,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(RequestDetailFailure(e.toString()));
+      emit(state.copyWith(
+        status: RequestDetailStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 
@@ -158,15 +209,27 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
     CompleteRequest event,
     Emitter<RequestDetailState> emit,
   ) async {
-    emit(RequestDetailLoading());
+    emit(state.copyWith(
+      status: RequestDetailStatus.loading,
+      errorMessage: null,
+    ));
     try {
       final request = await _requestRepository.updateRequestStatus(
         event.id,
         RequestStatus.completed,
       );
-      emit(RequestActionSuccess(request, 'complete'));
+      emit(state.copyWith(
+        status: RequestDetailStatus.actionSuccess,
+        request: request,
+        actionType: 'complete',
+        chatId: null,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(RequestDetailFailure(e.toString()));
+      emit(state.copyWith(
+        status: RequestDetailStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 }

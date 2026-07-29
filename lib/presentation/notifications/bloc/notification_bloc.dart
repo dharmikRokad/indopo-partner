@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/services/push_notification_service.dart';
+
 import 'notification_event.dart';
 import 'notification_state.dart';
+import '../../../core/services/push_notification_service.dart';
 
 class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   Timer? _simulatedNotificationTimer;
   StreamSubscription? _foregroundSub;
   StreamSubscription? _openedSub;
 
-  NotificationBloc() : super(NotificationInitial()) {
+  NotificationBloc() : super(NotificationState.initial()) {
     on<InitNotifications>(_onInitNotifications);
     on<NotificationReceived>(_onNotificationReceived);
     on<NotificationTapped>(_onNotificationTapped);
@@ -37,14 +38,20 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     NotificationReceived event,
     Emitter<NotificationState> emit,
   ) {
-    emit(NotificationForegroundReceived(event.notification));
+    emit(state.copyWith(
+      status: NotificationStatus.foregroundReceived,
+      notification: event.notification,
+    ));
   }
 
   void _onNotificationTapped(
     NotificationTapped event,
     Emitter<NotificationState> emit,
   ) {
-    emit(NotificationOpened(event.notification));
+    emit(state.copyWith(
+      status: NotificationStatus.opened,
+      notification: event.notification,
+    ));
   }
 
   @override

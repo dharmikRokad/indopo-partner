@@ -57,9 +57,9 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
     final authState = context.read<AuthBloc>().state;
     PartnerType partnerRole = PartnerType.doctor;
     String? partnerId;
-    if (authState is AuthSuccess) {
-      partnerRole = authState.partner.role;
-      partnerId = authState.partner.id;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      partnerRole = authState.partner!.role;
+      partnerId = authState.partner!.id;
     }
 
     return Scaffold(
@@ -78,7 +78,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
       ),
       body: BlocConsumer<RequestDetailBloc, RequestDetailState>(
         listener: (context, state) {
-          if (state is RequestActionSuccess) {
+          if (state.status == RequestDetailStatus.actionSuccess) {
             if (state.actionType == 'reject') {
               AppSnackBar.showSuccess(
                 context,
@@ -106,32 +106,27 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                 '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}',
               );
             }
-          } else if (state is RequestDetailFailure) {
-            AppSnackBar.showError(context, state.message);
+          } else if (state.status == RequestDetailStatus.failure) {
+            AppSnackBar.showError(context, state.errorMessage ?? 'An error occurred');
           }
         },
         builder: (context, state) {
-          if (state is RequestDetailLoading || state is RequestDetailInitial) {
+          if (state.status == RequestDetailStatus.loading || state.status == RequestDetailStatus.initial) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.blue1),
             );
           }
 
-          if (state is RequestDetailFailure && state is! RequestDetailLoaded) {
+          if (state.status == RequestDetailStatus.failure && state.request == null) {
             return Center(
               child: Text(
-                'Failed to load request: ${state.message}',
+                'Failed to load request: ${state.errorMessage}',
                 style: TextStyles.bodyRegular,
               ),
             );
           }
 
-          RequestModel? request;
-          if (state is RequestDetailLoaded) {
-            request = state.request;
-          } else if (state is RequestActionSuccess) {
-            request = state.request;
-          }
+          final request = state.request;
 
           if (request == null) {
             return const Center(child: Text('No request details found'));

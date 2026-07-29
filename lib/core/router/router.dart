@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../presentation/auth/bloc/auth_bloc.dart';
 import '../../presentation/auth/bloc/auth_state.dart';
 import '../../presentation/auth/view/login_screen.dart';
+import '../../presentation/auth/view/reset_password_screen.dart';
 import '../../presentation/chat/view/chat_screen.dart';
 import '../../presentation/profile_setup/view/profile_setup_screen.dart';
 import '../../presentation/schedule_setup/view/schedule_setup_screen.dart';
@@ -44,27 +45,39 @@ class AppRouter {
       final currentLoc = state.matchedLocation;
 
       // 1. Initial State -> Allow splash screen initialization
-      if (authState is AuthInitial) {
+      if (authState.status == AuthBlocStatus.initial) {
         if (currentLoc == AppRoutes.splash) {
           return null;
         }
         return AppRoutes.splash;
       }
 
-      // 2. Not Authenticated States
-      if (authState is Unauthenticated ||
-          authState is RoleChosen ||
-          authState is AuthFailure ||
-          authState is AccountSuspended) {
-        if (currentLoc == AppRoutes.login) {
+      // 2. Not Authenticated / Auth-screen-only States
+      const _unauthenticatedStatuses = {
+        AuthBlocStatus.unauthenticated,
+        AuthBlocStatus.roleChosen,
+        AuthBlocStatus.error,
+        AuthBlocStatus.accountSuspended,
+        AuthBlocStatus.forgotPasswordLoading,
+        AuthBlocStatus.forgotPasswordSuccess,
+        AuthBlocStatus.forgotPasswordFailure,
+        AuthBlocStatus.resetPasswordLoading,
+        AuthBlocStatus.resetPasswordSuccess,
+        AuthBlocStatus.resetPasswordFailure,
+      };
+
+      if (_unauthenticatedStatuses.contains(authState.status)) {
+        if (currentLoc == AppRoutes.login ||
+            currentLoc == AppRoutes.resetPassword) {
           return null;
         }
         return AppRoutes.login;
       }
 
-      // 3. Authenticated Success State
-      if (authState is AuthSuccess) {
-        final partner = authState.partner;
+      // 3. Authenticated State
+      if (authState.status == AuthBlocStatus.authenticated &&
+          authState.partner != null) {
+        final partner = authState.partner!;
         final isSetupConfigured = partner.isProfileConfigured;
 
         if (!isSetupConfigured) {
@@ -75,11 +88,11 @@ class AppRouter {
           return AppRoutes.profileSetup;
         } else {
           // Check if working days and times are set
-          final hasSchedule = partner.workingDays != null && 
-                              partner.workingDays!.isNotEmpty && 
-                              partner.openTime != null && 
-                              partner.openTime!.isNotEmpty && 
-                              partner.closeTime != null && 
+          final hasSchedule = partner.workingDays != null &&
+                              partner.workingDays!.isNotEmpty &&
+                              partner.openTime != null &&
+                              partner.openTime!.isNotEmpty &&
+                              partner.closeTime != null &&
                               partner.closeTime!.isNotEmpty;
 
           if (!hasSchedule) {
@@ -90,8 +103,8 @@ class AppRouter {
           }
 
           // If profile setup and schedule are completed, user cannot visit login, profile setup, or schedule setup
-          final isRestrictedRoute = currentLoc == AppRoutes.login || 
-                                    currentLoc == AppRoutes.profileSetup || 
+          final isRestrictedRoute = currentLoc == AppRoutes.login ||
+                                    currentLoc == AppRoutes.profileSetup ||
                                     currentLoc == AppRoutes.scheduleSetup ||
                                     currentLoc == AppRoutes.splash;
           if (isRestrictedRoute) {
@@ -142,6 +155,14 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.scheduleSetup,
         builder: (context, state) => const ScheduleSetupScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) {
+          final token = state.uri.queryParameters['token'] ??
+              (state.extra is String ? state.extra as String : null);
+          return ResetPasswordScreen(token: token);
+        },
       ),
     ],
   );

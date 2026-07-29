@@ -15,7 +15,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   ChatBloc({required SupabaseChatRepository repo})
       : _repo = repo,
-        super(ChatInitial()) {
+        super(ChatState.initial()) {
     on<InitChatStream>(_onInitChatStream);
     on<ChatStreamUpdated>(_onChatStreamUpdated);
     on<SendMessage>(_onSendMessage);
@@ -28,7 +28,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     _chatId = event.chatId;
     _partnerId = event.partnerId;
 
-    emit(ChatLoading());
+    emit(state.copyWith(status: ChatStatus.loading));
     await _messagesSubscription?.cancel();
 
     // Reset partner unread count when entering the chat
@@ -48,9 +48,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) {
     if (_chatId == null) return;
-    emit(ChatLoaded(
+    emit(state.copyWith(
+      status: ChatStatus.loaded,
       rootMessages: event.messages,
-      chatId: _chatId!,
+      chatId: _chatId,
     ));
   }
 
@@ -71,7 +72,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
     } catch (e) {
       debugPrint('[ChatBloc] SendMessage error: $e');
-      // Optionally emit ChatFailure here — for now silently log
+      // Optionally emit failure here — for now silently log
     }
   }
 

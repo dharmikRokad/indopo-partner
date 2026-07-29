@@ -2,66 +2,64 @@ import 'package:equatable/equatable.dart';
 import '../../../data/models/partner_model.dart';
 import '../../../data/models/partner_type.dart';
 
-abstract class AuthState extends Equatable {
-  const AuthState();
-
-  @override
-  List<Object?> get props => [];
+enum AuthBlocStatus {
+  initial,
+  loading,
+  authenticated,
+  unauthenticated,
+  roleChosen,
+  forgotPasswordLoading,
+  forgotPasswordSuccess,
+  forgotPasswordFailure,
+  resetPasswordLoading,
+  resetPasswordSuccess,
+  resetPasswordFailure,
+  error,
+  accountSuspended,
 }
 
-class AuthInitial extends AuthState {}
+class AuthState extends Equatable {
+  static const Object _kNoChange = Object();
 
-class Unauthenticated extends AuthState {
+  final AuthBlocStatus status;
   final PartnerType? selectedRole;
+  final PartnerModel? partner;
+  final String? errorMessage;
+  final String? successMessage;
 
-  const Unauthenticated({this.selectedRole});
+  const AuthState({
+    this.status = AuthBlocStatus.initial,
+    this.selectedRole,
+    this.partner,
+    this.errorMessage,
+    this.successMessage,
+  });
 
-  @override
-  List<Object?> get props => [selectedRole];
-}
+  factory AuthState.initial() => const AuthState(status: AuthBlocStatus.initial);
 
-class RoleChosen extends AuthState {
-  final PartnerType selectedRole;
-
-  const RoleChosen(this.selectedRole);
-
-  @override
-  List<Object?> get props => [selectedRole];
-}
-
-class AuthLoading extends AuthState {
-  final PartnerType selectedRole;
-
-  const AuthLoading(this.selectedRole);
-
-  @override
-  List<Object?> get props => [selectedRole];
-}
-
-class AuthSuccess extends AuthState {
-  final PartnerModel partner;
-
-  const AuthSuccess(this.partner);
-
-  @override
-  List<Object?> get props => [partner];
-}
-
-class AuthFailure extends AuthState {
-  final String message;
-  final PartnerType selectedRole;
-
-  const AuthFailure(this.message, this.selectedRole);
+  AuthState copyWith({
+    AuthBlocStatus? status,
+    Object? selectedRole = _kNoChange,
+    Object? partner = _kNoChange,
+    Object? errorMessage = _kNoChange,
+    Object? successMessage = _kNoChange,
+  }) {
+    return AuthState(
+      status: status ?? this.status,
+      selectedRole: selectedRole == _kNoChange
+          ? this.selectedRole
+          : selectedRole as PartnerType?,
+      partner: partner == _kNoChange ? this.partner : partner as PartnerModel?,
+      errorMessage: errorMessage == _kNoChange
+          ? this.errorMessage
+          : errorMessage as String?,
+      successMessage: successMessage == _kNoChange
+          ? this.successMessage
+          : successMessage as String?,
+    );
+  }
 
   @override
-  List<Object?> get props => [message, selectedRole];
-}
-
-class AccountSuspended extends AuthState {
-  final String message;
-
-  const AccountSuspended([this.message = 'Account is suspended, contact support']);
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props =>
+      [status, selectedRole, partner, errorMessage, successMessage];
 }

@@ -29,11 +29,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    if (authState is! AuthSuccess) {
+    if (authState.status != AuthBlocStatus.authenticated ||
+        authState.partner == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final partner = authState.partner;
+    final partner = authState.partner!;
     final isMedical = partner.role == PartnerType.pharmacy;
 
     // Dynamically build screens & items based on role

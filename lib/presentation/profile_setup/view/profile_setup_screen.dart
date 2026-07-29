@@ -48,10 +48,11 @@ class ProfileSetupScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Obtain active partner info from AuthBloc
     final authState = context.read<AuthBloc>().state;
-    if (authState is! AuthSuccess) {
+    if (authState.status != AuthBlocStatus.authenticated ||
+        authState.partner == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final partner = authState.partner;
+    final partner = authState.partner!;
 
     return BlocProvider(
       create: (context) => ProfileSetupBloc(
@@ -264,32 +265,23 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
       ),
       body: BlocConsumer<ProfileSetupBloc, ProfileSetupState>(
         listener: (context, state) {
-          if (state is ProfileSetupSuccess) {
+          if (state.status == ProfileSetupStatus.success) {
             AppSnackBar.showSuccess(
               context,
               'Profile setup completed successfully!',
             );
             // Update auth state directly to trigger redirect to Dashboard
-            context.read<AuthBloc>().add(PartnerUpdated(state.partner));
-          } else if (state is ProfileSetupFailure) {
+            context.read<AuthBloc>().add(PartnerUpdated(state.partner!));
+          } else if (state.status == ProfileSetupStatus.failure) {
             AppSnackBar.showError(
               context,
-              'Failed to setup profile: ${state.message}',
+              'Failed to setup profile: ${state.errorMessage}',
             );
           }
         },
         builder: (context, blocState) {
-          int currentStep = 0;
-          bool isLoading = false;
-
-          if (blocState is ProfileStepState) {
-            currentStep = blocState.step;
-          } else if (blocState is ProfileSetupLoading) {
-            currentStep = blocState.step;
-            isLoading = true;
-          } else if (blocState is ProfileSetupFailure) {
-            currentStep = blocState.step;
-          }
+          int currentStep = blocState.step;
+          bool isLoading = blocState.status == ProfileSetupStatus.loading;
 
           return BlocBuilder<
             ValueCubit<ProfileSetupScreenState>,

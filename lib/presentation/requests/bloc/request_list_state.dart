@@ -1,37 +1,49 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/request_model.dart';
 
-abstract class RequestListState extends Equatable {
-  const RequestListState();
+enum RequestListStatus { initial, loading, loaded, failure }
 
-  @override
-  List<Object?> get props => [];
-}
+class RequestListState extends Equatable {
+  static const Object _kNoChange = Object();
 
-class RequestListInitial extends RequestListState {}
-
-class RequestListLoading extends RequestListState {}
-
-class RequestListLoaded extends RequestListState {
+  final RequestListStatus status;
   final List<RequestModel> requests;
-  final RequestStatus status;
+  final RequestStatus? requestStatus;
   final bool hasUnreadNew;
+  final String? errorMessage;
 
-  const RequestListLoaded({
-    required this.requests,
-    required this.status,
-    required this.hasUnreadNew,
+  const RequestListState({
+    this.status = RequestListStatus.initial,
+    this.requests = const [],
+    this.requestStatus,
+    this.hasUnreadNew = false,
+    this.errorMessage,
   });
 
+  factory RequestListState.initial() =>
+      const RequestListState(status: RequestListStatus.initial);
+
+  RequestListState copyWith({
+    RequestListStatus? status,
+    List<RequestModel>? requests,
+    Object? requestStatus = _kNoChange,
+    bool? hasUnreadNew,
+    Object? errorMessage = _kNoChange,
+  }) {
+    return RequestListState(
+      status: status ?? this.status,
+      requests: requests ?? this.requests,
+      requestStatus: requestStatus == _kNoChange
+          ? this.requestStatus
+          : requestStatus as RequestStatus?,
+      hasUnreadNew: hasUnreadNew ?? this.hasUnreadNew,
+      errorMessage: errorMessage == _kNoChange
+          ? this.errorMessage
+          : errorMessage as String?,
+    );
+  }
+
   @override
-  List<Object?> get props => [requests, status, hasUnreadNew];
-}
-
-class RequestListFailure extends RequestListState {
-  final String message;
-
-  const RequestListFailure(this.message);
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props =>
+      [status, requests, requestStatus, hasUnreadNew, errorMessage];
 }

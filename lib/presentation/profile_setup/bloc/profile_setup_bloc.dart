@@ -13,7 +13,7 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
     required PartnerModel currentPartner,
   })  : _profileRepository = profileRepository,
         _currentPartner = currentPartner,
-        super(const ProfileSetupInitial()) {
+        super(ProfileSetupState.initial()) {
     on<ProfileStepChanged>(_onProfileStepChanged);
     on<ProfileSubmitted>(_onProfileSubmitted);
   }
@@ -22,18 +22,22 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
     ProfileStepChanged event,
     Emitter<ProfileSetupState> emit,
   ) {
-    emit(ProfileStepState(event.step));
+    emit(state.copyWith(
+      status: ProfileSetupStatus.initial,
+      step: event.step,
+    ));
   }
 
   Future<void> _onProfileSubmitted(
     ProfileSubmitted event,
     Emitter<ProfileSetupState> emit,
   ) async {
-    final int currentStep = state is ProfileStepState 
-        ? (state as ProfileStepState).step 
-        : (state is ProfileSetupFailure ? (state as ProfileSetupFailure).step : 0);
+    final currentStep = state.step;
 
-    emit(ProfileSetupLoading(currentStep));
+    emit(state.copyWith(
+      status: ProfileSetupStatus.loading,
+      errorMessage: null,
+    ));
 
     try {
       final updatedPartner = _currentPartner.copyWith(
@@ -45,9 +49,17 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
         updatedPartner,
         profilePictureFile: event.profilePictureFile,
       );
-      emit(ProfileSetupSuccess(result));
+      emit(state.copyWith(
+        status: ProfileSetupStatus.success,
+        partner: result,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(ProfileSetupFailure(e.toString(), currentStep));
+      emit(state.copyWith(
+        status: ProfileSetupStatus.failure,
+        errorMessage: e.toString(),
+        step: currentStep,
+      ));
     }
   }
 }

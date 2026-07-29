@@ -52,3 +52,25 @@ class AvailabilityToggled extends AuthEvent {
   @override
   List<Object?> get props => [isAvailable];
 }
+
+class ForgotPasswordRequested extends AuthEvent {
+  final String email;
+
+  const ForgotPasswordRequested({required this.email});
+
+  @override
+  List<Object?> get props => [email];
+}
+
+class ResetPasswordRequested extends AuthEvent {
+  final String accessToken;
+  final String newPassword;
+
+  const ResetPasswordRequested({
+    required this.accessToken,
+    required this.newPassword,
+  });
+
+  @override
+  List<Object?> get props => [accessToken, newPassword];
+}

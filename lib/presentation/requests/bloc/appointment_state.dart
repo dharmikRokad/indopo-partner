@@ -1,31 +1,40 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/appointment_model.dart';
 
-abstract class AppointmentState extends Equatable {
-  const AppointmentState();
+enum AppointmentStatus { initial, loading, assigned, failure }
+
+class AppointmentState extends Equatable {
+  static const Object _kNoChange = Object();
+
+  final AppointmentStatus status;
+  final AppointmentModel? appointment;
+  final String? errorMessage;
+
+  const AppointmentState({
+    this.status = AppointmentStatus.initial,
+    this.appointment,
+    this.errorMessage,
+  });
+
+  factory AppointmentState.initial() =>
+      const AppointmentState(status: AppointmentStatus.initial);
+
+  AppointmentState copyWith({
+    AppointmentStatus? status,
+    Object? appointment = _kNoChange,
+    Object? errorMessage = _kNoChange,
+  }) {
+    return AppointmentState(
+      status: status ?? this.status,
+      appointment: appointment == _kNoChange
+          ? this.appointment
+          : appointment as AppointmentModel?,
+      errorMessage: errorMessage == _kNoChange
+          ? this.errorMessage
+          : errorMessage as String?,
+    );
+  }
 
   @override
-  List<Object?> get props => [];
-}
-
-class AppointmentInitial extends AppointmentState {}
-
-class AppointmentLoading extends AppointmentState {}
-
-class AppointmentAssigned extends AppointmentState {
-  final AppointmentModel appointment;
-
-  const AppointmentAssigned(this.appointment);
-
-  @override
-  List<Object?> get props => [appointment];
-}
-
-class AppointmentFailed extends AppointmentState {
-  final String message;
-
-  const AppointmentFailed(this.message);
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [status, appointment, errorMessage];
 }

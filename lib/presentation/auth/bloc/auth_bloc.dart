@@ -10,17 +10,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LocalStorage _localStorage;
 
   AuthBloc({
-    required AuthRepository authRepository,
-    required LocalStorage localStorage,
-  })  : _authRepository = authRepository,
-        _localStorage = localStorage,
-        super(AuthInitial()) {
+    required this._authRepository,
+    required this._localStorage,
+  }) : super(AuthState.initial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<PartnerUpdated>(_onPartnerUpdated);
     on<RoleSelected>(_onRoleSelected);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
     on<AvailabilityToggled>(_onAvailabilityToggled);
+    on<ForgotPasswordRequested>(_onForgotPasswordRequested);
+    on<ResetPasswordRequested>(_onResetPasswordRequested);
   }
 
   Future<void> _onPartnerUpdated(
@@ -29,10 +29,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     if (!event.partner.isActive) {
       await _authRepository.logout();
-      emit(const AccountSuspended('Account is suspended, contact support'));
+      emit(state.copyWith(
+        status: AuthBlocStatus.accountSuspended,
+        errorMessage: 'Account is suspended, contact support',
+        partner: null,
+      ));
       return;
     }
-    emit(AuthSuccess(event.partner));
+    emit(state.copyWith(
+      status: AuthBlocStatus.authenticated,
+      partner: event.partner,
+    ));
   }
 
   Future<void> _onAuthCheckRequested(
@@ -43,19 +50,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final partner = await _authRepository.checkActiveSession();
       if (partner != null) {
         if (!partner.isActive) {
-          emit(const AccountSuspended('Account is suspended, contact support'));
+          emit(state.copyWith(
+            status: AuthBlocStatus.accountSuspended,
+            errorMessage: 'Account is suspended, contact support',
+          ));
         } else {
-          emit(AuthSuccess(partner));
+          emit(state.copyWith(
+            status: AuthBlocStatus.authenticated,
+            partner: partner,
+          ));
         }
       } else {
         final cachedRoleKey = _localStorage.getSelectedRole();
-        final cachedRole = cachedRoleKey != null 
-            ? PartnerTypeExtension.fromKey(cachedRoleKey) 
+        final cachedRole = cachedRoleKey != null
+            ? PartnerTypeExtension.fromKey(cachedRoleKey)
             : null;
-        emit(Unauthenticated(selectedRole: cachedRole));
+        emit(state.copyWith(
+          status: AuthBlocStatus.unauthenticated,
+          selectedRole: cachedRole,
+        ));
       }
     } catch (e) {
-      emit(const Unauthenticated());
+      emit(state.copyWith(status: AuthBlocStatus.unauthenticated));
     }
   }
 
@@ -63,30 +79,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     RoleSelected event,
     Emitter<AuthState> emit,
   ) {
-    emit(RoleChosen(event.role));
+    emit(state.copyWith(
+      status: AuthBlocStatus.roleChosen,
+      selectedRole: event.role,
+    ));
   }
 
   Future<void> _onLoginSubmitted(
     LoginSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    PartnerType? activeRole;
-    final currentState = state;
-    
-    if (currentState is RoleChosen) {
-      activeRole = currentState.selectedRole;
-    } else if (currentState is AuthFailure) {
-      activeRole = currentState.selectedRole;
-    } else if (currentState is Unauthenticated) {
-      activeRole = currentState.selectedRole;
-    }
+    final activeRole = state.selectedRole;
 
     if (activeRole == null) {
-      emit(const AuthFailure('Please select your role first', PartnerType.doctor));
+      emit(state.copyWith(
+        status: AuthBlocStatus.error,
+        errorMessage: 'Please select your role first',
+      ));
       return;
     }
 
-    emit(AuthLoading(activeRole));
+    emit(state.copyWith(
+      status: AuthBlocStatus.loading,
+      errorMessage: null,
+    ));
 
     try {
       final partner = await _authRepository.login(
@@ -94,10 +110,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         selectedRole: activeRole,
       );
-      emit(AuthSuccess(partner));
+      emit(state.copyWith(
+        status: AuthBlocStatus.authenticated,
+        partner: partner,
+        errorMessage: null,
+      ));
     } catch (e) {
       final cleanMessage = e.toString().replaceAll('Exception: ', '');
-      emit(AuthFailure(cleanMessage, activeRole));
+      emit(state.copyWith(
+        status: AuthBlocStatus.error,
+        errorMessage: cleanMessage,
+      ));
     }
   }
 
@@ -105,27 +128,85 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthInitial());
+    emit(state.copyWith(status: AuthBlocStatus.loading));
     await _authRepository.logout();
-    emit(const Unauthenticated());
+    emit(state.copyWith(
+      status: AuthBlocStatus.unauthenticated,
+      partner: null,
+      selectedRole: null,
+      errorMessage: null,
+    ));
   }
 
   Future<void> _onAvailabilityToggled(
     AvailabilityToggled event,
     Emitter<AuthState> emit,
   ) async {
-    final currentState = state;
-    if (currentState is AuthSuccess) {
-      final oldPartner = currentState.partner;
-      try {
-        // Optimistically update the UI status first
-        emit(AuthSuccess(oldPartner.copyWith(isAvailable: event.isAvailable)));
-        await _authRepository.updateAvailability(event.isAvailable);
-      } catch (e) {
-        // Revert on error
-        print('[AuthBloc] Failed to update availability: $e');
-        emit(AuthSuccess(oldPartner));
-      }
+    final currentPartner = state.partner;
+    if (currentPartner == null) return;
+    try {
+      // Optimistically update the UI status first
+      emit(state.copyWith(
+        partner: currentPartner.copyWith(isAvailable: event.isAvailable),
+      ));
+      await _authRepository.updateAvailability(event.isAvailable);
+    } catch (e) {
+      // Revert on error
+      print('[AuthBloc] Failed to update availability: $e');
+      emit(state.copyWith(partner: currentPartner));
+    }
+  }
+
+  Future<void> _onForgotPasswordRequested(
+    ForgotPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(
+      status: AuthBlocStatus.forgotPasswordLoading,
+      errorMessage: null,
+      successMessage: null,
+    ));
+    try {
+      final message = await _authRepository.requestForgotPassword(
+        email: event.email,
+      );
+      emit(state.copyWith(
+        status: AuthBlocStatus.forgotPasswordSuccess,
+        successMessage: message,
+      ));
+    } catch (e) {
+      final cleanMessage = e.toString().replaceAll('Exception: ', '');
+      emit(state.copyWith(
+        status: AuthBlocStatus.forgotPasswordFailure,
+        errorMessage: cleanMessage,
+      ));
+    }
+  }
+
+  Future<void> _onResetPasswordRequested(
+    ResetPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(
+      status: AuthBlocStatus.resetPasswordLoading,
+      errorMessage: null,
+      successMessage: null,
+    ));
+    try {
+      final message = await _authRepository.resetPassword(
+        accessToken: event.accessToken,
+        newPassword: event.newPassword,
+      );
+      emit(state.copyWith(
+        status: AuthBlocStatus.resetPasswordSuccess,
+        successMessage: message,
+      ));
+    } catch (e) {
+      final cleanMessage = e.toString().replaceAll('Exception: ', '');
+      emit(state.copyWith(
+        status: AuthBlocStatus.resetPasswordFailure,
+        errorMessage: cleanMessage,
+      ));
     }
   }
 }

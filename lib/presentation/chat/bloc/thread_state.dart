@@ -1,35 +1,43 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/chat_message.dart';
 
-abstract class ThreadState extends Equatable {
-  const ThreadState();
+enum ThreadStatus { initial, loading, loaded, failure }
 
-  @override
-  List<Object?> get props => [];
-}
+class ThreadState extends Equatable {
+  static const Object _kNoChange = Object();
 
-class ThreadInitial extends ThreadState {}
-
-class ThreadLoading extends ThreadState {}
-
-class ThreadLoaded extends ThreadState {
+  final ThreadStatus status;
   final List<ChatMessage> replies;
-  final String parentMessageId;
+  final String? parentMessageId;
+  final String? errorMessage;
 
-  const ThreadLoaded({
-    required this.replies,
-    required this.parentMessageId,
+  const ThreadState({
+    this.status = ThreadStatus.initial,
+    this.replies = const [],
+    this.parentMessageId,
+    this.errorMessage,
   });
 
+  factory ThreadState.initial() => const ThreadState(status: ThreadStatus.initial);
+
+  ThreadState copyWith({
+    ThreadStatus? status,
+    List<ChatMessage>? replies,
+    Object? parentMessageId = _kNoChange,
+    Object? errorMessage = _kNoChange,
+  }) {
+    return ThreadState(
+      status: status ?? this.status,
+      replies: replies ?? this.replies,
+      parentMessageId: parentMessageId == _kNoChange
+          ? this.parentMessageId
+          : parentMessageId as String?,
+      errorMessage: errorMessage == _kNoChange
+          ? this.errorMessage
+          : errorMessage as String?,
+    );
+  }
+
   @override
-  List<Object?> get props => [replies, parentMessageId];
-}
-
-class ThreadFailure extends ThreadState {
-  final String message;
-
-  const ThreadFailure(this.message);
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [status, replies, parentMessageId, errorMessage];
 }

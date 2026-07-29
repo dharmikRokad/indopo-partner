@@ -69,8 +69,8 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     super.initState();
     // Pre-populate if values exist (in case redirect occurs and some fields exist)
     final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess) {
-      final partner = authState.partner;
+    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      final partner = authState.partner!;
       final selectedDays = <String>[];
       if (partner.workingDays != null) {
         selectedDays.addAll(partner.workingDays!);
@@ -213,10 +213,11 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    if (authState is! AuthSuccess) {
+    if (authState.status != AuthBlocStatus.authenticated ||
+        authState.partner == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final partner = authState.partner;
+    final partner = authState.partner!;
 
     return BlocBuilder<ValueCubit<ScheduleSetupScreenState>, ScheduleSetupScreenState>(
       bloc: _stateCubit,

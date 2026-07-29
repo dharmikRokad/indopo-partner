@@ -9,4 +9,5 @@ class AppRoutes {
   static const String chat = '/chat/:id';
   static const String services = '/services';
   static const String scheduleSetup = '/schedule-setup';
+  static const String resetPassword = '/reset-password';
 }

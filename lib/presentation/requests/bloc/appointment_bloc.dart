@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../data/repositories/request_repo.dart';
 import 'appointment_event.dart';
 import 'appointment_state.dart';
+import '../../../data/repositories/request_repo.dart';
 
 class AppointmentBloc extends Bloc<AppointmentEvent, AppointmentState> {
   final RequestRepository _requestRepository;
@@ -9,7 +9,7 @@ class AppointmentBloc extends Bloc<AppointmentEvent, AppointmentState> {
   AppointmentBloc({
     required RequestRepository requestRepository,
   })  : _requestRepository = requestRepository,
-        super(AppointmentInitial()) {
+        super(AppointmentState.initial()) {
     on<AssignAppointment>(_onAssignAppointment);
   }
 
@@ -17,12 +17,22 @@ class AppointmentBloc extends Bloc<AppointmentEvent, AppointmentState> {
     AssignAppointment event,
     Emitter<AppointmentState> emit,
   ) async {
-    emit(AppointmentLoading());
+    emit(state.copyWith(
+      status: AppointmentStatus.loading,
+      errorMessage: null,
+    ));
     try {
       final assigned = await _requestRepository.assignAppointment(event.appointment);
-      emit(AppointmentAssigned(assigned));
+      emit(state.copyWith(
+        status: AppointmentStatus.assigned,
+        appointment: assigned,
+        errorMessage: null,
+      ));
     } catch (e) {
-      emit(AppointmentFailed(e.toString()));
+      emit(state.copyWith(
+        status: AppointmentStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 }
