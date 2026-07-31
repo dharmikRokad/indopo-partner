@@ -153,7 +153,7 @@ class AuthRepository {
         ApiEndpoints.forgotPassword,
         data: {
           'email': email.trim(),
-          'redirectTo': 'indopo-partner://reset-password',
+          // 'redirectTo': 'indopo-partner://reset-password',
         },
       );
 

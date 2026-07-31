@@ -58,11 +58,20 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state.status == AuthBlocStatus.error) {
-            AppSnackBar.showError(context, state.errorMessage ?? 'Login failed');
+            AppSnackBar.showError(
+              context,
+              state.errorMessage ?? 'Login failed',
+            );
           } else if (state.status == AuthBlocStatus.forgotPasswordSuccess) {
-            AppSnackBar.showSuccess(context, state.successMessage ?? 'Reset link sent');
+            AppSnackBar.showSuccess(
+              context,
+              state.successMessage ?? 'Reset link sent',
+            );
           } else if (state.status == AuthBlocStatus.forgotPasswordFailure) {
-            AppSnackBar.showError(context, state.errorMessage ?? 'Failed to send reset link');
+            AppSnackBar.showError(
+              context,
+              state.errorMessage ?? 'Failed to send reset link',
+            );
           }
         },
         builder: (context, state) {
@@ -100,43 +109,49 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 36),
 
-                    // STEP 1: Role Selection Grid
+                    // STEP 1: Role Selection Row (Fit page width)
                     Text(
                       AppStrings.selectRoleHeader,
                       style: TextStyles.headingSemiBold.copyWith(fontSize: 18),
                     ),
-                    const SizedBox(height: 16),
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.25,
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        _RoleCard(
-                          label: AppStrings.doctor,
-                          icon: '🩺',
-                          isSelected: selectedRole == PartnerType.doctor,
-                          onTap: () => _selectRole(PartnerType.doctor),
+                        Expanded(
+                          child: _RoleCard(
+                            label: AppStrings.doctor,
+                            icon: '🩺',
+                            isSelected: selectedRole == PartnerType.doctor,
+                            onTap: () => _selectRole(PartnerType.doctor),
+                          ),
                         ),
-                        _RoleCard(
-                          label: AppStrings.medical,
-                          icon: '💊',
-                          isSelected: selectedRole == PartnerType.pharmacy,
-                          onTap: () => _selectRole(PartnerType.pharmacy),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _RoleCard(
+                            label: AppStrings.medical,
+                            icon: '💊',
+                            isSelected: selectedRole == PartnerType.pharmacy,
+                            onTap: () => _selectRole(PartnerType.pharmacy),
+                          ),
                         ),
-                        _RoleCard(
-                          label: AppStrings.laboratory,
-                          icon: '🧪',
-                          isSelected: selectedRole == PartnerType.laboratory,
-                          onTap: () => _selectRole(PartnerType.laboratory),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _RoleCard(
+                            label: AppStrings.laboratory,
+                            icon: '🧪',
+                            isSelected: selectedRole == PartnerType.laboratory,
+                            onTap: () => _selectRole(PartnerType.laboratory),
+                          ),
                         ),
-                        _RoleCard(
-                          label: AppStrings.imagingCenter,
-                          icon: '🏥',
-                          isSelected: selectedRole == PartnerType.imagingCenter,
-                          onTap: () => _selectRole(PartnerType.imagingCenter),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _RoleCard(
+                            label: AppStrings.imagingCenter,
+                            icon: '🏥',
+                            isSelected:
+                                selectedRole == PartnerType.imagingCenter,
+                            onTap: () => _selectRole(PartnerType.imagingCenter),
+                          ),
                         ),
                       ],
                     ),
@@ -287,8 +302,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPasswordBottomSheet() {
-    final resetEmailController =
-        TextEditingController(text: _usernameController.text.trim());
+    final resetEmailController = TextEditingController(
+      text: _usernameController.text.trim(),
+    );
 
     showModalBottomSheet(
       context: context,
@@ -374,8 +390,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                       Navigator.pop(bottomSheetContext);
                       context.read<AuthBloc>().add(
-                            ForgotPasswordRequested(email: email),
-                          );
+                        ForgotPasswordRequested(email: email),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
@@ -458,7 +474,9 @@ class _RoleCardState extends State<_RoleCard>
           },
           onTapCancel: () => _controller.reverse(),
           child: AnimatedContainer(
+            height: 100,
             duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
             decoration: BoxDecoration(
               gradient: widget.isSelected
                   ? const LinearGradient(
@@ -472,46 +490,35 @@ class _RoleCardState extends State<_RoleCard>
                 color: widget.isSelected ? AppColors.blue1 : AppColors.blue2,
                 width: 1.5,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: widget.isSelected
                   ? [
                       BoxShadow(
                         color: AppColors.blue1.withValues(alpha: 0.35),
-                        blurRadius: 12,
+                        blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
                     ]
                   : [],
             ),
-            child: Stack(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Positioned.fill(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(widget.icon, style: const TextStyle(fontSize: 28)),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.label,
-                        style: TextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                Text(widget.icon, style: const TextStyle(fontSize: 20)),
+                const SizedBox(height: 4),
+                Text(
+                  widget.label,
+                  style: TextStyles.bodyMedium.copyWith(
+                    fontWeight: widget.isSelected
+                        ? FontWeight.bold
+                        : FontWeight.w500,
+                    color: Colors.white,
+                    fontSize: 11,
                   ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (widget.isSelected)
-                  const Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
               ],
             ),
           ),
