@@ -14,6 +14,19 @@ extension PartnerTypeExtension on PartnerType {
     }
   }
 
+  String get apiValue {
+    switch (this) {
+      case PartnerType.doctor:
+        return 'DOCTOR';
+      case PartnerType.pharmacy:
+        return 'PHARMACY';
+      case PartnerType.laboratory:
+        return 'LABORATORY';
+      case PartnerType.imagingCenter:
+        return 'IMAGING_CENTER';
+    }
+  }
+
   static PartnerType fromKey(String key) {
     switch (key.toLowerCase()) {
       case 'doctor':

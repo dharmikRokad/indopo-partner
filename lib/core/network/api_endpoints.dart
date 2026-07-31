@@ -6,6 +6,7 @@ class ApiEndpoints {
   static const String changePassword = '/partner-auth/change-password';
   static const String forgotPassword = '/partner-auth/forgot-password';
   static const String resetPassword = '/partner-auth/reset-password';
+  static const String becomePartner = '/partner-auth/become-partner';
   static const String deactivate = '/partner-auth/deactivate';
   static const String availability = '/partner-auth/availability';
   static const String profile = '/partner-auth/profile';

@@ -21,6 +21,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AvailabilityToggled>(_onAvailabilityToggled);
     on<ForgotPasswordRequested>(_onForgotPasswordRequested);
     on<ResetPasswordRequested>(_onResetPasswordRequested);
+    on<BecomePartnerSubmitted>(_onBecomePartnerSubmitted);
   }
 
   Future<void> _onPartnerUpdated(
@@ -205,6 +206,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final cleanMessage = e.toString().replaceAll('Exception: ', '');
       emit(state.copyWith(
         status: AuthBlocStatus.resetPasswordFailure,
+        errorMessage: cleanMessage,
+      ));
+    }
+  }
+
+  Future<void> _onBecomePartnerSubmitted(
+    BecomePartnerSubmitted event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(
+      status: AuthBlocStatus.becomePartnerLoading,
+      errorMessage: null,
+      successMessage: null,
+    ));
+    try {
+      final message = await _authRepository.submitBecomePartnerRequest(
+        name: event.name,
+        email: event.email,
+        phone: event.phone,
+        orgName: event.orgName,
+        orgAddress: event.orgAddress,
+        partnerType: event.partnerType,
+      );
+      emit(state.copyWith(
+        status: AuthBlocStatus.becomePartnerSuccess,
+        successMessage: message,
+      ));
+    } catch (e) {
+      final cleanMessage = e.toString().replaceAll('Exception: ', '');
+      emit(state.copyWith(
+        status: AuthBlocStatus.becomePartnerFailure,
         errorMessage: cleanMessage,
       ));
     }

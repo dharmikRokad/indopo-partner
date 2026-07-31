@@ -74,3 +74,24 @@ class ResetPasswordRequested extends AuthEvent {
   @override
   List<Object?> get props => [accessToken, newPassword];
 }
+
+class BecomePartnerSubmitted extends AuthEvent {
+  final String name;
+  final String email;
+  final String phone;
+  final String orgName;
+  final String orgAddress;
+  final PartnerType partnerType;
+
+  const BecomePartnerSubmitted({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.orgName,
+    required this.orgAddress,
+    required this.partnerType,
+  });
+
+  @override
+  List<Object?> get props => [name, email, phone, orgName, orgAddress, partnerType];
+}

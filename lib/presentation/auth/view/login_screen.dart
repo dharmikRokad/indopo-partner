@@ -11,6 +11,7 @@ import '../../../core/presentation/bloc/value_cubit.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import '../widgets/become_partner_bottom_sheet.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -274,6 +275,38 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: _submitLogin,
                         );
                       },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Become a Partner Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Want to join our network? ",
+                          style: TextStyles.bodyRegular.copyWith(
+                            color: AppColors.textMuted,
+                            fontSize: 13,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            BecomePartnerBottomSheet.show(
+                              context,
+                              initialRole: selectedRole,
+                            );
+                          },
+                          child: Text(
+                            "Become a Partner",
+                            style: TextStyles.headingSemiBold.copyWith(
+                              color: AppColors.blue1,
+                              fontSize: 13,
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppColors.blue1,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                   ],

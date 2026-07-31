@@ -14,6 +14,9 @@ enum AuthBlocStatus {
   resetPasswordLoading,
   resetPasswordSuccess,
   resetPasswordFailure,
+  becomePartnerLoading,
+  becomePartnerSuccess,
+  becomePartnerFailure,
   error,
   accountSuspended,
 }

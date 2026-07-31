@@ -198,4 +198,41 @@ class AuthRepository {
       throw Exception(cleanMsg);
     }
   }
+
+  /// Submit a request to become a partner.
+  Future<String> submitBecomePartnerRequest({
+    required String name,
+    required String email,
+    required String phone,
+    required String orgName,
+    required String orgAddress,
+    required PartnerType partnerType,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.becomePartner,
+        data: {
+          'name': name.trim(),
+          'email': email.trim(),
+          'phone': phone.trim(),
+          'orgName': orgName.trim(),
+          'orgAddress': orgAddress.trim(),
+          'partnerType': partnerType.apiValue,
+        },
+      );
+
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        final message =
+            responseData['message']?.toString() ??
+            'Your request to become a partner has been submitted successfully.';
+        return message;
+      }
+      return 'Your request to become a partner has been submitted successfully.';
+    } catch (e) {
+      print('[AuthRepository] submitBecomePartnerRequest error: $e');
+      final cleanMsg = e.toString().replaceAll('Exception: ', '');
+      throw Exception(cleanMsg);
+    }
+  }
 }
