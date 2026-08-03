@@ -4,7 +4,7 @@ import '../models/partner_type.dart';
 
 class DropdownRepository {
   final ApiClient _apiClient;
-  
+
   List<Map<String, dynamic>> _specialities = [];
   List<Map<String, dynamic>> _serviceCategories = [];
   bool _isLoaded = false;
@@ -22,13 +22,19 @@ class DropdownRepository {
         final data = response.data['data'] as Map<String, dynamic>?;
         if (data != null) {
           _specialities = List<Map<String, dynamic>>.from(
-            (data['specialities'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+            (data['specialities'] as List? ?? []).map(
+              (e) => Map<String, dynamic>.from(e as Map),
+            ),
           );
           _serviceCategories = List<Map<String, dynamic>>.from(
-            (data['serviceCategories'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+            (data['serviceCategories'] as List? ?? []).map(
+              (e) => Map<String, dynamic>.from(e as Map),
+            ),
           );
           _isLoaded = true;
-          print('[DropdownRepository] Successfully fetched dropdown values: ${_specialities.length} specialities, ${_serviceCategories.length} categories.');
+          print(
+            '[DropdownRepository] Successfully fetched dropdown values: ${_specialities.length} specialities, ${_serviceCategories.length} categories.',
+          );
         }
       }
     } catch (e) {
@@ -40,16 +46,39 @@ class DropdownRepository {
     if (!_isLoaded || _serviceCategories.isEmpty) {
       // Fallback/Mock list if API fails or hasn't loaded yet
       if (role == PartnerType.laboratory) {
-        return ['Blood Test', 'Pathology', 'Urine Test', 'Biochemistry', 'Hematology', 'Immunology', 'Hormone Test', 'Microbiology'];
+        return [
+          'Blood Test',
+          'Pathology',
+          'Urine Test',
+          'Biochemistry',
+          'Hematology',
+          'Immunology',
+          'Hormone Test',
+          'Microbiology',
+        ];
       } else if (role == PartnerType.imagingCenter) {
-        return ['X-Ray', 'CT Scan', 'MRI', 'Ultrasound', 'PET Scan', 'Mammography', 'DEXA Scan', 'Echocardiography'];
+        return [
+          'X-Ray',
+          'CT Scan',
+          'MRI',
+          'Ultrasound',
+          'PET Scan',
+          'Mammography',
+          'DEXA Scan',
+          'Echocardiography',
+        ];
       }
       return [];
     }
 
-    final targetType = role == PartnerType.laboratory ? 'LABORATORY' : 'IMAGING_CENTER';
+    final targetType = role == PartnerType.laboratory
+        ? 'LABORATORY'
+        : 'IMAGING_CENTER';
     final filtered = _serviceCategories
-        .where((element) => element['partnerType']?.toString().toUpperCase() == targetType)
+        .where(
+          (element) =>
+              element['partnerType']?.toString().toUpperCase() == targetType,
+        )
         .map((element) => element['name']?.toString() ?? '')
         .where((name) => name.isNotEmpty)
         .toList();

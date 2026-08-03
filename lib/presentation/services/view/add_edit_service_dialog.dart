@@ -34,7 +34,7 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
     super.initState();
     // Filter out 'All' category if present
     final validCategories = widget.categories.where((c) => c != 'All').toList();
-    
+
     String? initialCategory;
     if (widget.service != null) {
       _nameController.text = widget.service!.name;
@@ -68,7 +68,9 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
 
     final now = DateTime.now().toIso8601String();
     final service = ServiceModel(
-      id: widget.service?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          widget.service?.id ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       partnerId: widget.partnerId,
       name: _nameController.text.trim(),
       category: selectedCategory,
@@ -120,7 +122,7 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Service Name
                 _buildLabel('Service Name'),
                 const SizedBox(height: 8),
@@ -130,7 +132,8 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                   decoration: const InputDecoration(
                     hintText: 'e.g., Whole Body PET Scan',
                   ),
-                  validator: (v) => Validators.validateRequired(v, 'Service name'),
+                  validator: (v) =>
+                      Validators.validateRequired(v, 'Service name'),
                 ),
                 const SizedBox(height: 20),
 
@@ -145,7 +148,10 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                       dropdownColor: AppColors.surface,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                       items: validCategories.map((category) {
                         return DropdownMenuItem<String>(
@@ -156,7 +162,8 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                       onChanged: (val) {
                         _categoryCubit.update(val);
                       },
-                      validator: (v) => v == null ? 'Please select a category' : null,
+                      validator: (v) =>
+                          v == null ? 'Please select a category' : null,
                     );
                   },
                 ),
@@ -167,11 +174,11 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _priceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'e.g., 800',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(hintText: 'e.g., 800'),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return 'Price is required';
@@ -195,7 +202,8 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                   decoration: const InputDecoration(
                     hintText: 'Provide details about the service...',
                   ),
-                  validator: (v) => Validators.validateRequired(v, 'Description'),
+                  validator: (v) =>
+                      Validators.validateRequired(v, 'Description'),
                 ),
                 const SizedBox(height: 32),
 
@@ -214,7 +222,10 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                         ),
                         child: Text(
                           'Cancel',
-                          style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: Colors.white),
+                          style: TextStyles.headingSemiBold.copyWith(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -239,7 +250,9 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
                           ),
                           child: Text(
                             isEdit ? 'Save Changes' : 'Create Service',
-                            style: TextStyles.headingBold.copyWith(fontSize: 16),
+                            style: TextStyles.headingBold.copyWith(
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -257,7 +270,10 @@ class _AddEditServiceDialogState extends State<AddEditServiceDialog> {
   Widget _buildLabel(String label) {
     return Text(
       label,
-      style: TextStyles.headingSemiBold.copyWith(fontSize: 14, color: AppColors.blue1),
+      style: TextStyles.headingSemiBold.copyWith(
+        fontSize: 14,
+        color: AppColors.blue1,
+      ),
     );
   }
 }

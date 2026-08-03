@@ -23,35 +23,45 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     _foregroundSub?.cancel();
     _openedSub?.cancel();
 
-    _foregroundSub = PushNotificationService.instance.foregroundNotificationStream.listen((notification) {
-      add(NotificationReceived(notification));
-    });
+    _foregroundSub = PushNotificationService
+        .instance
+        .foregroundNotificationStream
+        .listen((notification) {
+          add(NotificationReceived(notification));
+        });
 
-    _openedSub = PushNotificationService.instance.notificationOpenedStream.listen((notification) {
-      add(NotificationTapped(notification));
-    });
+    _openedSub = PushNotificationService.instance.notificationOpenedStream
+        .listen((notification) {
+          add(NotificationTapped(notification));
+        });
 
-    print('[FCM] Initializing FCM notifications listener for backend notifications...');
+    print(
+      '[FCM] Initializing FCM notifications listener for backend notifications...',
+    );
   }
 
   void _onNotificationReceived(
     NotificationReceived event,
     Emitter<NotificationState> emit,
   ) {
-    emit(state.copyWith(
-      status: NotificationStatus.foregroundReceived,
-      notification: event.notification,
-    ));
+    emit(
+      state.copyWith(
+        status: NotificationStatus.foregroundReceived,
+        notification: event.notification,
+      ),
+    );
   }
 
   void _onNotificationTapped(
     NotificationTapped event,
     Emitter<NotificationState> emit,
   ) {
-    emit(state.copyWith(
-      status: NotificationStatus.opened,
-      notification: event.notification,
-    ));
+    emit(
+      state.copyWith(
+        status: NotificationStatus.opened,
+        notification: event.notification,
+      ),
+    );
   }
 
   @override

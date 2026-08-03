@@ -83,7 +83,8 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
   Widget build(BuildContext context) {
     String currentPartnerId = '';
     final authState = context.read<AuthBloc>().state;
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       currentPartnerId = authState.partner!.id;
     }
 
@@ -144,9 +145,7 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
                   ),
 
                   // Replies list
-                  Expanded(
-                    child: _buildRepliesList(state, currentPartnerId),
-                  ),
+                  Expanded(child: _buildRepliesList(state, currentPartnerId)),
 
                   // Reply input
                   _ReplyInputBar(
@@ -164,7 +163,8 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
   }
 
   Widget _buildRepliesList(ThreadState state, String currentPartnerId) {
-    if (state.status == ThreadStatus.loading || state.status == ThreadStatus.initial) {
+    if (state.status == ThreadStatus.loading ||
+        state.status == ThreadStatus.initial) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.blue1),
       );
@@ -184,9 +184,7 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
         return Center(
           child: Text(
             'No replies yet. Send a response below.',
-            style: TextStyles.labelRegular.copyWith(
-              color: AppColors.textMuted,
-            ),
+            style: TextStyles.labelRegular.copyWith(color: AppColors.textMuted),
           ),
         );
       }
@@ -197,8 +195,8 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
         itemCount: state.replies.length,
         itemBuilder: (context, index) {
           final msg = state.replies[index];
-          final bool isMe = msg.senderId == currentPartnerId ||
-              msg.senderRole == 'PARTNER';
+          final bool isMe =
+              msg.senderId == currentPartnerId || msg.senderRole == 'PARTNER';
           return _MessageBubble(message: msg, isMe: isMe);
         },
       );
@@ -380,8 +378,10 @@ class _MessageBubble extends StatelessWidget {
             ],
             Text(
               message.content,
-              style: TextStyles.bodyRegular
-                  .copyWith(color: Colors.white, fontSize: 14),
+              style: TextStyles.bodyRegular.copyWith(
+                color: Colors.white,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -440,8 +440,11 @@ class _ReplyInputBar extends StatelessWidget {
             CircleAvatar(
               backgroundColor: AppColors.blue1,
               child: IconButton(
-                icon: const Icon(Icons.send_rounded,
-                    color: Colors.white, size: 18),
+                icon: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
                 onPressed: onSend,
               ),
             ),

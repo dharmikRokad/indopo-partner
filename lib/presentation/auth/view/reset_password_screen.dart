@@ -14,10 +14,7 @@ import '../bloc/auth_state.dart';
 class ResetPasswordScreen extends StatefulWidget {
   final String? token;
 
-  const ResetPasswordScreen({
-    super.key,
-    this.token,
-  });
+  const ResetPasswordScreen({super.key, this.token});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -74,11 +71,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
 
       context.read<AuthBloc>().add(
-            ResetPasswordRequested(
-              accessToken: widget.token!.trim(),
-              newPassword: newPassword,
-            ),
-          );
+        ResetPasswordRequested(
+          accessToken: widget.token!.trim(),
+          newPassword: newPassword,
+        ),
+      );
     }
   }
 
@@ -97,10 +94,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state.status == AuthBlocStatus.resetPasswordSuccess) {
-            AppSnackBar.showSuccess(context, state.successMessage ?? 'Password reset successfully');
+            AppSnackBar.showSuccess(
+              context,
+              state.successMessage ?? 'Password reset successfully',
+            );
             context.go(AppRoutes.login);
           } else if (state.status == AuthBlocStatus.resetPasswordFailure) {
-            AppSnackBar.showError(context, state.errorMessage ?? 'Failed to reset password');
+            AppSnackBar.showError(
+              context,
+              state.errorMessage ?? 'Failed to reset password',
+            );
           }
         },
         builder: (context, state) {

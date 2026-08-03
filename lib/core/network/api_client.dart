@@ -146,7 +146,9 @@ class ApiClient {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.connectionError) {
-      return const NetworkException('Connection timeout. Please check your internet connection.');
+      return const NetworkException(
+        'Connection timeout. Please check your internet connection.',
+      );
     }
 
     if (error.response != null) {
@@ -167,6 +169,8 @@ class ApiClient {
       return ServerException(message);
     }
 
-    return const ServerException('An unexpected error occurred. Please try again.');
+    return const ServerException(
+      'An unexpected error occurred. Please try again.',
+    );
   }
 }

@@ -20,7 +20,9 @@ class AppointmentModel {
       id: json['id'] as String? ?? '',
       requestId: json['request_id'] as String? ?? '',
       appointmentNumber: json['appointment_number'] as String? ?? '',
-      date: json['date'] != null ? DateTime.parse(json['date'] as String) : DateTime.now(),
+      date: json['date'] != null
+          ? DateTime.parse(json['date'] as String)
+          : DateTime.now(),
       time: json['time'] as String? ?? '',
       notes: json['notes'] as String?,
     );

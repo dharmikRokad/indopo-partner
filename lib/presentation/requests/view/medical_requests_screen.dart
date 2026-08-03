@@ -42,9 +42,11 @@ class _MedicalRequestsContent extends StatelessWidget {
     String roleBadge = '💊 Medical';
     bool isAvailable = false;
 
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       final p = authState.partner!;
-      partnerName = p.details['full_name'] ??
+      partnerName =
+          p.details['full_name'] ??
           p.details['pharmacy_name'] ??
           p.details['lab_name'] ??
           p.name;
@@ -127,16 +129,21 @@ class _MedicalRequestsContent extends StatelessWidget {
                     size: 48,
                   ),
                   const SizedBox(height: 12),
-                  Text('Error loading prescription requests',
-                      style: TextStyles.headingSemiBold),
+                  Text(
+                    'Error loading prescription requests',
+                    style: TextStyles.headingSemiBold,
+                  ),
                   const SizedBox(height: 4),
-                  Text(state.errorMessage ?? 'Unknown error', style: TextStyles.labelRegular),
+                  Text(
+                    state.errorMessage ?? 'Unknown error',
+                    style: TextStyles.labelRegular,
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       context.read<RequestListBloc>().add(
-                            const FetchRequests(RequestStatus.newRequest),
-                          );
+                        const FetchRequests(RequestStatus.newRequest),
+                      );
                     },
                     child: const Text('Retry'),
                   ),
@@ -152,8 +159,8 @@ class _MedicalRequestsContent extends StatelessWidget {
               return RefreshIndicator(
                 onRefresh: () async {
                   context.read<RequestListBloc>().add(
-                        const FetchRequests(RequestStatus.newRequest),
-                      );
+                    const FetchRequests(RequestStatus.newRequest),
+                  );
                 },
                 color: AppColors.blue1,
                 child: ListView(
@@ -179,14 +186,16 @@ class _MedicalRequestsContent extends StatelessWidget {
                           const SizedBox(height: 16),
                           Text(
                             'No prescription requests',
-                            style: TextStyles.headingSemiBold
-                                .copyWith(color: AppColors.textMuted),
+                            style: TextStyles.headingSemiBold.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Prescription inquiries from patients will appear here',
-                            style: TextStyles.labelRegular
-                                .copyWith(color: AppColors.textMuted),
+                            style: TextStyles.labelRegular.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -199,8 +208,8 @@ class _MedicalRequestsContent extends StatelessWidget {
             return RefreshIndicator(
               onRefresh: () async {
                 context.read<RequestListBloc>().add(
-                      const FetchRequests(RequestStatus.newRequest),
-                    );
+                  const FetchRequests(RequestStatus.newRequest),
+                );
               },
               color: AppColors.blue1,
               child: ListView.builder(
@@ -239,7 +248,8 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
     try {
       final authState = context.read<AuthBloc>().state;
       String? partnerId;
-      if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+      if (authState.status == AuthBlocStatus.authenticated &&
+          authState.partner != null) {
         partnerId = authState.partner!.id;
       }
 
@@ -278,9 +288,7 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.blue2.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: AppColors.blue2.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,7 +315,9 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                     children: [
                       Text(
                         request.patientName,
-                        style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                        style: TextStyles.headingSemiBold.copyWith(
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -321,7 +331,10 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.blue3,
                     borderRadius: BorderRadius.circular(12),
@@ -398,21 +411,28 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                             height: 140,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              height: 60,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.blue3,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.picture_as_pdf, color: AppColors.error),
-                                  SizedBox(width: 8),
-                                  Text('Prescription PDF Attached', style: TextStyle(fontSize: 13)),
-                                ],
-                              ),
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  height: 60,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.blue3,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.picture_as_pdf,
+                                        color: AppColors.error,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Prescription PDF Attached',
+                                        style: TextStyle(fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                           ),
                         ),
                         Positioned(
@@ -436,14 +456,21 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.blue3,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.receipt_rounded, color: AppColors.blue1, size: 20),
+                        Icon(
+                          Icons.receipt_rounded,
+                          color: AppColors.blue1,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Prescription Image / Document Available',
@@ -547,8 +574,11 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    const Icon(Icons.image_search_rounded,
-                        color: AppColors.blue1, size: 20),
+                    const Icon(
+                      Icons.image_search_rounded,
+                      color: AppColors.blue1,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Prescription Image',
@@ -556,8 +586,10 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: Colors.white54),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white54,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -582,7 +614,7 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                               color: AppColors.blue1,
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
+                                        loadingProgress.expectedTotalBytes!
                                   : null,
                             ),
                           );
@@ -590,8 +622,11 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                         errorBuilder: (context, error, stackTrace) => Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.broken_image_rounded,
-                                color: Colors.white38, size: 64),
+                            const Icon(
+                              Icons.broken_image_rounded,
+                              color: Colors.white38,
+                              size: 64,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               'Unable to load image',

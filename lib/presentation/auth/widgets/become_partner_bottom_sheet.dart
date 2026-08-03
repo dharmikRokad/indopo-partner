@@ -16,10 +16,7 @@ import '../bloc/auth_state.dart';
 class BecomePartnerBottomSheet extends StatefulWidget {
   final PartnerType? initialRole;
 
-  const BecomePartnerBottomSheet({
-    super.key,
-    this.initialRole,
-  });
+  const BecomePartnerBottomSheet({super.key, this.initialRole});
 
   static Future<void> show(BuildContext context, {PartnerType? initialRole}) {
     return showModalBottomSheet(
@@ -33,7 +30,8 @@ class BecomePartnerBottomSheet extends StatefulWidget {
   }
 
   @override
-  State<BecomePartnerBottomSheet> createState() => _BecomePartnerBottomSheetState();
+  State<BecomePartnerBottomSheet> createState() =>
+      _BecomePartnerBottomSheetState();
 }
 
 class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
@@ -81,15 +79,15 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
     }
 
     context.read<AuthBloc>().add(
-          BecomePartnerSubmitted(
-            name: _nameController.text.trim(),
-            email: _emailController.text.trim(),
-            phone: _phoneController.text.trim(),
-            orgName: _orgNameController.text.trim(),
-            orgAddress: _orgAddressController.text.trim(),
-            partnerType: _selectedRole!,
-          ),
-        );
+      BecomePartnerSubmitted(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        orgName: _orgNameController.text.trim(),
+        orgAddress: _orgAddressController.text.trim(),
+        partnerType: _selectedRole!,
+      ),
+    );
   }
 
   @override
@@ -121,9 +119,7 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
           decoration: const BoxDecoration(
             color: AppColors.blue3,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(color: AppColors.blue2, width: 1.5),
-            ),
+            border: Border(top: BorderSide(color: AppColors.blue2, width: 1.5)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -162,7 +158,9 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                       children: [
                         Text(
                           'Partner Type',
-                          style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                          style: TextStyles.headingSemiBold.copyWith(
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -172,7 +170,9 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                                 label: AppStrings.doctor,
                                 icon: '🩺',
                                 isSelected: _selectedRole == PartnerType.doctor,
-                                onTap: () => setState(() => _selectedRole = PartnerType.doctor),
+                                onTap: () => setState(
+                                  () => _selectedRole = PartnerType.doctor,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -180,8 +180,11 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                               child: _SheetRoleCard(
                                 label: AppStrings.medical,
                                 icon: '💊',
-                                isSelected: _selectedRole == PartnerType.pharmacy,
-                                onTap: () => setState(() => _selectedRole = PartnerType.pharmacy),
+                                isSelected:
+                                    _selectedRole == PartnerType.pharmacy,
+                                onTap: () => setState(
+                                  () => _selectedRole = PartnerType.pharmacy,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -189,8 +192,11 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                               child: _SheetRoleCard(
                                 label: AppStrings.laboratory,
                                 icon: '🧪',
-                                isSelected: _selectedRole == PartnerType.laboratory,
-                                onTap: () => setState(() => _selectedRole = PartnerType.laboratory),
+                                isSelected:
+                                    _selectedRole == PartnerType.laboratory,
+                                onTap: () => setState(
+                                  () => _selectedRole = PartnerType.laboratory,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -198,8 +204,12 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                               child: _SheetRoleCard(
                                 label: AppStrings.imagingCenter,
                                 icon: '🏥',
-                                isSelected: _selectedRole == PartnerType.imagingCenter,
-                                onTap: () => setState(() => _selectedRole = PartnerType.imagingCenter),
+                                isSelected:
+                                    _selectedRole == PartnerType.imagingCenter,
+                                onTap: () => setState(
+                                  () =>
+                                      _selectedRole = PartnerType.imagingCenter,
+                                ),
                               ),
                             ),
                           ],
@@ -209,7 +219,9 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                         // Full Name
                         Text(
                           'Full Name',
-                          style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                          style: TextStyles.headingSemiBold.copyWith(
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -234,7 +246,9 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                         // Email Address
                         Text(
                           'Email Address',
-                          style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                          style: TextStyles.headingSemiBold.copyWith(
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -255,7 +269,9 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                         // Phone Number
                         Text(
                           'Phone Number',
-                          style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                          style: TextStyles.headingSemiBold.copyWith(
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -281,7 +297,9 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                         // Organization Name
                         Text(
                           'Organization Name',
-                          style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                          style: TextStyles.headingSemiBold.copyWith(
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -329,7 +347,8 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                         BlocBuilder<AuthBloc, AuthState>(
                           builder: (context, state) {
                             final isLoading =
-                                state.status == AuthBlocStatus.becomePartnerLoading;
+                                state.status ==
+                                AuthBlocStatus.becomePartnerLoading;
                             return Container(
                               height: 52,
                               decoration: BoxDecoration(

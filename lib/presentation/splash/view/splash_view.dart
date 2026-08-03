@@ -43,7 +43,9 @@ class _SplashViewState extends State<SplashView>
       if (status == AnimationStatus.completed) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
-            context.read<AuthBloc>().add(AuthCheckRequested());
+            context.read<AuthBloc>().add(
+              const AuthCheckRequested(checkExistingSession: false),
+            );
           }
         });
       }

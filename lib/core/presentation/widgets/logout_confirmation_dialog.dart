@@ -57,7 +57,7 @@ class LogoutConfirmationDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Title
             Text(
               'Confirm Logout',
@@ -68,7 +68,7 @@ class LogoutConfirmationDialog extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
-            
+
             // Message Description
             Text(
               'Are you sure you want to log out of your account? You will need to enter your credentials to log in again.',
@@ -79,7 +79,7 @@ class LogoutConfirmationDialog extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            
+
             // Actions
             Row(
               children: [
@@ -87,7 +87,10 @@ class LogoutConfirmationDialog extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.textMuted, width: 1),
+                      side: const BorderSide(
+                        color: AppColors.textMuted,
+                        width: 1,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

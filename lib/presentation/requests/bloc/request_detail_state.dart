@@ -32,10 +32,10 @@ class RequestDetailState extends Equatable {
   }) {
     return RequestDetailState(
       status: status ?? this.status,
-      request:
-          request == _kNoChange ? this.request : request as RequestModel?,
-      actionType:
-          actionType == _kNoChange ? this.actionType : actionType as String?,
+      request: request == _kNoChange ? this.request : request as RequestModel?,
+      actionType: actionType == _kNoChange
+          ? this.actionType
+          : actionType as String?,
       chatId: chatId == _kNoChange ? this.chatId : chatId as String?,
       errorMessage: errorMessage == _kNoChange
           ? this.errorMessage
@@ -44,6 +44,11 @@ class RequestDetailState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [status, request, actionType, chatId, errorMessage];
+  List<Object?> get props => [
+    status,
+    request,
+    actionType,
+    chatId,
+    errorMessage,
+  ];
 }

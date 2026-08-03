@@ -43,8 +43,7 @@ class ChatMessage {
       id: json['id']?.toString() ?? '',
       chatId: json['chat_id']?.toString() ?? '',
       senderId: json['sender_id']?.toString() ?? '',
-      senderRole:
-          (json['sender_role']?.toString() ?? 'PATIENT').toUpperCase(),
+      senderRole: (json['sender_role']?.toString() ?? 'PATIENT').toUpperCase(),
       content: json['content']?.toString() ?? '',
       imageUrl: json['image_url'] as String?,
       parentMessageId: json['parent_message_id'] as String?,
@@ -53,7 +52,7 @@ class ChatMessage {
       isPrescription: json['is_prescription'] as bool? ?? false,
       createdAt: json['created_at'] != null
           ? (DateTime.tryParse(json['created_at'] as String)?.toLocal() ??
-              DateTime.now())
+                DateTime.now())
           : DateTime.now(),
     );
   }

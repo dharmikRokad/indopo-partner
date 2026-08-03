@@ -11,9 +11,9 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
   ProfileSetupBloc({
     required ProfileRepository profileRepository,
     required PartnerModel currentPartner,
-  })  : _profileRepository = profileRepository,
-        _currentPartner = currentPartner,
-        super(ProfileSetupState.initial()) {
+  }) : _profileRepository = profileRepository,
+       _currentPartner = currentPartner,
+       super(ProfileSetupState.initial()) {
     on<ProfileStepChanged>(_onProfileStepChanged);
     on<ProfileSubmitted>(_onProfileSubmitted);
   }
@@ -22,10 +22,7 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
     ProfileStepChanged event,
     Emitter<ProfileSetupState> emit,
   ) {
-    emit(state.copyWith(
-      status: ProfileSetupStatus.initial,
-      step: event.step,
-    ));
+    emit(state.copyWith(status: ProfileSetupStatus.initial, step: event.step));
   }
 
   Future<void> _onProfileSubmitted(
@@ -34,10 +31,9 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
   ) async {
     final currentStep = state.step;
 
-    emit(state.copyWith(
-      status: ProfileSetupStatus.loading,
-      errorMessage: null,
-    ));
+    emit(
+      state.copyWith(status: ProfileSetupStatus.loading, errorMessage: null),
+    );
 
     try {
       final updatedPartner = _currentPartner.copyWith(
@@ -49,17 +45,21 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
         updatedPartner,
         profilePictureFile: event.profilePictureFile,
       );
-      emit(state.copyWith(
-        status: ProfileSetupStatus.success,
-        partner: result,
-        errorMessage: null,
-      ));
+      emit(
+        state.copyWith(
+          status: ProfileSetupStatus.success,
+          partner: result,
+          errorMessage: null,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: ProfileSetupStatus.failure,
-        errorMessage: e.toString(),
-        step: currentStep,
-      ));
+      emit(
+        state.copyWith(
+          status: ProfileSetupStatus.failure,
+          errorMessage: e.toString(),
+          step: currentStep,
+        ),
+      );
     }
   }
 }

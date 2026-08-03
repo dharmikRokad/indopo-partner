@@ -21,8 +21,8 @@ class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
     _subscription = stream.asBroadcastStream().listen(
-          (dynamic _) => notifyListeners(),
-        );
+      (dynamic _) => notifyListeners(),
+    );
   }
 
   @override
@@ -88,12 +88,13 @@ class AppRouter {
           return AppRoutes.profileSetup;
         } else {
           // Check if working days and times are set
-          final hasSchedule = partner.workingDays != null &&
-                              partner.workingDays!.isNotEmpty &&
-                              partner.openTime != null &&
-                              partner.openTime!.isNotEmpty &&
-                              partner.closeTime != null &&
-                              partner.closeTime!.isNotEmpty;
+          final hasSchedule =
+              partner.workingDays != null &&
+              partner.workingDays!.isNotEmpty &&
+              partner.openTime != null &&
+              partner.openTime!.isNotEmpty &&
+              partner.closeTime != null &&
+              partner.closeTime!.isNotEmpty;
 
           if (!hasSchedule) {
             if (currentLoc == AppRoutes.scheduleSetup) {
@@ -103,10 +104,11 @@ class AppRouter {
           }
 
           // If profile setup and schedule are completed, user cannot visit login, profile setup, or schedule setup
-          final isRestrictedRoute = currentLoc == AppRoutes.login ||
-                                    currentLoc == AppRoutes.profileSetup ||
-                                    currentLoc == AppRoutes.scheduleSetup ||
-                                    currentLoc == AppRoutes.splash;
+          final isRestrictedRoute =
+              currentLoc == AppRoutes.login ||
+              currentLoc == AppRoutes.profileSetup ||
+              currentLoc == AppRoutes.scheduleSetup ||
+              currentLoc == AppRoutes.splash;
           if (isRestrictedRoute) {
             return AppRoutes.requestList;
           }
@@ -159,7 +161,8 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.resetPassword,
         builder: (context, state) {
-          final token = state.uri.queryParameters['token'] ??
+          final token =
+              state.uri.queryParameters['token'] ??
               (state.extra is String ? state.extra as String : null);
           return ResetPasswordScreen(token: token);
         },

@@ -45,7 +45,8 @@ class _RequestListContentState extends State<_RequestListContent>
     super.initState();
     final authState = context.read<AuthBloc>().state;
     bool isMedical = false;
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       isMedical = authState.partner!.role == PartnerType.pharmacy;
     }
     _activeTabs = isMedical
@@ -93,7 +94,8 @@ class _RequestListContentState extends State<_RequestListContent>
     String roleBadge = '🩺 Doctor';
     bool isAvailable = false;
 
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       final p = authState.partner!;
       partnerName =
           p.details['full_name'] ??
@@ -234,7 +236,10 @@ class _RequestListContentState extends State<_RequestListContent>
             const SizedBox(height: 12),
             Text('Error loading requests', style: TextStyles.headingSemiBold),
             const SizedBox(height: 4),
-            Text(state.errorMessage ?? 'Unknown error', style: TextStyles.labelRegular),
+            Text(
+              state.errorMessage ?? 'Unknown error',
+              style: TextStyles.labelRegular,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {

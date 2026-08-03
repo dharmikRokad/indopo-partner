@@ -8,10 +8,8 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
   final RequestRepository _requestRepository;
   final bool isMedical;
 
-  RequestListBloc({
-    required this._requestRepository,
-    this.isMedical = false,
-  })  : super(RequestListState.initial()) {
+  RequestListBloc({required this._requestRepository, this.isMedical = false})
+    : super(RequestListState.initial()) {
     on<FetchRequests>(_onFetchRequests);
     on<RequestReceived>(_onRequestReceived);
   }
@@ -45,18 +43,22 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
         }
       }
 
-      emit(state.copyWith(
-        status: RequestListStatus.loaded,
-        requests: list,
-        requestStatus: event.status,
-        hasUnreadNew: hasUnread,
-        errorMessage: null,
-      ));
+      emit(
+        state.copyWith(
+          status: RequestListStatus.loaded,
+          requests: list,
+          requestStatus: event.status,
+          hasUnreadNew: hasUnread,
+          errorMessage: null,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: RequestListStatus.failure,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(
+          status: RequestListStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -73,9 +75,11 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
       updatedList.insert(0, event.request);
     }
 
-    emit(state.copyWith(
-      requests: updatedList,
-      hasUnreadNew: true, // Incoming is always unread/new
-    ));
+    emit(
+      state.copyWith(
+        requests: updatedList,
+        hasUnreadNew: true, // Incoming is always unread/new
+      ),
+    );
   }
 }

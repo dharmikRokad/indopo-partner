@@ -172,7 +172,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '$hours:$minutes';
   }
 
-  Future<void> _pickProfileImage(PartnerModel partner, ImageSource source) async {
+  Future<void> _pickProfileImage(
+    PartnerModel partner,
+    ImageSource source,
+  ) async {
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
@@ -256,10 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.camera_alt_outlined,
                     color: AppColors.blue1,
                   ),
-                  title: Text(
-                    'Take a Photo',
-                    style: TextStyles.bodyMedium,
-                  ),
+                  title: Text('Take a Photo', style: TextStyles.bodyMedium),
                   onTap: () {
                     Navigator.pop(context);
                     _pickProfileImage(partner, ImageSource.camera);
@@ -449,18 +449,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Stack(
                           children: [
                             GestureDetector(
-                              onTap: () => _showImagePickerModal(context, partner),
+                              onTap: () =>
+                                  _showImagePickerModal(context, partner),
                               child: CircleAvatar(
                                 radius: 44,
                                 backgroundColor: AppColors.blue2,
                                 backgroundImage: state.selectedImageFile != null
                                     ? FileImage(state.selectedImageFile!)
-                                        as ImageProvider
+                                          as ImageProvider
                                     : (partner.profilePicture != null &&
-                                            partner.profilePicture!.isNotEmpty
-                                        ? NetworkImage(partner.profilePicture!)
-                                        : null),
-                                child: (state.selectedImageFile == null &&
+                                              partner.profilePicture!.isNotEmpty
+                                          ? NetworkImage(
+                                              partner.profilePicture!,
+                                            )
+                                          : null),
+                                child:
+                                    (state.selectedImageFile == null &&
                                         (partner.profilePicture == null ||
                                             partner.profilePicture!.isEmpty))
                                     ? Text(

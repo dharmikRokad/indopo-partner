@@ -30,7 +30,7 @@ class DeepLinkData extends Equatable {
     if (action.contains('reset') || action.contains('recovery')) {
       type = DeepLinkType.resetPassword;
     }
-    
+
     return DeepLinkData(type: type, params: params);
   }
 

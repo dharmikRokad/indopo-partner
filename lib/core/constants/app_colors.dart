@@ -7,8 +7,8 @@ class AppColors {
   static const Color blue3 = Color(0xFF0F172A); // Dark navy
   static const Color success = Color(0xFF00C853);
   static const Color warning = Color(0xFFFFAB00);
-  static const Color error  = Color(0xFFD50000);
-  static const Color info   = Color(0xFF2979FF);
+  static const Color error = Color(0xFFD50000);
+  static const Color info = Color(0xFF2979FF);
   static const Color surface = Color(0xFF1E293B); // Dark slate card surface
   static const Color textMuted = Color(0xFF94A3B8); // Slate 400
 

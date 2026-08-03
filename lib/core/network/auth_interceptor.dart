@@ -22,7 +22,10 @@ class AuthInterceptor extends QueuedInterceptor {
   }
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     if (!options.headers.containsKey('Authorization')) {
       final token = await getAccessToken();
       if (token != null && token.isNotEmpty) {
@@ -64,8 +67,10 @@ class AuthInterceptor extends QueuedInterceptor {
             data: {'refreshToken': refreshToken},
           );
 
-          if (refreshResponse.statusCode == 200 && refreshResponse.data != null) {
-            final resData = refreshResponse.data['data'] as Map<String, dynamic>;
+          if (refreshResponse.statusCode == 200 &&
+              refreshResponse.data != null) {
+            final resData =
+                refreshResponse.data['data'] as Map<String, dynamic>;
             final newAccessToken = resData['accessToken'] as String;
             final newRefreshToken = resData['refreshToken'] as String;
 

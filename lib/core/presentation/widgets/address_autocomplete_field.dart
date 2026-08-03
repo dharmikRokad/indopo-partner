@@ -28,7 +28,8 @@ class AddressAutocompleteField extends StatefulWidget {
   });
 
   @override
-  State<AddressAutocompleteField> createState() => _AddressAutocompleteFieldState();
+  State<AddressAutocompleteField> createState() =>
+      _AddressAutocompleteFieldState();
 }
 
 class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
@@ -97,7 +98,9 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
     });
 
     try {
-      final position = await LocationService.instance.getCurrentLocation(context);
+      final position = await LocationService.instance.getCurrentLocation(
+        context,
+      );
       if (position != null) {
         if (mounted) {
           final repo = context.read<ProfileRepository>();
@@ -109,13 +112,28 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
           if (mounted) {
             if (address != null) {
               widget.controller.text = address;
-              widget.onLocationChanged(address, position.latitude, position.longitude);
-              AppSnackBar.showSuccess(context, 'Location retrieved successfully!');
+              widget.onLocationChanged(
+                address,
+                position.latitude,
+                position.longitude,
+              );
+              AppSnackBar.showSuccess(
+                context,
+                'Location retrieved successfully!',
+              );
             } else {
-              final fallbackAddress = 'Lat: ${position.latitude.toStringAsFixed(6)}, Long: ${position.longitude.toStringAsFixed(6)}';
+              final fallbackAddress =
+                  'Lat: ${position.latitude.toStringAsFixed(6)}, Long: ${position.longitude.toStringAsFixed(6)}';
               widget.controller.text = fallbackAddress;
-              widget.onLocationChanged(fallbackAddress, position.latitude, position.longitude);
-              AppSnackBar.showSuccess(context, 'Location coordinates retrieved!');
+              widget.onLocationChanged(
+                fallbackAddress,
+                position.latitude,
+                position.longitude,
+              );
+              AppSnackBar.showSuccess(
+                context,
+                'Location coordinates retrieved!',
+              );
             }
           }
         }
@@ -138,7 +156,10 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: TextStyles.headingSemiBold.copyWith(fontSize: 14)),
+        Text(
+          widget.label,
+          style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: widget.controller,
@@ -148,17 +169,27 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
           style: const TextStyle(color: Colors.white, fontSize: 15),
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.8), fontSize: 15),
+            hintStyle: TextStyle(
+              color: AppColors.textMuted.withValues(alpha: 0.8),
+              fontSize: 15,
+            ),
             filled: true,
             fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.blue2.withValues(alpha: 0.3)),
+              borderSide: BorderSide(
+                color: AppColors.blue2.withValues(alpha: 0.3),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.blue2.withValues(alpha: 0.3)),
+              borderSide: BorderSide(
+                color: AppColors.blue2.withValues(alpha: 0.3),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -170,11 +201,17 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
                     child: SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue1),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.blue1,
+                      ),
                     ),
                   )
                 : IconButton(
-                    icon: const Icon(Icons.my_location_rounded, color: AppColors.blue1),
+                    icon: const Icon(
+                      Icons.my_location_rounded,
+                      color: AppColors.blue1,
+                    ),
                     tooltip: 'Get Current Location',
                     onPressed: _getCurrentLocation,
                   ),
@@ -188,7 +225,10 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
             child: SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue1),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.blue1,
+              ),
             ),
           ),
         if (_suggestions.isNotEmpty)
@@ -203,7 +243,8 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _suggestions.length,
-              separatorBuilder: (context, index) => const Divider(color: AppColors.blue3, height: 1),
+              separatorBuilder: (context, index) =>
+                  const Divider(color: AppColors.blue3, height: 1),
               itemBuilder: (context, index) {
                 final suggestion = _suggestions[index];
                 return ListTile(

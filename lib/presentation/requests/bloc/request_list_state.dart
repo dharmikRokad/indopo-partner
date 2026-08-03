@@ -44,6 +44,11 @@ class RequestListState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [status, requests, requestStatus, hasUnreadNew, errorMessage];
+  List<Object?> get props => [
+    status,
+    requests,
+    requestStatus,
+    hasUnreadNew,
+    errorMessage,
+  ];
 }

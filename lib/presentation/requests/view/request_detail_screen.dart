@@ -57,7 +57,8 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
     final authState = context.read<AuthBloc>().state;
     PartnerType partnerRole = PartnerType.doctor;
     String? partnerId;
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       partnerRole = authState.partner!.role;
       partnerId = authState.partner!.id;
     }
@@ -107,17 +108,22 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
               );
             }
           } else if (state.status == RequestDetailStatus.failure) {
-            AppSnackBar.showError(context, state.errorMessage ?? 'An error occurred');
+            AppSnackBar.showError(
+              context,
+              state.errorMessage ?? 'An error occurred',
+            );
           }
         },
         builder: (context, state) {
-          if (state.status == RequestDetailStatus.loading || state.status == RequestDetailStatus.initial) {
+          if (state.status == RequestDetailStatus.loading ||
+              state.status == RequestDetailStatus.initial) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.blue1),
             );
           }
 
-          if (state.status == RequestDetailStatus.failure && state.request == null) {
+          if (state.status == RequestDetailStatus.failure &&
+              state.request == null) {
             return Center(
               child: Text(
                 'Failed to load request: ${state.errorMessage}',
@@ -415,21 +421,22 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           context.read<RequestDetailBloc>().add(
-                                StartPrescriptionChat(
-                                  id: widget.id,
-                                  partnerId: partnerId,
-                                  patientId: req.patientId,
-                                  prescriptionUrl: req.attachments.isNotEmpty
-                                      ? req.attachments.first
-                                      : null,
-                                  notes: req.description,
-                                  notificationId:
-                                      req.notificationId ?? widget.id,
-                                ),
-                              );
+                            StartPrescriptionChat(
+                              id: widget.id,
+                              partnerId: partnerId,
+                              patientId: req.patientId,
+                              prescriptionUrl: req.attachments.isNotEmpty
+                                  ? req.attachments.first
+                                  : null,
+                              notes: req.description,
+                              notificationId: req.notificationId ?? widget.id,
+                            ),
+                          );
                         },
-                        icon: const Icon(Icons.chat_bubble_rounded,
-                            color: Colors.white),
+                        icon: const Icon(
+                          Icons.chat_bubble_rounded,
+                          color: Colors.white,
+                        ),
                         label: Text(
                           'Go to Chat',
                           style: TextStyles.headingBold.copyWith(
@@ -497,17 +504,26 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                                   backgroundColor: Colors.transparent,
                                   builder: (modalContext) =>
                                       AssignAppointmentDialog(
-                                    requestId: widget.id,
-                                    onConfirmed: (AppointmentModel confirmedAppt) {
-                                      context.pop();
-                                      context.read<RequestDetailBloc>().add(
-                                            AppointmentConfirmed(confirmedAppt),
-                                          );
-                                      context.read<RequestDetailBloc>().add(
-                                            FetchRequestDetail(widget.id),
-                                          );
-                                    },
-                                  ),
+                                        requestId: widget.id,
+                                        onConfirmed:
+                                            (AppointmentModel confirmedAppt) {
+                                              context.pop();
+                                              context
+                                                  .read<RequestDetailBloc>()
+                                                  .add(
+                                                    AppointmentConfirmed(
+                                                      confirmedAppt,
+                                                    ),
+                                                  );
+                                              context
+                                                  .read<RequestDetailBloc>()
+                                                  .add(
+                                                    FetchRequestDetail(
+                                                      widget.id,
+                                                    ),
+                                                  );
+                                            },
+                                      ),
                                 );
                               },
                               style: ElevatedButton.styleFrom(
@@ -574,8 +590,8 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                             child: ElevatedButton(
                               onPressed: () {
                                 context.read<RequestDetailBloc>().add(
-                                      CompleteRequest(widget.id),
-                                    );
+                                  CompleteRequest(widget.id),
+                                );
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
@@ -717,8 +733,11 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    const Icon(Icons.image_search_rounded,
-                        color: AppColors.blue1, size: 20),
+                    const Icon(
+                      Icons.image_search_rounded,
+                      color: AppColors.blue1,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Prescription Image',
@@ -726,8 +745,10 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: Colors.white54),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white54,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -752,7 +773,7 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                               color: AppColors.blue1,
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
+                                        loadingProgress.expectedTotalBytes!
                                   : null,
                             ),
                           );
@@ -760,8 +781,11 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                         errorBuilder: (context, error, stackTrace) => Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.broken_image_rounded,
-                                color: Colors.white38, size: 64),
+                            const Icon(
+                              Icons.broken_image_rounded,
+                              color: Colors.white38,
+                              size: 64,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               'Unable to load image',

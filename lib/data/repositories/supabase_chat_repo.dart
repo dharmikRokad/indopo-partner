@@ -11,12 +11,9 @@ class SupabaseChatRepository {
   final ApiClient _apiClient;
   final SupabaseClient? _client;
 
-  SupabaseChatRepository({
-    required ApiClient apiClient,
-    SupabaseClient? client,
-  })  : _apiClient = apiClient,
-        _client = client;
-
+  SupabaseChatRepository({required ApiClient apiClient, SupabaseClient? client})
+    : _apiClient = apiClient,
+      _client = client;
 
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 
@@ -30,8 +27,7 @@ class SupabaseChatRepository {
     final values = List<int>.generate(16, (_) => random.nextInt(256));
     values[6] = (values[6] & 0x0f) | 0x40; // version 4
     values[8] = (values[8] & 0x3f) | 0x80; // variant
-    final hex =
-        values.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    final hex = values.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
     return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
         '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
         '${hex.substring(20)}';
@@ -65,12 +61,14 @@ class SupabaseChatRepository {
         );
         if (response.statusCode == 200 && response.data != null) {
           final resData = response.data['data'] as Map<String, dynamic>;
-          chatId = resData['chatId']?.toString() ??
+          chatId =
+              resData['chatId']?.toString() ??
               resData['chat']?['id']?.toString();
         }
       } catch (e) {
         debugPrint(
-            '[SupabaseChatRepository] openPrescriptionChat initPrescriptionThread error: $e');
+          '[SupabaseChatRepository] openPrescriptionChat initPrescriptionThread error: $e',
+        );
       }
     }
 
@@ -87,7 +85,8 @@ class SupabaseChatRepository {
         chatId = room.id;
       } catch (e) {
         debugPrint(
-            '[SupabaseChatRepository] openPrescriptionChat getOrCreateChatRoom error: $e');
+          '[SupabaseChatRepository] openPrescriptionChat getOrCreateChatRoom error: $e',
+        );
       }
     }
 
@@ -97,7 +96,8 @@ class SupabaseChatRepository {
         await _apiClient.patch(ApiEndpoints.notificationRead(notificationId));
       } catch (e) {
         debugPrint(
-            '[SupabaseChatRepository] openPrescriptionChat markNotificationAsRead error: $e');
+          '[SupabaseChatRepository] openPrescriptionChat markNotificationAsRead error: $e',
+        );
       }
     }
 
@@ -170,17 +170,21 @@ class SupabaseChatRepository {
         .eq('chat_id', chatId)
         .order('created_at', ascending: false)
         .map((dataList) {
-          final allMessages =
-              dataList.map((map) => ChatMessage.fromJson(map)).toList();
-
-          final rootMaps = dataList
-              .where((m) =>
-                  m['parent_message_id'] == null ||
-                  (m['parent_message_id'] as String?)?.trim().isEmpty == true)
+          final allMessages = dataList
+              .map((map) => ChatMessage.fromJson(map))
               .toList();
 
-          final replyMessages =
-              allMessages.where((m) => !m.isRootMessage).toList();
+          final rootMaps = dataList
+              .where(
+                (m) =>
+                    m['parent_message_id'] == null ||
+                    (m['parent_message_id'] as String?)?.trim().isEmpty == true,
+              )
+              .toList();
+
+          final replyMessages = allMessages
+              .where((m) => !m.isRootMessage)
+              .toList();
 
           final rootMessages = rootMaps.map((map) {
             final rootMsg = ChatMessage.fromJson(map);
@@ -188,8 +192,10 @@ class SupabaseChatRepository {
                 .where((r) => r.parentMessageId == rootMsg.id)
                 .toList();
 
-            final calculatedReplyCount =
-                max(rootMsg.replyCount, repliesForRoot.length);
+            final calculatedReplyCount = max(
+              rootMsg.replyCount,
+              repliesForRoot.length,
+            );
 
             int calculatedUnreadReplyCount = rootMsg.unreadReplyCount;
             final lastReadTime = _threadLastReadTimes[rootMsg.id];
@@ -259,8 +265,8 @@ class SupabaseChatRepository {
   }) async {
     final String? validParentId =
         (parentMessageId != null && parentMessageId.trim().isNotEmpty)
-            ? parentMessageId.trim()
-            : null;
+        ? parentMessageId.trim()
+        : null;
 
     final String messageId = _generateId();
     final DateTime now = DateTime.now().toUtc();
@@ -295,12 +301,15 @@ class SupabaseChatRepository {
           final int currentUnread =
               (parentRow['unread_reply_count'] as int? ?? 0);
 
-          await _supabase.from('messages').update({
-            'reply_count': currentReply + 1,
-            // Increment unread for the PARTNER when the PATIENT sends a reply
-            if (senderRole == 'PATIENT')
-              'unread_reply_count': currentUnread + 1,
-          }).eq('id', validParentId);
+          await _supabase
+              .from('messages')
+              .update({
+                'reply_count': currentReply + 1,
+                // Increment unread for the PARTNER when the PATIENT sends a reply
+                if (senderRole == 'PATIENT')
+                  'unread_reply_count': currentUnread + 1,
+              })
+              .eq('id', validParentId);
         }
       }
 
@@ -317,16 +326,19 @@ class SupabaseChatRepository {
         final int patientUnread =
             (chatRow['patient_unread_count'] as int? ?? 0);
 
-        await _supabase.from('chats').update({
-          'last_message': content,
-          'last_message_time': now.toIso8601String(),
-          // When partner sends → increment patient's unread
-          if (senderRole == 'PARTNER')
-            'patient_unread_count': patientUnread + 1,
-          // When patient sends → increment partner's unread
-          if (senderRole == 'PATIENT')
-            'partner_unread_count': partnerUnread + 1,
-        }).eq('id', chatId);
+        await _supabase
+            .from('chats')
+            .update({
+              'last_message': content,
+              'last_message_time': now.toIso8601String(),
+              // When partner sends → increment patient's unread
+              if (senderRole == 'PARTNER')
+                'patient_unread_count': patientUnread + 1,
+              // When patient sends → increment partner's unread
+              if (senderRole == 'PATIENT')
+                'partner_unread_count': partnerUnread + 1,
+            })
+            .eq('id', chatId);
       }
     } catch (e) {
       debugPrint('[SupabaseChatRepository] sendMessage error: $e');
@@ -343,10 +355,12 @@ class SupabaseChatRepository {
     try {
       await _supabase
           .from('chats')
-          .update({'partner_unread_count': 0}).eq('id', chatId);
+          .update({'partner_unread_count': 0})
+          .eq('id', chatId);
     } catch (e) {
       debugPrint(
-          '[SupabaseChatRepository] markPartnerChatsUnreadAsRead error: $e');
+        '[SupabaseChatRepository] markPartnerChatsUnreadAsRead error: $e',
+      );
     }
   }
 
@@ -357,10 +371,10 @@ class SupabaseChatRepository {
     try {
       await _supabase
           .from('messages')
-          .update({'unread_reply_count': 0}).eq('id', parentMessageId);
+          .update({'unread_reply_count': 0})
+          .eq('id', parentMessageId);
     } catch (e) {
-      debugPrint(
-          '[SupabaseChatRepository] markThreadUnreadAsRead error: $e');
+      debugPrint('[SupabaseChatRepository] markThreadUnreadAsRead error: $e');
     }
   }
 }

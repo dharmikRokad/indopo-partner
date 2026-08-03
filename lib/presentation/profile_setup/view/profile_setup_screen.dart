@@ -178,10 +178,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
                     Icons.camera_alt_outlined,
                     color: AppColors.blue1,
                   ),
-                  title: Text(
-                    'Take a Photo',
-                    style: TextStyles.bodyMedium,
-                  ),
+                  title: Text('Take a Photo', style: TextStyles.bodyMedium),
                   onTap: () {
                     Navigator.pop(context);
                     _pickProfileImage(ImageSource.camera);
@@ -228,11 +225,11 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
       }
 
       context.read<ProfileSetupBloc>().add(
-            ProfileSubmitted(
-              details,
-              profilePictureFile: _stateCubit.state.selectedImageFile,
-            ),
-          );
+        ProfileSubmitted(
+          details,
+          profilePictureFile: _stateCubit.state.selectedImageFile,
+        ),
+      );
     }
   }
 
@@ -748,7 +745,9 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
                     ),
                     textStyle: const TextStyle(fontSize: 12),
                   ),
-                  child: Text(state.selectedImageFile != null ? 'Change' : 'Browse'),
+                  child: Text(
+                    state.selectedImageFile != null ? 'Change' : 'Browse',
+                  ),
                 ),
               ],
             ),

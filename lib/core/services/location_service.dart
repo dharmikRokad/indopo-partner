@@ -17,21 +17,31 @@ class LocationService {
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Text(
                 'Location Services Disabled',
-                style: TextStyles.headingSemiBold.copyWith(color: Colors.white, fontSize: 18),
+                style: TextStyles.headingSemiBold.copyWith(
+                  color: Colors.white,
+                  fontSize: 18,
+                ),
               ),
               content: Text(
                 'Location services are disabled on your device. Please enable them to set your address using GPS.',
-                style: TextStyles.bodyRegular.copyWith(color: AppColors.textMuted, fontSize: 14),
+                style: TextStyles.bodyRegular.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 14,
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Cancel',
-                    style: TextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+                    style: TextStyles.bodyMedium.copyWith(
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -41,7 +51,10 @@ class LocationService {
                   },
                   child: Text(
                     'Open Settings',
-                    style: TextStyles.bodyMedium.copyWith(color: AppColors.blue1, fontWeight: FontWeight.bold),
+                    style: TextStyles.bodyMedium.copyWith(
+                      color: AppColors.blue1,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -61,21 +74,31 @@ class LocationService {
               context: context,
               builder: (context) => AlertDialog(
                 backgroundColor: AppColors.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 title: Text(
                   'Permission Required',
-                  style: TextStyles.headingSemiBold.copyWith(color: Colors.white, fontSize: 18),
+                  style: TextStyles.headingSemiBold.copyWith(
+                    color: Colors.white,
+                    fontSize: 18,
+                  ),
                 ),
                 content: Text(
                   'Location permission is required to update your coordinates. Please grant the permission.',
-                  style: TextStyles.bodyRegular.copyWith(color: AppColors.textMuted, fontSize: 14),
+                  style: TextStyles.bodyRegular.copyWith(
+                    color: AppColors.textMuted,
+                    fontSize: 14,
+                  ),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       'Cancel',
-                      style: TextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+                      style: TextStyles.bodyMedium.copyWith(
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
                   TextButton(
@@ -85,7 +108,10 @@ class LocationService {
                     },
                     child: Text(
                       'Grant',
-                      style: TextStyles.bodyMedium.copyWith(color: AppColors.blue1, fontWeight: FontWeight.bold),
+                      style: TextStyles.bodyMedium.copyWith(
+                        color: AppColors.blue1,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -102,21 +128,31 @@ class LocationService {
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Text(
                 'Permission Permanently Denied',
-                style: TextStyles.headingSemiBold.copyWith(color: Colors.white, fontSize: 18),
+                style: TextStyles.headingSemiBold.copyWith(
+                  color: Colors.white,
+                  fontSize: 18,
+                ),
               ),
               content: Text(
                 'Location permission is permanently denied. This permission is required to set your address using GPS. Please enable it in the app settings.',
-                style: TextStyles.bodyRegular.copyWith(color: AppColors.textMuted, fontSize: 14),
+                style: TextStyles.bodyRegular.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 14,
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Cancel',
-                    style: TextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+                    style: TextStyles.bodyMedium.copyWith(
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -126,7 +162,10 @@ class LocationService {
                   },
                   child: Text(
                     'Open Settings',
-                    style: TextStyles.bodyMedium.copyWith(color: AppColors.blue1, fontWeight: FontWeight.bold),
+                    style: TextStyles.bodyMedium.copyWith(
+                      color: AppColors.blue1,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

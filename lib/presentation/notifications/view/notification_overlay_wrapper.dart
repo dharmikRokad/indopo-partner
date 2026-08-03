@@ -72,7 +72,8 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     final authState = context.read<AuthBloc>().state;
     PartnerType? partnerRole;
     String partnerId = '';
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       partnerRole = authState.partner!.role;
       partnerId = authState.partner!.id;
     }
@@ -80,7 +81,8 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
     final metadata = notification.metadata ?? {};
     final String? chatId =
         metadata['chatId']?.toString() ?? metadata['chat_id']?.toString();
-    final String? parentMessageId = metadata['parentMessageId']?.toString() ??
+    final String? parentMessageId =
+        metadata['parentMessageId']?.toString() ??
         metadata['parent_message_id']?.toString();
     final String? appointmentId =
         metadata['appointmentId']?.toString() ?? metadata['id']?.toString();
@@ -98,16 +100,19 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
           MaterialPageRoute(
             builder: (_) => BlocProvider(
               create: (_) => ThreadBloc(repo: repo)
-                ..add(InitThreadStream(
-                  chatId: chatId,
-                  parentMessageId: parentMessageId,
-                  partnerId: partnerId,
-                )),
+                ..add(
+                  InitThreadStream(
+                    chatId: chatId,
+                    parentMessageId: parentMessageId,
+                    partnerId: partnerId,
+                  ),
+                ),
               child: ThreadChatScreen(
                 parentMessageId: parentMessageId,
                 chatId: chatId,
                 notes: metadata['notes']?.toString() ?? notification.message,
-                prescriptionUrl: metadata['prescriptionUrl']?.toString() ??
+                prescriptionUrl:
+                    metadata['prescriptionUrl']?.toString() ??
                     metadata['imageUrl']?.toString(),
                 patientName: notification.patient?.fullName,
               ),
@@ -141,9 +146,11 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
   Widget build(BuildContext context) {
     return BlocListener<NotificationBloc, NotificationState>(
       listener: (context, state) {
-        if (state.status == NotificationStatus.foregroundReceived && state.notification != null) {
+        if (state.status == NotificationStatus.foregroundReceived &&
+            state.notification != null) {
           final metadata = state.notification!.metadata ?? {};
-          final bool isChatMessage = metadata.containsKey('chatId') ||
+          final bool isChatMessage =
+              metadata.containsKey('chatId') ||
               metadata.containsKey('chat_id') ||
               metadata.containsKey('parentMessageId') ||
               metadata.containsKey('parent_message_id') ||
@@ -153,7 +160,8 @@ class _NotificationOverlayWrapperState extends State<NotificationOverlayWrapper>
           if (!isChatMessage) {
             _showBanner(state.notification!);
           }
-        } else if (state.status == NotificationStatus.opened && state.notification != null) {
+        } else if (state.status == NotificationStatus.opened &&
+            state.notification != null) {
           _handleNotificationRedirection(state.notification!);
         }
       },

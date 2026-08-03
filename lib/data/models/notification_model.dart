@@ -138,10 +138,14 @@ class NotificationModel {
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       partner: json['partner'] != null
-          ? NotificationPartnerInfo.fromJson(json['partner'] as Map<String, dynamic>)
+          ? NotificationPartnerInfo.fromJson(
+              json['partner'] as Map<String, dynamic>,
+            )
           : null,
       patient: json['patient'] != null
-          ? NotificationPatientInfo.fromJson(json['patient'] as Map<String, dynamic>)
+          ? NotificationPatientInfo.fromJson(
+              json['patient'] as Map<String, dynamic>,
+            )
           : null,
     );
   }
@@ -162,21 +166,24 @@ class NotificationModel {
   }
 
   RequestModel toRequestModel() {
-    final inquiryId = metadata?['prescriptionInquiryId']?.toString() ??
+    final inquiryId =
+        metadata?['prescriptionInquiryId']?.toString() ??
         metadata?['appointmentId']?.toString() ??
         id;
 
     final pId = patientId.isNotEmpty
         ? patientId
         : (patient?.id.isNotEmpty == true
-            ? patient!.id
-            : (metadata?['patientId']?.toString() ?? ''));
+              ? patient!.id
+              : (metadata?['patientId']?.toString() ?? ''));
 
     final pName = patient?.fullName.isNotEmpty == true
         ? patient!.fullName
         : (metadata?['patientName']?.toString() ?? 'Unknown Patient');
 
-    final reqStatus = isRead ? RequestStatus.inProgress : RequestStatus.newRequest;
+    final reqStatus = isRead
+        ? RequestStatus.inProgress
+        : RequestStatus.newRequest;
 
     List<String> attachmentList = [];
     if (metadata?['attachments'] is List) {
@@ -187,7 +194,8 @@ class NotificationModel {
       attachmentList = [metadata!['prescriptionUrl'].toString()];
     }
 
-    final tokenNo = metadata?['tokenNumber']?.toString() ??
+    final tokenNo =
+        metadata?['tokenNumber']?.toString() ??
         metadata?['token_number']?.toString() ??
         metadata?['token']?.toString();
 
@@ -198,9 +206,12 @@ class NotificationModel {
       chatId: metadata?['chatId']?.toString(),
       tokenNumber: tokenNo,
       patientName: pName,
-      patientAge: (metadata?['patientAge'] is int) ? metadata!['patientAge'] as int : 30,
+      patientAge: (metadata?['patientAge'] is int)
+          ? metadata!['patientAge'] as int
+          : 30,
       patientGender: metadata?['patientGender']?.toString() ?? 'Other',
-      patientContact: patient?.email ?? metadata?['patientPhone']?.toString() ?? '',
+      patientContact:
+          patient?.email ?? metadata?['patientPhone']?.toString() ?? '',
       description: message,
       attachments: attachmentList,
       timestamp: createdAt,

@@ -13,10 +13,7 @@ class InitChatStream extends ChatEvent {
   final String chatId;
   final String partnerId;
 
-  const InitChatStream({
-    required this.chatId,
-    required this.partnerId,
-  });
+  const InitChatStream({required this.chatId, required this.partnerId});
 
   @override
   List<Object?> get props => [chatId, partnerId];

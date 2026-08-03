@@ -53,7 +53,8 @@ class RequestRepository {
 
       if (status == RequestStatus.newRequest) {
         queryParams['isRead'] = false;
-      } else if (status == RequestStatus.inProgress || status == RequestStatus.completed) {
+      } else if (status == RequestStatus.inProgress ||
+          status == RequestStatus.completed) {
         queryParams['isRead'] = true;
       }
 
@@ -76,7 +77,9 @@ class RequestRepository {
     return [];
   }
 
-  Future<NotificationModel?> markNotificationAsRead(String notificationId) async {
+  Future<NotificationModel?> markNotificationAsRead(
+    String notificationId,
+  ) async {
     try {
       final response = await _apiClient.patch(
         ApiEndpoints.notificationRead(notificationId),

@@ -19,13 +19,15 @@ class ChatsListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
     final String partnerId =
-        authState.status == AuthBlocStatus.authenticated && authState.partner != null
-            ? authState.partner!.id
-            : '';
+        authState.status == AuthBlocStatus.authenticated &&
+            authState.partner != null
+        ? authState.partner!.id
+        : '';
 
     return BlocProvider(
-      create: (_) => ChatListBloc(repo: context.read<SupabaseChatRepository>())
-        ..add(InitChatListStream(partnerId: partnerId)),
+      create: (_) =>
+          ChatListBloc(repo: context.read<SupabaseChatRepository>())
+            ..add(InitChatListStream(partnerId: partnerId)),
       child: const _ChatsListContent(),
     );
   }
@@ -37,9 +39,10 @@ class _ChatsListContent extends StatelessWidget {
   Future<void> _onRefresh(BuildContext context) async {
     final authState = context.read<AuthBloc>().state;
     final String partnerId =
-        authState.status == AuthBlocStatus.authenticated && authState.partner != null
-            ? authState.partner!.id
-            : '';
+        authState.status == AuthBlocStatus.authenticated &&
+            authState.partner != null
+        ? authState.partner!.id
+        : '';
     context.read<ChatListBloc>().add(InitChatListStream(partnerId: partnerId));
     // Small delay so the pull-to-refresh indicator resolves gracefully
     await Future.delayed(const Duration(milliseconds: 500));
@@ -64,7 +67,8 @@ class _ChatsListContent extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: BlocBuilder<ChatListBloc, ChatListState>(
             builder: (context, state) {
-              if (state.status == ChatListStatus.loading || state.status == ChatListStatus.initial) {
+              if (state.status == ChatListStatus.loading ||
+                  state.status == ChatListStatus.initial) {
                 return const Center(
                   child: CircularProgressIndicator(color: AppColors.blue1),
                 );
@@ -74,13 +78,13 @@ class _ChatsListContent extends StatelessWidget {
                 return ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
-                    SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.35),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.35),
                     Center(
                       child: Text(
                         'Failed to load chats. Pull to refresh.',
-                        style: TextStyles.bodyRegular
-                            .copyWith(color: AppColors.textMuted),
+                        style: TextStyles.bodyRegular.copyWith(
+                          color: AppColors.textMuted,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -125,14 +129,14 @@ class _ChatsListContent extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   'No active chats',
-                  style:
-                      TextStyles.headingSemiBold.copyWith(fontSize: 18),
+                  style: TextStyles.headingSemiBold.copyWith(fontSize: 18),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'When prescription inquiries are initialised, real-time chats appear here.',
-                  style: TextStyles.bodyRegular
-                      .copyWith(color: AppColors.textMuted),
+                  style: TextStyles.bodyRegular.copyWith(
+                    color: AppColors.textMuted,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -175,11 +179,12 @@ class _ChatListTile extends StatelessWidget {
       child: InkWell(
         onTap: () async {
           // Reset unread count immediately then navigate
-          context
-              .read<SupabaseChatRepository>()
-              .markPartnerChatsUnreadAsRead(room.id);
-          await GoRouter.of(context)
-              .push(AppRoutes.chat.replaceAll(':id', room.id));
+          context.read<SupabaseChatRepository>().markPartnerChatsUnreadAsRead(
+            room.id,
+          );
+          await GoRouter.of(
+            context,
+          ).push(AppRoutes.chat.replaceAll(':id', room.id));
           // Stream update will automatically reflect the reset count
         },
         borderRadius: BorderRadius.circular(16),
@@ -198,12 +203,10 @@ class _ChatListTile extends StatelessWidget {
           child: Row(
             children: [
               // Avatar
-              room.patientPhotoUrl != null &&
-                      room.patientPhotoUrl!.isNotEmpty
+              room.patientPhotoUrl != null && room.patientPhotoUrl!.isNotEmpty
                   ? CircleAvatar(
                       radius: 24,
-                      backgroundImage:
-                          NetworkImage(room.patientPhotoUrl!),
+                      backgroundImage: NetworkImage(room.patientPhotoUrl!),
                     )
                   : CircleAvatar(
                       radius: 24,
@@ -228,8 +231,7 @@ class _ChatListTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             room.patientName,
-                            style:
-                                TextStyles.headingSemiBold.copyWith(
+                            style: TextStyles.headingSemiBold.copyWith(
                               fontSize: 16,
                               fontWeight: hasUnread
                                   ? FontWeight.bold

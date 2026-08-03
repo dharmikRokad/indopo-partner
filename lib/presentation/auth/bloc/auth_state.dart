@@ -38,7 +38,8 @@ class AuthState extends Equatable {
     this.successMessage,
   });
 
-  factory AuthState.initial() => const AuthState(status: AuthBlocStatus.initial);
+  factory AuthState.initial() =>
+      const AuthState(status: AuthBlocStatus.initial);
 
   AuthState copyWith({
     AuthBlocStatus? status,
@@ -63,6 +64,11 @@ class AuthState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [status, selectedRole, partner, errorMessage, successMessage];
+  List<Object?> get props => [
+    status,
+    selectedRole,
+    partner,
+    errorMessage,
+    successMessage,
+  ];
 }

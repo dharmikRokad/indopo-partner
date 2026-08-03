@@ -64,7 +64,7 @@ class DeepLinkService {
         'screenWidth': size.width.toInt(),
         'screenHeight': size.height.toInt(),
       };
-      
+
       // Deferred check placeholder - logic for GET/POST /deferred-deeplink backend call if implemented
       // ignore: unused_local_variable
       final _ = fingerprint;

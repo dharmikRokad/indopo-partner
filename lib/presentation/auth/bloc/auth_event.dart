@@ -9,7 +9,14 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class AuthCheckRequested extends AuthEvent {}
+class AuthCheckRequested extends AuthEvent {
+  final bool checkExistingSession;
+
+  const AuthCheckRequested({this.checkExistingSession = true});
+
+  @override
+  List<Object?> get props => [checkExistingSession];
+}
 
 class PartnerUpdated extends AuthEvent {
   final PartnerModel partner;
@@ -33,10 +40,7 @@ class LoginSubmitted extends AuthEvent {
   final String username;
   final String password;
 
-  const LoginSubmitted({
-    required this.username,
-    required this.password,
-  });
+  const LoginSubmitted({required this.username, required this.password});
 
   @override
   List<Object?> get props => [username, password];
@@ -93,5 +97,12 @@ class BecomePartnerSubmitted extends AuthEvent {
   });
 
   @override
-  List<Object?> get props => [name, email, phone, orgName, orgAddress, partnerType];
+  List<Object?> get props => [
+    name,
+    email,
+    phone,
+    orgName,
+    orgAddress,
+    partnerType,
+  ];
 }

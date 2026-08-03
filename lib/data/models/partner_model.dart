@@ -51,7 +51,8 @@ class PartnerModel {
     final details = json['details'] as Map<String, dynamic>? ?? const {};
     final orgAddressStr =
         json['orgAddress'] as String? ?? details['address'] as String? ?? '';
-    final profilePic = json['profilePicture'] as String? ??
+    final profilePic =
+        json['profilePicture'] as String? ??
         json['profile_picture'] as String? ??
         json['avatar'] as String? ??
         details['profile_picture'] as String? ??
@@ -77,8 +78,7 @@ class PartnerModel {
       profilePicture: profilePic,
       isAvailable:
           json['isAvailable'] as bool? ?? json['is_available'] as bool? ?? true,
-      isActive:
-          json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
+      isActive: json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
     );
   }
 
@@ -141,7 +141,8 @@ class PartnerModel {
         .map((e) => ServiceModel.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    final profilePic = json['profilePicture'] as String? ??
+    final profilePic =
+        json['profilePicture'] as String? ??
         json['profile_picture'] as String? ??
         json['avatar'] as String? ??
         json['doctorProfile']?['profilePicture'] as String?;
@@ -168,8 +169,7 @@ class PartnerModel {
       profilePicture: profilePic,
       isAvailable:
           json['isAvailable'] as bool? ?? json['is_active'] as bool? ?? true,
-      isActive:
-          json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
+      isActive: json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
     );
   }
 

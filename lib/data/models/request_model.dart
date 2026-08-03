@@ -85,7 +85,8 @@ class RequestModel {
       mappedStatus = RequestStatus.cancelled;
     }
 
-    final tokenNo = json['tokenNumber']?.toString() ??
+    final tokenNo =
+        json['tokenNumber']?.toString() ??
         json['token_number']?.toString() ??
         json['token']?.toString() ??
         json['tokenNo']?.toString() ??
@@ -96,7 +97,9 @@ class RequestModel {
     return RequestModel(
       id: json['id'] as String? ?? '',
       patientId: json['patientId'] as String? ?? json['patient_id'] as String?,
-      notificationId: json['notificationId'] as String? ?? json['notification_id'] as String?,
+      notificationId:
+          json['notificationId'] as String? ??
+          json['notification_id'] as String?,
       chatId: json['chatId'] as String? ?? json['chat_id'] as String?,
       tokenNumber: tokenNo,
       patientName: json['patientName'] as String? ?? 'Unknown Patient',

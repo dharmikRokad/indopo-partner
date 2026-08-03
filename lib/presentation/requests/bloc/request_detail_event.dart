@@ -32,7 +32,13 @@ class AcceptRequest extends RequestDetailEvent {
   });
 
   @override
-  List<Object?> get props => [id, partnerId, partnerName, patientId, patientName];
+  List<Object?> get props => [
+    id,
+    partnerId,
+    partnerName,
+    patientId,
+    patientName,
+  ];
 }
 
 class RejectRequest extends RequestDetailEvent {
@@ -73,13 +79,13 @@ class StartPrescriptionChat extends RequestDetailEvent {
 
   @override
   List<Object?> get props => [
-        id,
-        partnerId,
-        patientId,
-        prescriptionUrl,
-        notes,
-        notificationId,
-      ];
+    id,
+    partnerId,
+    patientId,
+    prescriptionUrl,
+    notes,
+    notificationId,
+  ];
 }
 
 class AppointmentConfirmed extends RequestDetailEvent {

@@ -27,7 +27,8 @@ class ChatScreen extends StatelessWidget {
     String partnerId = '';
     bool isMedicalPartner = false;
 
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       partnerId = authState.partner!.id;
       final role = authState.partner!.role;
       isMedicalPartner =
@@ -105,8 +106,7 @@ class _ChatContentState extends State<_ChatContent> {
                 children: [
                   Text(
                     'Prescription Inquiries',
-                    style:
-                        TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                    style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
                   ),
                   Row(
                     children: [
@@ -138,10 +138,7 @@ class _ChatContentState extends State<_ChatContent> {
         children: [
           if (!widget.isMedicalPartner)
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               color: AppColors.error.withValues(alpha: 0.2),
               child: Row(
                 children: [
@@ -164,10 +161,12 @@ class _ChatContentState extends State<_ChatContent> {
             child: widget.isMedicalPartner
                 ? BlocBuilder<ChatBloc, ChatState>(
                     builder: (context, state) {
-                      if (state.status == ChatStatus.loading || state.status == ChatStatus.initial) {
+                      if (state.status == ChatStatus.loading ||
+                          state.status == ChatStatus.initial) {
                         return const Center(
                           child: CircularProgressIndicator(
-                              color: AppColors.blue1),
+                            color: AppColors.blue1,
+                          ),
                         );
                       }
                       if (state.status == ChatStatus.failure) {
@@ -183,7 +182,8 @@ class _ChatContentState extends State<_ChatContent> {
                             child: Text(
                               'No prescription inquiries yet.',
                               style: TextStyles.labelRegular.copyWith(
-                                  color: AppColors.textMuted),
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           );
                         }
@@ -218,7 +218,8 @@ class _ChatContentState extends State<_ChatContent> {
                         Text(
                           'Chat Disabled',
                           style: TextStyles.headingSemiBold.copyWith(
-                              color: AppColors.textMuted),
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -248,7 +249,8 @@ class _PrescriptionInquiryCard extends StatelessWidget {
     final String? imageUrl = rootMessage.imageUrl?.isNotEmpty == true
         ? rootMessage.imageUrl
         : null;
-    final String notes = rootMessage.content.isNotEmpty &&
+    final String notes =
+        rootMessage.content.isNotEmpty &&
             rootMessage.content != '📷 Prescription Inquiry'
         ? rootMessage.content
         : '';
@@ -258,9 +260,9 @@ class _PrescriptionInquiryCard extends StatelessWidget {
       child: InkWell(
         onTap: () async {
           // Mark this thread's unread replies as read before navigating
-          await context
-              .read<SupabaseChatRepository>()
-              .markThreadUnreadAsRead(rootMessage.id);
+          await context.read<SupabaseChatRepository>().markThreadUnreadAsRead(
+            rootMessage.id,
+          );
 
           if (!context.mounted) return;
 
@@ -268,13 +270,15 @@ class _PrescriptionInquiryCard extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) => BlocProvider(
-                create: (_) => ThreadBloc(
-                  repo: context.read<SupabaseChatRepository>(),
-                )..add(InitThreadStream(
-                    chatId: chatId,
-                    parentMessageId: rootMessage.id,
-                    partnerId: partnerId,
-                  )),
+                create: (_) =>
+                    ThreadBloc(repo: context.read<SupabaseChatRepository>())
+                      ..add(
+                        InitThreadStream(
+                          chatId: chatId,
+                          parentMessageId: rootMessage.id,
+                          partnerId: partnerId,
+                        ),
+                      ),
                 child: ThreadChatScreen(
                   parentMessageId: rootMessage.id,
                   chatId: chatId,
@@ -287,9 +291,9 @@ class _PrescriptionInquiryCard extends StatelessWidget {
 
           // Re-mark as read on return (in case more came in)
           if (!context.mounted) return;
-          context
-              .read<SupabaseChatRepository>()
-              .markThreadUnreadAsRead(rootMessage.id);
+          context.read<SupabaseChatRepository>().markThreadUnreadAsRead(
+            rootMessage.id,
+          );
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -324,9 +328,7 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      notes.isNotEmpty
-                          ? notes
-                          : '📷 Prescription Inquiry',
+                      notes.isNotEmpty ? notes : '📷 Prescription Inquiry',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyles.headingSemiBold.copyWith(
@@ -348,8 +350,7 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                     _Badge(
                       label:
                           '$replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
-                      backgroundColor:
-                          AppColors.blue1.withValues(alpha: 0.2),
+                      backgroundColor: AppColors.blue1.withValues(alpha: 0.2),
                       borderColor: AppColors.blue1.withValues(alpha: 0.5),
                       textColor: AppColors.blue1,
                     )
@@ -373,17 +374,14 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 60,
                       color: AppColors.blue3,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: const Row(
                         children: [
-                          Icon(Icons.picture_as_pdf,
-                              color: AppColors.error),
+                          Icon(Icons.picture_as_pdf, color: AppColors.error),
                           SizedBox(width: 8),
                           Text(
                             'Prescription Document Attached',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 13),
+                            style: TextStyle(color: Colors.white, fontSize: 13),
                           ),
                         ],
                       ),
@@ -452,9 +450,7 @@ class _Badge extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: borderColor != null
-            ? Border.all(color: borderColor!)
-            : null,
+        border: borderColor != null ? Border.all(color: borderColor!) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

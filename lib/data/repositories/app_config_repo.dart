@@ -3,8 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AppConfigRepository {
   final SupabaseClient? _client;
 
-  AppConfigRepository({SupabaseClient? client})
-      : _client = client;
+  AppConfigRepository({SupabaseClient? client}) : _client = client;
 
   SupabaseClient get _supabase => _client ?? Supabase.instance.client;
 

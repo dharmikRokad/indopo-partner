@@ -15,8 +15,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   String? _partnerId;
 
   ThreadBloc({required SupabaseChatRepository repo})
-      : _repo = repo,
-        super(ThreadState.initial()) {
+    : _repo = repo,
+      super(ThreadState.initial()) {
     on<InitThreadStream>(_onInitThreadStream);
     on<ThreadStreamUpdated>(_onThreadStreamUpdated);
     on<SendThreadReply>(_onSendThreadReply);
@@ -36,14 +36,15 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     // Mark unread replies as read when partner opens the thread
     await _repo.markThreadUnreadAsRead(_parentMessageId!);
 
-    _repliesSubscription =
-        _repo.streamThreadReplies(_parentMessageId!).listen(
-      (replies) => add(ThreadStreamUpdated(replies)),
-      onError: (err) {
-        debugPrint('[ThreadBloc] stream error: $err');
-        if (!isClosed) add(const ThreadStreamUpdated([]));
-      },
-    );
+    _repliesSubscription = _repo
+        .streamThreadReplies(_parentMessageId!)
+        .listen(
+          (replies) => add(ThreadStreamUpdated(replies)),
+          onError: (err) {
+            debugPrint('[ThreadBloc] stream error: $err');
+            if (!isClosed) add(const ThreadStreamUpdated([]));
+          },
+        );
   }
 
   void _onThreadStreamUpdated(
@@ -51,11 +52,13 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     Emitter<ThreadState> emit,
   ) {
     if (_parentMessageId == null) return;
-    emit(state.copyWith(
-      status: ThreadStatus.loaded,
-      replies: event.replies,
-      parentMessageId: _parentMessageId,
-    ));
+    emit(
+      state.copyWith(
+        status: ThreadStatus.loaded,
+        replies: event.replies,
+        parentMessageId: _parentMessageId,
+      ),
+    );
   }
 
   Future<void> _onSendThreadReply(

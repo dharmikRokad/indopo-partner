@@ -18,7 +18,8 @@ class ThreadState extends Equatable {
     this.errorMessage,
   });
 
-  factory ThreadState.initial() => const ThreadState(status: ThreadStatus.initial);
+  factory ThreadState.initial() =>
+      const ThreadState(status: ThreadStatus.initial);
 
   ThreadState copyWith({
     ThreadStatus? status,

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide LocalStorage, AuthState;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    hide LocalStorage, AuthState;
 import 'core/constants/app_strings.dart';
 import 'core/network/api_client.dart';
 import 'core/network/token_manager.dart';
@@ -47,10 +48,7 @@ void main() async {
 
   if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
     try {
-      await Supabase.initialize(
-        url: supabaseUrl,
-        anonKey: supabaseAnonKey,
-      );
+      await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
       print('[Main] Supabase initialized successfully');
     } catch (e) {
       print('[Main] Supabase initialization error: $e');
@@ -79,9 +77,7 @@ void main() async {
   final serviceRepository = ServiceRepository(apiClient);
   final dropdownRepository = DropdownRepository(apiClient);
   final appConfigRepository = AppConfigRepository();
-  final supabaseChatRepository = SupabaseChatRepository(
-    apiClient: apiClient,
-  );
+  final supabaseChatRepository = SupabaseChatRepository(apiClient: apiClient);
 
   // Trigger dropdown values load immediately when the user opens the app
   dropdownRepository.fetchDropdownValues();
@@ -95,8 +91,12 @@ void main() async {
         RepositoryProvider<RequestRepository>.value(value: requestRepository),
         RepositoryProvider<ServiceRepository>.value(value: serviceRepository),
         RepositoryProvider<DropdownRepository>.value(value: dropdownRepository),
-        RepositoryProvider<AppConfigRepository>.value(value: appConfigRepository),
-        RepositoryProvider<SupabaseChatRepository>.value(value: supabaseChatRepository),
+        RepositoryProvider<AppConfigRepository>.value(
+          value: appConfigRepository,
+        ),
+        RepositoryProvider<SupabaseChatRepository>.value(
+          value: supabaseChatRepository,
+        ),
       ],
       child: const IndopoPartnerApp(),
     ),
@@ -186,7 +186,10 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
             return BlocListener<AuthBloc, AuthState>(
               listener: (context, state) {
                 if (state.status == AuthBlocStatus.accountSuspended) {
-                  AppSnackBar.showError(context, state.errorMessage ?? 'Account suspended');
+                  AppSnackBar.showError(
+                    context,
+                    state.errorMessage ?? 'Account suspended',
+                  );
                 }
               },
               child: NotificationOverlayWrapper(child: child!),

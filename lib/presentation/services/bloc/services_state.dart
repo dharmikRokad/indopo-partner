@@ -47,11 +47,11 @@ class ServicesState extends Equatable {
 
   @override
   List<Object?> get props => [
-        status,
-        allServices,
-        filteredServices,
-        selectedCategory,
-        categories,
-        errorMessage,
-      ];
+    status,
+    allServices,
+    filteredServices,
+    selectedCategory,
+    categories,
+    errorMessage,
+  ];
 }

@@ -30,8 +30,7 @@ class ProfileSetupState extends Equatable {
     return ProfileSetupState(
       status: status ?? this.status,
       step: step ?? this.step,
-      partner:
-          partner == _kNoChange ? this.partner : partner as PartnerModel?,
+      partner: partner == _kNoChange ? this.partner : partner as PartnerModel?,
       errorMessage: errorMessage == _kNoChange
           ? this.errorMessage
           : errorMessage as String?,

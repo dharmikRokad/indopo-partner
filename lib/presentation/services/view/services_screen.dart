@@ -22,9 +22,7 @@ class ServicesScreen extends StatelessWidget {
     final authState = context.read<AuthBloc>().state;
     if (authState.status != AuthBlocStatus.authenticated ||
         authState.partner == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final partner = authState.partner!;
@@ -53,10 +51,8 @@ class _ServicesContentState extends State<_ServicesContent> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AddEditServiceDialog(
-        categories: categories,
-        partnerId: partnerId,
-      ),
+      builder: (_) =>
+          AddEditServiceDialog(categories: categories, partnerId: partnerId),
     );
 
     if (result != null && mounted) {
@@ -65,7 +61,11 @@ class _ServicesContentState extends State<_ServicesContent> {
     }
   }
 
-  void _openEditServiceDialog(ServiceModel service, List<String> categories, String partnerId) async {
+  void _openEditServiceDialog(
+    ServiceModel service,
+    List<String> categories,
+    String partnerId,
+  ) async {
     final result = await showModalBottomSheet<ServiceModel>(
       context: context,
       isScrollControlled: true,
@@ -97,13 +97,18 @@ class _ServicesContentState extends State<_ServicesContent> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: TextStyles.bodyMedium.copyWith(color: AppColors.textMuted)),
+            child: Text(
+              'Cancel',
+              style: TextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Delete'),
           ),
@@ -129,13 +134,19 @@ class _ServicesContentState extends State<_ServicesContent> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Manage Services', style: TextStyles.headingSemiBold.copyWith(fontSize: 18)),
+            Text(
+              'Manage Services',
+              style: TextStyles.headingSemiBold.copyWith(fontSize: 18),
+            ),
             BlocBuilder<ServicesBloc, ServicesState>(
               builder: (context, state) {
                 if (state.status == ServicesStatus.loaded) {
@@ -154,7 +165,9 @@ class _ServicesContentState extends State<_ServicesContent> {
       body: BlocBuilder<ServicesBloc, ServicesState>(
         builder: (context, state) {
           if (state.status == ServicesStatus.loading) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.blue1));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.blue1),
+            );
           }
 
           if (state.status == ServicesStatus.failure) {
@@ -164,7 +177,11 @@ class _ServicesContentState extends State<_ServicesContent> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: AppColors.error,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Failed to load services',
@@ -179,14 +196,18 @@ class _ServicesContentState extends State<_ServicesContent> {
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<ServicesBloc>().add(LoadServices(
-                          partnerId: partner.id,
-                          role: partner.role,
-                        ));
+                        context.read<ServicesBloc>().add(
+                          LoadServices(
+                            partnerId: partner.id,
+                            role: partner.role,
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.blue1,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: const Text('Try Again'),
                     ),
@@ -220,17 +241,25 @@ class _ServicesContentState extends State<_ServicesContent> {
                           checkmarkColor: Colors.white,
                           backgroundColor: AppColors.surface,
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.textMuted,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textMuted,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
-                              color: isSelected ? AppColors.blue1 : AppColors.blue2.withValues(alpha: 0.3),
+                              color: isSelected
+                                  ? AppColors.blue1
+                                  : AppColors.blue2.withValues(alpha: 0.3),
                             ),
                           ),
                           onSelected: (_) {
-                            context.read<ServicesBloc>().add(FilterServicesByCategory(category));
+                            context.read<ServicesBloc>().add(
+                              FilterServicesByCategory(category),
+                            );
                           },
                         ),
                       );
@@ -247,7 +276,12 @@ class _ServicesContentState extends State<_ServicesContent> {
                           itemCount: state.filteredServices.length,
                           itemBuilder: (context, index) {
                             final service = state.filteredServices[index];
-                            return _buildServiceCard(context, service, state.categories, partner.id);
+                            return _buildServiceCard(
+                              context,
+                              service,
+                              state.categories,
+                              partner.id,
+                            );
                           },
                         ),
                 ),
@@ -262,7 +296,8 @@ class _ServicesContentState extends State<_ServicesContent> {
         builder: (context, state) {
           if (state.status == ServicesStatus.loaded) {
             return FloatingActionButton(
-              onPressed: () => _openAddServiceDialog(state.categories, partner.id),
+              onPressed: () =>
+                  _openAddServiceDialog(state.categories, partner.id),
               backgroundColor: AppColors.blue1,
               child: const Icon(Icons.add, color: Colors.white),
             );
@@ -273,7 +308,11 @@ class _ServicesContentState extends State<_ServicesContent> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, List<String> categories, String partnerId) {
+  Widget _buildEmptyState(
+    BuildContext context,
+    List<String> categories,
+    String partnerId,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Column(
@@ -286,7 +325,11 @@ class _ServicesContentState extends State<_ServicesContent> {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
             ),
-            child: const Icon(Icons.layers_clear_outlined, size: 64, color: AppColors.textMuted),
+            child: const Icon(
+              Icons.layers_clear_outlined,
+              size: 64,
+              color: AppColors.textMuted,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -307,7 +350,9 @@ class _ServicesContentState extends State<_ServicesContent> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.blue1,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -315,14 +360,21 @@ class _ServicesContentState extends State<_ServicesContent> {
     );
   }
 
-  Widget _buildServiceCard(BuildContext context, ServiceModel service, List<String> categories, String partnerId) {
+  Widget _buildServiceCard(
+    BuildContext context,
+    ServiceModel service,
+    List<String> categories,
+    String partnerId,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: service.isAvailable ? AppColors.blue2.withValues(alpha: 0.3) : AppColors.surface,
+          color: service.isAvailable
+              ? AppColors.blue2.withValues(alpha: 0.3)
+              : AppColors.surface,
         ),
       ),
       child: Padding(
@@ -339,18 +391,26 @@ class _ServicesContentState extends State<_ServicesContent> {
                     children: [
                       Text(
                         service.name,
-                        style: TextStyles.headingSemiBold.copyWith(fontSize: 16),
+                        style: TextStyles.headingSemiBold.copyWith(
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.blue1.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           service.category,
-                          style: TextStyles.bodyMedium.copyWith(color: AppColors.blue1, fontSize: 11),
+                          style: TextStyles.bodyMedium.copyWith(
+                            color: AppColors.blue1,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
@@ -358,14 +418,20 @@ class _ServicesContentState extends State<_ServicesContent> {
                 ),
                 Text(
                   '₹${service.price}',
-                  style: TextStyles.headingBold.copyWith(color: AppColors.blue1, fontSize: 20),
+                  style: TextStyles.headingBold.copyWith(
+                    color: AppColors.blue1,
+                    fontSize: 20,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               service.description,
-              style: TextStyles.bodyRegular.copyWith(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyles.bodyRegular.copyWith(
+                color: AppColors.textMuted,
+                fontSize: 13,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -381,7 +447,9 @@ class _ServicesContentState extends State<_ServicesContent> {
                       'Available',
                       style: TextStyles.bodyMedium.copyWith(
                         fontSize: 13,
-                        color: service.isAvailable ? Colors.white : AppColors.textMuted,
+                        color: service.isAvailable
+                            ? Colors.white
+                            : AppColors.textMuted,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -392,10 +460,9 @@ class _ServicesContentState extends State<_ServicesContent> {
                       inactiveThumbColor: AppColors.textMuted,
                       inactiveTrackColor: AppColors.surface,
                       onChanged: (val) {
-                        context.read<ServicesBloc>().add(ToggleAvailability(
-                          id: service.id,
-                          isAvailable: val,
-                        ));
+                        context.read<ServicesBloc>().add(
+                          ToggleAvailability(id: service.id, isAvailable: val),
+                        );
                       },
                     ),
                   ],
@@ -403,12 +470,22 @@ class _ServicesContentState extends State<_ServicesContent> {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: AppColors.blue1),
-                      onPressed: () => _openEditServiceDialog(service, categories, partnerId),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.blue1,
+                      ),
+                      onPressed: () => _openEditServiceDialog(
+                        service,
+                        categories,
+                        partnerId,
+                      ),
                       tooltip: 'Edit Service',
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.error,
+                      ),
                       onPressed: () => _confirmDelete(service.id),
                       tooltip: 'Delete Service',
                     ),

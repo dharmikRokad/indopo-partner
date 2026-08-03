@@ -60,8 +60,18 @@ class ScheduleSetupScreen extends StatefulWidget {
 }
 
 class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
-  final List<String> _daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-  final _stateCubit = ValueCubit<ScheduleSetupScreenState>(const ScheduleSetupScreenState());
+  final List<String> _daysOfWeek = [
+    'MON',
+    'TUE',
+    'WED',
+    'THU',
+    'FRI',
+    'SAT',
+    'SUN',
+  ];
+  final _stateCubit = ValueCubit<ScheduleSetupScreenState>(
+    const ScheduleSetupScreenState(),
+  );
   final _addressController = TextEditingController();
 
   @override
@@ -69,7 +79,8 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     super.initState();
     // Pre-populate if values exist (in case redirect occurs and some fields exist)
     final authState = context.read<AuthBloc>().state;
-    if (authState.status == AuthBlocStatus.authenticated && authState.partner != null) {
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
       final partner = authState.partner!;
       final selectedDays = <String>[];
       if (partner.workingDays != null) {
@@ -79,14 +90,16 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
       final closeTime = _parseTimeString(partner.closeTime);
       final address = partner.details['address'] as String? ?? '';
       _addressController.text = address;
-      _stateCubit.update(ScheduleSetupScreenState(
-        selectedDays: selectedDays,
-        openTime: openTime,
-        closeTime: closeTime,
-        address: address,
-        lat: partner.lat,
-        long: partner.long,
-      ));
+      _stateCubit.update(
+        ScheduleSetupScreenState(
+          selectedDays: selectedDays,
+          openTime: openTime,
+          closeTime: closeTime,
+          address: address,
+          lat: partner.lat,
+          long: partner.long,
+        ),
+      );
     }
   }
 
@@ -160,7 +173,10 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
       return;
     }
     if (currentState.selectedDays.isEmpty) {
-      AppSnackBar.showWarning(context, 'Please select at least one working day');
+      AppSnackBar.showWarning(
+        context,
+        'Please select at least one working day',
+      );
       return;
     }
     if (currentState.openTime == null) {
@@ -172,8 +188,12 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
       return;
     }
 
-    if (_timeOfDayToDouble(currentState.openTime!) >= _timeOfDayToDouble(currentState.closeTime!)) {
-      AppSnackBar.showWarning(context, 'Opening time must be earlier than closing time');
+    if (_timeOfDayToDouble(currentState.openTime!) >=
+        _timeOfDayToDouble(currentState.closeTime!)) {
+      AppSnackBar.showWarning(
+        context,
+        'Opening time must be earlier than closing time',
+      );
       return;
     }
 
@@ -193,7 +213,9 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
         orgAddress: currentState.address.trim(),
       );
 
-      final savedPartner = await context.read<ProfileRepository>().saveProfile(updatedPartner);
+      final savedPartner = await context.read<ProfileRepository>().saveProfile(
+        updatedPartner,
+      );
 
       if (mounted) {
         AppSnackBar.showSuccess(context, 'Schedule configured successfully!');
@@ -219,7 +241,10 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
     }
     final partner = authState.partner!;
 
-    return BlocBuilder<ValueCubit<ScheduleSetupScreenState>, ScheduleSetupScreenState>(
+    return BlocBuilder<
+      ValueCubit<ScheduleSetupScreenState>,
+      ScheduleSetupScreenState
+    >(
       bloc: _stateCubit,
       builder: (context, state) {
         return Scaffold(
@@ -233,7 +258,9 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
               IconButton(
                 icon: const Icon(Icons.logout_rounded, color: AppColors.error),
                 onPressed: () async {
-                  final shouldLogout = await LogoutConfirmationDialog.show(context);
+                  final shouldLogout = await LogoutConfirmationDialog.show(
+                    context,
+                  );
                   if (shouldLogout == true && context.mounted) {
                     context.read<AuthBloc>().add(LogoutRequested());
                   }
@@ -243,7 +270,10 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -253,7 +283,9 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.blue2.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -285,18 +317,28 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                     label: 'Physical Address',
                     hint: 'Enter your physical address',
                     onLocationChanged: (address, lat, long) {
-                      _stateCubit.update(_stateCubit.state.copyWith(
-                        address: address,
-                        lat: lat,
-                        long: long,
-                      ));
+                      _stateCubit.update(
+                        _stateCubit.state.copyWith(
+                          address: address,
+                          lat: lat,
+                          long: long,
+                        ),
+                      );
                     },
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Physical address is required' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Physical address is required'
+                        : null,
                   ),
                   const SizedBox(height: 24),
 
                   // Working Days Section
-                  Text('Working Days', style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1)),
+                  Text(
+                    'Working Days',
+                    style: TextStyles.headingSemiBold.copyWith(
+                      fontSize: 16,
+                      color: AppColors.blue1,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -316,13 +358,19 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                           checkmarkColor: Colors.white,
                           backgroundColor: AppColors.blue3,
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.textMuted,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textMuted,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
-                              color: isSelected ? AppColors.blue1 : AppColors.blue2.withValues(alpha: 0.3),
+                              color: isSelected
+                                  ? AppColors.blue1
+                                  : AppColors.blue2.withValues(alpha: 0.3),
                             ),
                           ),
                           onSelected: (selected) {
@@ -332,7 +380,9 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                             } else {
                               list.remove(day);
                             }
-                            _stateCubit.update(state.copyWith(selectedDays: list));
+                            _stateCubit.update(
+                              state.copyWith(selectedDays: list),
+                            );
                           },
                         );
                       }).toList(),
@@ -341,7 +391,13 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                   const SizedBox(height: 24),
 
                   // Open / Close Time Section
-                  Text('Working Hours', style: TextStyles.headingSemiBold.copyWith(fontSize: 16, color: AppColors.blue1)),
+                  Text(
+                    'Working Hours',
+                    style: TextStyles.headingSemiBold.copyWith(
+                      fontSize: 16,
+                      color: AppColors.blue1,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -374,7 +430,9 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                       ),
                     ),
                     child: ElevatedButton(
-                      onPressed: state.isLoading ? null : () => _submitSchedule(partner),
+                      onPressed: state.isLoading
+                          ? null
+                          : () => _submitSchedule(partner),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
@@ -393,7 +451,9 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                             )
                           : Text(
                               'Save & Continue',
-                              style: TextStyles.headingBold.copyWith(fontSize: 16),
+                              style: TextStyles.headingBold.copyWith(
+                                fontSize: 16,
+                              ),
                             ),
                     ),
                   ),
@@ -436,7 +496,11 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
                     fontSize: 15,
                   ),
                 ),
-                const Icon(Icons.access_time_rounded, color: AppColors.blue1, size: 20),
+                const Icon(
+                  Icons.access_time_rounded,
+                  color: AppColors.blue1,
+                  size: 20,
+                ),
               ],
             ),
           ),

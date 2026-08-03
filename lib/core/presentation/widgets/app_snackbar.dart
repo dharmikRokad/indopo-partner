@@ -57,7 +57,7 @@ class AppSnackBar {
     required Color iconColor,
   }) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    
+
     scaffoldMessenger.hideCurrentSnackBar();
     scaffoldMessenger.showSnackBar(
       SnackBar(
@@ -71,11 +71,7 @@ class AppSnackBar {
                   color: iconColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 20,
-                ),
+                child: Icon(icon, color: iconColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(

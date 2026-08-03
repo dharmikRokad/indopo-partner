@@ -45,7 +45,11 @@ class ProfileRepository {
           details['center_name'] ??
           '',
       'phone': details['phone'] ?? '',
-      'orgName': details['org_name'] ?? details['clinic_name'] ?? details['clinic_hospital_name'] ?? '',
+      'orgName':
+          details['org_name'] ??
+          details['clinic_name'] ??
+          details['clinic_hospital_name'] ??
+          '',
       'orgAddress': partner.orgAddress ?? details['address'] ?? '',
       'services': partner.services.map((e) => e.toJson()).toList(),
       'openTime': partner.openTime,

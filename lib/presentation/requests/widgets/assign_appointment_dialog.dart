@@ -12,6 +12,7 @@ import '../bloc/appointment_bloc.dart';
 import '../bloc/appointment_event.dart';
 import '../bloc/appointment_state.dart';
 import '../../../core/presentation/bloc/value_cubit.dart';
+import '../../../core/utils/tap_bouncer.dart';
 
 class AssignAppointmentState {
   final DateTime? selectedDate;
@@ -43,9 +44,8 @@ class AssignAppointmentDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => AppointmentBloc(
-        requestRepository: context.read<RequestRepository>(),
-      ),
+      create: (context) =>
+          AppointmentBloc(requestRepository: context.read<RequestRepository>()),
       child: _AssignAppointmentContent(
         requestId: requestId,
         onConfirmed: onConfirmed,
@@ -64,14 +64,18 @@ class _AssignAppointmentContent extends StatefulWidget {
   });
 
   @override
-  State<_AssignAppointmentContent> createState() => _AssignAppointmentContentState();
+  State<_AssignAppointmentContent> createState() =>
+      _AssignAppointmentContentState();
 }
 
 class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
   final _formKey = GlobalKey<FormState>();
   final _aptNumberController = TextEditingController();
   final _notesController = TextEditingController();
-  final _stateCubit = ValueCubit<AssignAppointmentState>(const AssignAppointmentState());
+  final _stateCubit = ValueCubit<AssignAppointmentState>(
+    const AssignAppointmentState(),
+  );
+  final _tapBouncer = TapBouncer(cooldown: const Duration(milliseconds: 1000));
 
   @override
   void initState() {
@@ -140,6 +144,8 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
   }
 
   void _submitAppointment() {
+    if (!_tapBouncer.allowTap()) return;
+
     if (_formKey.currentState?.validate() ?? false) {
       final currentState = _stateCubit.state;
       if (currentState.selectedDate == null) {
@@ -151,15 +157,18 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
         return;
       }
 
-      final formattedTime = '${currentState.selectedTime!.hour.toString().padLeft(2, '0')}:${currentState.selectedTime!.minute.toString().padLeft(2, '0')}';
-      
+      final formattedTime =
+          '${currentState.selectedTime!.hour.toString().padLeft(2, '0')}:${currentState.selectedTime!.minute.toString().padLeft(2, '0')}';
+
       final appointment = AppointmentModel(
         id: 'apt-${DateTime.now().millisecondsSinceEpoch}',
         requestId: widget.requestId,
         appointmentNumber: _aptNumberController.text.trim(),
         date: currentState.selectedDate!,
         time: formattedTime,
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
       );
 
       context.read<AppointmentBloc>().add(AssignAppointment(appointment));
@@ -170,21 +179,32 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
   Widget build(BuildContext context) {
     return BlocConsumer<AppointmentBloc, AppointmentState>(
       listener: (context, state) {
-        if (state.status == AppointmentStatus.assigned && state.appointment != null) {
+        if (state.status == AppointmentStatus.assigned &&
+            state.appointment != null) {
           // Success toast
           AppSnackBar.showSuccess(
             context,
-            AppStrings.appointmentConfirmedToast.replaceAll('{id}', state.appointment!.appointmentNumber),
+            AppStrings.appointmentConfirmedToast.replaceAll(
+              '{id}',
+              state.appointment!.appointmentNumber,
+            ),
           );
           widget.onConfirmed(state.appointment!);
         } else if (state.status == AppointmentStatus.failure) {
-          AppSnackBar.showError(context, state.errorMessage ?? 'Failed to assign appointment');
+          _tapBouncer.reset();
+          AppSnackBar.showError(
+            context,
+            state.errorMessage ?? 'Failed to assign appointment',
+          );
         }
       },
       builder: (context, state) {
         final bool isLoading = state.status == AppointmentStatus.loading;
 
-        return BlocBuilder<ValueCubit<AssignAppointmentState>, AssignAppointmentState>(
+        return BlocBuilder<
+          ValueCubit<AssignAppointmentState>,
+          AssignAppointmentState
+        >(
           bloc: _stateCubit,
           builder: (context, appointmentState) {
             return Container(
@@ -219,7 +239,9 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                       const SizedBox(height: 16),
                       Text(
                         'Assign Appointment',
-                        style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
+                        style: TextStyles.headingSemiBold.copyWith(
+                          fontSize: 20,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
@@ -227,7 +249,9 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                       // Appointment Number field
                       Text(
                         'Appointment Number',
-                        style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                        style: TextStyles.headingSemiBold.copyWith(
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextFormField(
@@ -236,7 +260,10 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                         decoration: const InputDecoration(
                           hintText: 'e.g. APT-1001',
                         ),
-                        validator: (v) => Validators.validateRequired(v, 'Appointment number'),
+                        validator: (v) => Validators.validateRequired(
+                          v,
+                          'Appointment number',
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -250,7 +277,9 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                               children: [
                                 Text(
                                   'Date',
-                                  style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                                  style: TextStyles.headingSemiBold.copyWith(
+                                    fontSize: 14,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 InkWell(
@@ -258,23 +287,37 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     height: 56,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.surface,
-                                      border: Border.all(color: AppColors.blue2),
+                                      border: Border.all(
+                                        color: AppColors.blue2,
+                                      ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.calendar_today_rounded, color: AppColors.blue1, size: 20),
+                                        const Icon(
+                                          Icons.calendar_today_rounded,
+                                          color: AppColors.blue1,
+                                          size: 20,
+                                        ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
-                                            appointmentState.selectedDate == null
+                                            appointmentState.selectedDate ==
+                                                    null
                                                 ? 'Select Date'
                                                 : '${appointmentState.selectedDate!.day}/${appointmentState.selectedDate!.month}/${appointmentState.selectedDate!.year}',
                                             style: TextStyle(
-                                              color: appointmentState.selectedDate == null ? AppColors.textMuted : Colors.white,
+                                              color:
+                                                  appointmentState
+                                                          .selectedDate ==
+                                                      null
+                                                  ? AppColors.textMuted
+                                                  : Colors.white,
                                               fontSize: 15,
                                             ),
                                           ),
@@ -294,7 +337,9 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                               children: [
                                 Text(
                                   'Time',
-                                  style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                                  style: TextStyles.headingSemiBold.copyWith(
+                                    fontSize: 14,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 InkWell(
@@ -302,23 +347,38 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     height: 56,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.surface,
-                                      border: Border.all(color: AppColors.blue2),
+                                      border: Border.all(
+                                        color: AppColors.blue2,
+                                      ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.access_time_rounded, color: AppColors.blue1, size: 20),
+                                        const Icon(
+                                          Icons.access_time_rounded,
+                                          color: AppColors.blue1,
+                                          size: 20,
+                                        ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
-                                            appointmentState.selectedTime == null
+                                            appointmentState.selectedTime ==
+                                                    null
                                                 ? 'Select Time'
-                                                : appointmentState.selectedTime!.format(context),
+                                                : appointmentState.selectedTime!
+                                                      .format(context),
                                             style: TextStyle(
-                                              color: appointmentState.selectedTime == null ? AppColors.textMuted : Colors.white,
+                                              color:
+                                                  appointmentState
+                                                          .selectedTime ==
+                                                      null
+                                                  ? AppColors.textMuted
+                                                  : Colors.white,
                                               fontSize: 15,
                                             ),
                                           ),
@@ -337,14 +397,17 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                       // Optional Notes
                       Text(
                         'Notes / Instructions (Optional)',
-                        style: TextStyles.headingSemiBold.copyWith(fontSize: 14),
+                        style: TextStyles.headingSemiBold.copyWith(
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _notesController,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: 'Enter fasting requirements, prepare documents, etc.',
+                          hintText:
+                              'Enter fasting requirements, prepare documents, etc.',
                         ),
                         maxLines: 3,
                       ),
@@ -372,11 +435,16 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : Text(
                                   'Confirm Appointment',
-                                  style: TextStyles.headingBold.copyWith(fontSize: 16),
+                                  style: TextStyles.headingBold.copyWith(
+                                    fontSize: 16,
+                                  ),
                                 ),
                         ),
                       ),

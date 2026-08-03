@@ -14,8 +14,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   String? _partnerId;
 
   ChatBloc({required SupabaseChatRepository repo})
-      : _repo = repo,
-        super(ChatState.initial()) {
+    : _repo = repo,
+      super(ChatState.initial()) {
     on<InitChatStream>(_onInitChatStream);
     on<ChatStreamUpdated>(_onChatStreamUpdated);
     on<SendMessage>(_onSendMessage);
@@ -34,25 +34,26 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     // Reset partner unread count when entering the chat
     await _repo.markPartnerChatsUnreadAsRead(_chatId!);
 
-    _messagesSubscription = _repo.streamRootMessages(_chatId!).listen(
-      (messages) => add(ChatStreamUpdated(messages)),
-      onError: (err) {
-        debugPrint('[ChatBloc] stream error: $err');
-        if (!isClosed) add(const ChatStreamUpdated([]));
-      },
-    );
+    _messagesSubscription = _repo
+        .streamRootMessages(_chatId!)
+        .listen(
+          (messages) => add(ChatStreamUpdated(messages)),
+          onError: (err) {
+            debugPrint('[ChatBloc] stream error: $err');
+            if (!isClosed) add(const ChatStreamUpdated([]));
+          },
+        );
   }
 
-  void _onChatStreamUpdated(
-    ChatStreamUpdated event,
-    Emitter<ChatState> emit,
-  ) {
+  void _onChatStreamUpdated(ChatStreamUpdated event, Emitter<ChatState> emit) {
     if (_chatId == null) return;
-    emit(state.copyWith(
-      status: ChatStatus.loaded,
-      rootMessages: event.messages,
-      chatId: _chatId,
-    ));
+    emit(
+      state.copyWith(
+        status: ChatStatus.loaded,
+        rootMessages: event.messages,
+        chatId: _chatId,
+      ),
+    );
   }
 
   Future<void> _onSendMessage(
