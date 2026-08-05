@@ -19,12 +19,21 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
     Emitter<RequestListState> emit,
   ) async {
     final previousHasUnread = state.hasUnreadNew;
-    emit(state.copyWith(status: RequestListStatus.loading, errorMessage: null));
+    final dateToUse =
+        event.status == RequestStatus.inProgress ? event.date : null;
+    emit(
+      state.copyWith(
+        status: RequestListStatus.loading,
+        selectedDate: dateToUse,
+        errorMessage: null,
+      ),
+    );
 
     try {
       final list = await _requestRepository.fetchRequests(
         event.status,
         isMedical: isMedical,
+        date: dateToUse,
       );
 
       // Determine if there are unread/new requests (to display unread notification dot)
@@ -48,6 +57,7 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
           status: RequestListStatus.loaded,
           requests: list,
           requestStatus: event.status,
+          selectedDate: dateToUse,
           hasUnreadNew: hasUnread,
           errorMessage: null,
         ),

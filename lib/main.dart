@@ -30,7 +30,7 @@ import 'core/deeplink/cubit/deep_link_cubit.dart';
 import 'core/deeplink/cubit/deep_link_state.dart';
 import 'core/deeplink/models/deep_link_data.dart';
 import 'core/deeplink/services/deep_link_service.dart';
-import 'core/constants/app_routes.dart';
+import 'core/deeplink/utils/deep_link_navigator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -137,6 +137,31 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
         .listen((_) {
           _authBloc.add(LogoutRequested());
         });
+
+    // Check for pending cold start deep link after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_deepLinkCubit.state.pendingDeepLink != null) {
+        _handleDeepLink(_deepLinkCubit.state.pendingDeepLink);
+      }
+    });
+  }
+
+  void _handleDeepLink(DeepLinkData? link) {
+    if (link == null) return;
+    final route = DeepLinkNavigator.resolveRoute(link);
+    _deepLinkCubit.consumeDeepLink();
+
+    if (link.type == DeepLinkType.resetPassword &&
+        (link.token == null || link.token!.isEmpty)) {
+      AppSnackBar.showError(
+        context,
+        'Something went wrong: Invalid or missing password reset token.',
+      );
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _appRouter.router.go(route);
+    });
   }
 
   @override
@@ -158,24 +183,7 @@ class _IndopoPartnerAppState extends State<IndopoPartnerApp> {
       ],
       child: BlocListener<DeepLinkCubit, DeepLinkState>(
         listener: (context, state) {
-          final link = state.pendingDeepLink;
-          if (link != null) {
-            if (link.type == DeepLinkType.resetPassword) {
-              final token = link.token;
-              if (token != null && token.isNotEmpty) {
-                _appRouter.router.go(
-                  '${AppRoutes.resetPassword}?token=${Uri.encodeComponent(token)}',
-                );
-              } else {
-                _appRouter.router.go(AppRoutes.login);
-                AppSnackBar.showError(
-                  context,
-                  'Something went wrong: Invalid or missing password reset token.',
-                );
-              }
-            }
-            _deepLinkCubit.consumeDeepLink();
-          }
+          _handleDeepLink(state.pendingDeepLink);
         },
         child: MaterialApp.router(
           title: AppStrings.appName,

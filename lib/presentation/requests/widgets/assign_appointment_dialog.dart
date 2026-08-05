@@ -15,18 +15,24 @@ import '../../../core/presentation/bloc/value_cubit.dart';
 import '../../../core/utils/tap_bouncer.dart';
 
 class AssignAppointmentState {
+  static const Object _kNoChange = Object();
+
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
 
   const AssignAppointmentState({this.selectedDate, this.selectedTime});
 
   AssignAppointmentState copyWith({
-    DateTime? selectedDate,
-    TimeOfDay? selectedTime,
+    Object? selectedDate = _kNoChange,
+    Object? selectedTime = _kNoChange,
   }) {
     return AssignAppointmentState(
-      selectedDate: selectedDate ?? this.selectedDate,
-      selectedTime: selectedTime ?? this.selectedTime,
+      selectedDate: selectedDate == _kNoChange
+          ? this.selectedDate
+          : selectedDate as DateTime?,
+      selectedTime: selectedTime == _kNoChange
+          ? this.selectedTime
+          : selectedTime as TimeOfDay?,
     );
   }
 }
@@ -152,13 +158,10 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
         AppSnackBar.showWarning(context, 'Please select an appointment date');
         return;
       }
-      if (currentState.selectedTime == null) {
-        AppSnackBar.showWarning(context, 'Please select an appointment time');
-        return;
-      }
 
-      final formattedTime =
-          '${currentState.selectedTime!.hour.toString().padLeft(2, '0')}:${currentState.selectedTime!.minute.toString().padLeft(2, '0')}';
+      final String? formattedTime = currentState.selectedTime != null
+          ? '${currentState.selectedTime!.hour.toString().padLeft(2, '0')}:${currentState.selectedTime!.minute.toString().padLeft(2, '0')}'
+          : null;
 
       final appointment = AppointmentModel(
         id: 'apt-${DateTime.now().millisecondsSinceEpoch}',
@@ -330,13 +333,13 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          // Time Picker
+                          // Time Picker (Optional)
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Time',
+                                  'Time (Optional)',
                                   style: TextStyles.headingSemiBold.copyWith(
                                     fontSize: 14,
                                   ),
@@ -348,7 +351,7 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                                   child: Container(
                                     height: 56,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
+                                      horizontal: 12,
                                     ),
                                     decoration: BoxDecoration(
                                       color: AppColors.surface,
@@ -364,14 +367,14 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                                           color: AppColors.blue1,
                                           size: 20,
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
                                             appointmentState.selectedTime ==
                                                     null
                                                 ? 'Select Time'
                                                 : appointmentState.selectedTime!
-                                                      .format(context),
+                                                    .format(context),
                                             style: TextStyle(
                                               color:
                                                   appointmentState
@@ -379,10 +382,30 @@ class _AssignAppointmentContentState extends State<_AssignAppointmentContent> {
                                                       null
                                                   ? AppColors.textMuted
                                                   : Colors.white,
-                                              fontSize: 15,
+                                              fontSize: 14,
                                             ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
+                                        if (appointmentState.selectedTime !=
+                                            null)
+                                          GestureDetector(
+                                            onTap: () {
+                                              _stateCubit.update(
+                                                _stateCubit.state.copyWith(
+                                                  selectedTime: null,
+                                                ),
+                                              );
+                                            },
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(4.0),
+                                              child: Icon(
+                                                Icons.close_rounded,
+                                                size: 18,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),

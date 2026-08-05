@@ -44,6 +44,11 @@ class AppRouter {
       final authState = authBloc.state;
       final currentLoc = state.matchedLocation;
 
+      // Allow reset password route regardless of initial status
+      if (currentLoc == AppRoutes.resetPassword) {
+        return null;
+      }
+
       // 1. Initial State -> Allow splash screen initialization
       if (authState.status == AuthBlocStatus.initial) {
         if (currentLoc == AppRoutes.splash) {
@@ -164,7 +169,8 @@ class AppRouter {
           final token =
               state.uri.queryParameters['token'] ??
               (state.extra is String ? state.extra as String : null);
-          return ResetPasswordScreen(token: token);
+          final email = state.uri.queryParameters['email'];
+          return ResetPasswordScreen(token: token, email: email);
         },
       ),
     ],

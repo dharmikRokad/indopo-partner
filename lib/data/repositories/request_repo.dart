@@ -12,15 +12,23 @@ class RequestRepository {
   Future<List<RequestModel>> fetchRequests(
     RequestStatus status, {
     bool isMedical = false,
+    DateTime? date,
   }) async {
     if (isMedical) {
       return fetchPrescriptionInquiries(status: status);
     }
 
     try {
+      final queryParams = <String, dynamic>{'status': status.apiKey};
+      if (date != null) {
+        final dateStr =
+            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        queryParams['date'] = dateStr;
+      }
+
       final response = await _apiClient.get(
         ApiEndpoints.appointmentsList,
-        queryParameters: {'status': status.apiKey},
+        queryParameters: queryParams,
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -136,9 +144,15 @@ class RequestRepository {
   ) async {
     final dateStr =
         "${appointment.date.year}-${appointment.date.month.toString().padLeft(2, '0')}-${appointment.date.day.toString().padLeft(2, '0')}";
-    final body = {
+    final hasTime = appointment.time != null && appointment.time!.isNotEmpty;
+    final timeStr = hasTime ? appointment.time : null;
+
+    final body = <String, dynamic>{
       'appointmentDate': dateStr,
-      'appointmentTime': appointment.time,
+      'appointmentTime': timeStr,
+      'appointmentDateTime': hasTime
+          ? "${dateStr}T${appointment.time}:00.000Z"
+          : "${dateStr}T00:00:00.000Z",
     };
 
     try {
@@ -149,6 +163,16 @@ class RequestRepository {
 
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data['data'] as Map<String, dynamic>;
+        String? resTime = resData['appointmentTime']?.toString() ??
+            resData['appointment_time']?.toString() ??
+            resData['time']?.toString();
+        if (resTime == '0' ||
+            resTime == '00:00' ||
+            resTime == '00:00:00' ||
+            (resTime != null && resTime.trim().isEmpty)) {
+          resTime = null;
+        }
+
         return AppointmentModel(
           id: resData['id']?.toString() ?? appointment.id,
           requestId: appointment.requestId,
@@ -156,7 +180,7 @@ class RequestRepository {
               resData['tokenNumber']?.toString() ??
               appointment.appointmentNumber,
           date: appointment.date,
-          time: appointment.time,
+          time: resTime ?? appointment.time,
           notes: appointment.notes,
         );
       }

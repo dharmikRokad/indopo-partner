@@ -68,10 +68,12 @@ class ForgotPasswordRequested extends AuthEvent {
 
 class ResetPasswordRequested extends AuthEvent {
   final String accessToken;
+  final String email;
   final String newPassword;
 
   const ResetPasswordRequested({
     required this.accessToken,
+    required this.email,
     required this.newPassword,
   });
 

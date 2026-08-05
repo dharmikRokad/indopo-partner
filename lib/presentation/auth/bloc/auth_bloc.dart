@@ -222,6 +222,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final message = await _authRepository.resetPassword(
         accessToken: event.accessToken,
+        email: event.email,
         newPassword: event.newPassword,
       );
       emit(

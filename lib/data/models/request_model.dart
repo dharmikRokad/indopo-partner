@@ -40,11 +40,14 @@ class RequestModel {
   final int patientAge;
   final String patientGender;
   final String patientContact;
+  final String? patientProfilePicture;
   final String description;
   final List<String> attachments;
   final DateTime timestamp;
   final RequestStatus status;
   final String? rejectionReason;
+  final DateTime? appointmentDate;
+  final String? appointmentTime;
 
   RequestModel({
     required this.id,
@@ -56,11 +59,14 @@ class RequestModel {
     required this.patientAge,
     required this.patientGender,
     required this.patientContact,
+    this.patientProfilePicture,
     required this.description,
     required this.attachments,
     required this.timestamp,
     required this.status,
     this.rejectionReason,
+    this.appointmentDate,
+    this.appointmentTime,
   });
 
   String get patientInitials {
@@ -94,18 +100,77 @@ class RequestModel {
         json['appointmentNumber']?.toString() ??
         json['appointment_number']?.toString();
 
+    final apptDateStr =
+        json['appointmentDate'] as String? ??
+        json['appointment_date'] as String? ??
+        json['date'] as String?;
+    DateTime? apptDate;
+    if (apptDateStr != null && apptDateStr.isNotEmpty) {
+      apptDate = DateTime.tryParse(apptDateStr);
+    }
+
+    String? apptTimeStr =
+        json['appointmentTime'] as String? ??
+        json['appointment_time'] as String? ??
+        json['time'] as String?;
+    if (apptTimeStr == '0' ||
+        apptTimeStr == '00:00' ||
+        apptTimeStr == '00:00:00' ||
+        (apptTimeStr != null && apptTimeStr.trim().isEmpty)) {
+      apptTimeStr = null;
+    }
+
+    final patientObj = json['patient'] is Map<String, dynamic>
+        ? json['patient'] as Map<String, dynamic>
+        : null;
+
+    final patientPic = patientObj?['profilePicture']?.toString() ??
+        patientObj?['profile_picture']?.toString() ??
+        patientObj?['avatar']?.toString() ??
+        patientObj?['image']?.toString() ??
+        json['patientProfilePicture']?.toString() ??
+        json['patient_profile_picture']?.toString() ??
+        json['profilePicture']?.toString() ??
+        json['profile_picture']?.toString();
+
+    final pName = patientObj?['full_name']?.toString() ??
+        patientObj?['fullName']?.toString() ??
+        patientObj?['name']?.toString() ??
+        json['patientName']?.toString() ??
+        json['patient_name']?.toString() ??
+        'Unknown Patient';
+
+    final pContact = patientObj?['phoneNumber']?.toString() ??
+        patientObj?['phone_number']?.toString() ??
+        patientObj?['phone']?.toString() ??
+        json['patientPhone']?.toString() ??
+        json['patient_phone']?.toString() ??
+        json['patientContact']?.toString() ??
+        '';
+
+    final pAge = patientObj?['age'] as int? ??
+        json['patientAge'] as int? ??
+        30;
+
+    final pGender = patientObj?['gender']?.toString() ??
+        json['patientGender']?.toString() ??
+        'Other';
+
     return RequestModel(
       id: json['id'] as String? ?? '',
-      patientId: json['patientId'] as String? ?? json['patient_id'] as String?,
+      patientId: json['patientId'] as String? ??
+          json['patient_id'] as String? ??
+          patientObj?['id']?.toString(),
       notificationId:
           json['notificationId'] as String? ??
           json['notification_id'] as String?,
       chatId: json['chatId'] as String? ?? json['chat_id'] as String?,
       tokenNumber: tokenNo,
-      patientName: json['patientName'] as String? ?? 'Unknown Patient',
-      patientAge: json['patientAge'] as int? ?? 30,
-      patientGender: json['patientGender'] as String? ?? 'Other',
-      patientContact: json['patientPhone'] as String? ?? '',
+      patientName: pName,
+      patientAge: pAge,
+      patientGender: pGender,
+      patientContact: pContact,
+      patientProfilePicture: patientPic,
       description: json['notes'] as String? ?? '',
       attachments: const [],
       timestamp: json['createdAt'] != null
@@ -113,6 +178,8 @@ class RequestModel {
           : DateTime.now(),
       status: mappedStatus,
       rejectionReason: null,
+      appointmentDate: apptDate,
+      appointmentTime: apptTimeStr,
     );
   }
 
@@ -132,6 +199,9 @@ class RequestModel {
       'created_at': timestamp.toIso8601String(),
       'status': status.key,
       'rejection_reason': rejectionReason,
+      if (appointmentDate != null)
+        'appointment_date': appointmentDate!.toIso8601String(),
+      if (appointmentTime != null) 'appointment_time': appointmentTime,
     };
   }
 
@@ -151,6 +221,8 @@ class RequestModel {
     DateTime? timestamp,
     RequestStatus? status,
     String? rejectionReason,
+    DateTime? appointmentDate,
+    String? appointmentTime,
   }) {
     return RequestModel(
       id: id ?? this.id,
@@ -167,6 +239,8 @@ class RequestModel {
       timestamp: timestamp ?? this.timestamp,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      appointmentDate: appointmentDate ?? this.appointmentDate,
+      appointmentTime: appointmentTime ?? this.appointmentTime,
     );
   }
 }

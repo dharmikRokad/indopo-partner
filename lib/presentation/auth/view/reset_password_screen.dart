@@ -13,8 +13,9 @@ import '../bloc/auth_state.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String? token;
+  final String? email;
 
-  const ResetPasswordScreen({super.key, this.token});
+  const ResetPasswordScreen({super.key, this.token, this.email});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -73,6 +74,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       context.read<AuthBloc>().add(
         ResetPasswordRequested(
           accessToken: widget.token!.trim(),
+          email: widget.email!.trim(),
           newPassword: newPassword,
         ),
       );

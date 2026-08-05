@@ -10,11 +10,12 @@ abstract class RequestListEvent extends Equatable {
 
 class FetchRequests extends RequestListEvent {
   final RequestStatus status;
+  final DateTime? date;
 
-  const FetchRequests(this.status);
+  const FetchRequests(this.status, {this.date});
 
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [status, date];
 }
 
 class RequestReceived extends RequestListEvent {

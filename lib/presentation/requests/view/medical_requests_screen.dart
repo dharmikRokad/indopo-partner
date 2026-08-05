@@ -297,16 +297,39 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: AppColors.blue2,
-                  child: Text(
-                    request.patientInitials,
-                    style: TextStyles.headingBold.copyWith(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: (request.patientProfilePicture != null &&
+                          request.patientProfilePicture!.isNotEmpty)
+                      ? Image.network(
+                          request.patientProfilePicture!,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              CircleAvatar(
+                            radius: 22,
+                            backgroundColor: AppColors.blue2,
+                            child: Text(
+                              request.patientInitials,
+                              style: TextStyles.headingBold.copyWith(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        )
+                      : CircleAvatar(
+                          radius: 22,
+                          backgroundColor: AppColors.blue2,
+                          child: Text(
+                            request.patientInitials,
+                            style: TextStyles.headingBold.copyWith(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

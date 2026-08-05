@@ -16,6 +16,8 @@ class DeepLinkData extends Equatable {
       params['accesstoken'] ??
       params['code'];
 
+  String? get email => params['email'];
+
   factory DeepLinkData.fromMap(Map<dynamic, dynamic> rawParams) {
     final params = <String, String?>{};
     for (final entry in rawParams.entries) {

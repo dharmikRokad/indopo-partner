@@ -9,8 +9,9 @@ class DeepLinkNavigator {
     switch (data.type) {
       case DeepLinkType.resetPassword:
         final token = data.token;
+        final email = data.email;
         if (token != null && token.isNotEmpty) {
-          return '${AppRoutes.resetPassword}?token=${Uri.encodeComponent(token)}';
+          return '${AppRoutes.resetPassword}?token=${Uri.encodeComponent(token)}&email=${Uri.encodeComponent(email ?? '')}';
         }
         return AppRoutes.login;
       case DeepLinkType.unknown:

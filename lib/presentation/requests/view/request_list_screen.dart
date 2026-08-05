@@ -15,6 +15,8 @@ import '../bloc/request_list_bloc.dart';
 import '../bloc/request_list_event.dart';
 import '../bloc/request_list_state.dart';
 
+import '../widgets/weekly_calendar_strip.dart';
+
 class RequestListScreen extends StatelessWidget {
   const RequestListScreen({super.key});
 
@@ -84,7 +86,12 @@ class _RequestListContentState extends State<_RequestListContent>
 
     final bloc = context.read<RequestListBloc>();
     final status = _activeTabs[_tabController.index];
-    bloc.add(FetchRequests(status));
+    if (status == RequestStatus.inProgress) {
+      final dateToFetch = bloc.state.selectedDate ?? DateTime.now();
+      bloc.add(FetchRequests(status, date: dateToFetch));
+    } else {
+      bloc.add(FetchRequests(status));
+    }
   }
 
   @override
@@ -217,14 +224,14 @@ class _RequestListContentState extends State<_RequestListContent>
   }
 
   Widget _buildTabList(RequestStatus status, RequestListState state) {
+    Widget listWidget;
+
     if (state.status == RequestListStatus.loading) {
-      return const Center(
+      listWidget = const Center(
         child: CircularProgressIndicator(color: AppColors.blue1),
       );
-    }
-
-    if (state.status == RequestListStatus.failure) {
-      return Center(
+    } else if (state.status == RequestListStatus.failure) {
+      listWidget = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -243,68 +250,92 @@ class _RequestListContentState extends State<_RequestListContent>
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                context.read<RequestListBloc>().add(FetchRequests(status));
+                context.read<RequestListBloc>().add(
+                  FetchRequests(status, date: state.selectedDate),
+                );
               },
               child: const Text('Retry'),
             ),
           ],
         ),
       );
-    }
-
-    if (state.status == RequestListStatus.loaded) {
+    } else if (state.status == RequestListStatus.loaded) {
       // Safety check to ensure we only render items for this tab's requested status
       if (state.requestStatus != status) {
-        return const Center(
+        listWidget = const Center(
           child: CircularProgressIndicator(color: AppColors.blue1),
         );
-      }
+      } else {
+        final requests = state.requests;
 
-      final requests = state.requests;
-
-      if (requests.isEmpty) {
-        return RefreshIndicator(
-          onRefresh: () async {
-            context.read<RequestListBloc>().add(FetchRequests(status));
-          },
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-              _buildEmptyState(status),
-            ],
-          ),
-        );
-      }
-
-      return RefreshIndicator(
-        onRefresh: () async {
-          context.read<RequestListBloc>().add(FetchRequests(status));
-        },
-        child: ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final req = requests[index];
-            return _RequestCard(
-              request: req,
-              onTap: () async {
-                await context.push(
-                  AppRoutes.requestDetail.replaceAll(':id', req.id),
-                  extra: req,
+        if (requests.isEmpty) {
+          listWidget = RefreshIndicator(
+            onRefresh: () async {
+              context.read<RequestListBloc>().add(
+                FetchRequests(status, date: state.selectedDate),
+              );
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+                _buildEmptyState(status),
+              ],
+            ),
+          );
+        } else {
+          listWidget = RefreshIndicator(
+            onRefresh: () async {
+              context.read<RequestListBloc>().add(
+                FetchRequests(status, date: state.selectedDate),
+              );
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: requests.length,
+              itemBuilder: (context, index) {
+                final req = requests[index];
+                return _RequestCard(
+                  request: req,
+                  onTap: () async {
+                    await context.push(
+                      AppRoutes.requestDetail.replaceAll(':id', req.id),
+                      extra: req,
+                    );
+                    if (context.mounted) {
+                      context.read<RequestListBloc>().add(
+                        FetchRequests(status, date: state.selectedDate),
+                      );
+                    }
+                  },
                 );
-                if (context.mounted) {
-                  context.read<RequestListBloc>().add(FetchRequests(status));
-                }
               },
-            );
-          },
-        ),
+            ),
+          );
+        }
+      }
+    } else {
+      listWidget = const SizedBox.shrink();
+    }
+
+    if (status == RequestStatus.inProgress) {
+      return Column(
+        children: [
+          WeeklyCalendarStrip(
+            selectedDate: state.selectedDate,
+            onDateSelected: (date) {
+              context.read<RequestListBloc>().add(
+                FetchRequests(RequestStatus.inProgress, date: date),
+              );
+            },
+          ),
+          Expanded(child: listWidget),
+        ],
       );
     }
 
-    return const SizedBox.shrink();
+    return listWidget;
   }
 
   Widget _buildEmptyState(RequestStatus status) {
@@ -400,17 +431,40 @@ class _RequestCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Avatar Initials
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppColors.blue2,
-                    child: Text(
-                      request.patientInitials,
-                      style: TextStyles.headingBold.copyWith(
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
+                  // Avatar Image / Initials
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: (request.patientProfilePicture != null &&
+                            request.patientProfilePicture!.isNotEmpty)
+                        ? Image.network(
+                            request.patientProfilePicture!,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                CircleAvatar(
+                              radius: 22,
+                              backgroundColor: AppColors.blue2,
+                              child: Text(
+                                request.patientInitials,
+                                style: TextStyles.headingBold.copyWith(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          )
+                        : CircleAvatar(
+                            radius: 22,
+                            backgroundColor: AppColors.blue2,
+                            child: Text(
+                              request.patientInitials,
+                              style: TextStyles.headingBold.copyWith(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   // Patient & Type

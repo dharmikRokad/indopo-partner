@@ -9,6 +9,7 @@ class RequestListState extends Equatable {
   final RequestListStatus status;
   final List<RequestModel> requests;
   final RequestStatus? requestStatus;
+  final DateTime? selectedDate;
   final bool hasUnreadNew;
   final String? errorMessage;
 
@@ -16,6 +17,7 @@ class RequestListState extends Equatable {
     this.status = RequestListStatus.initial,
     this.requests = const [],
     this.requestStatus,
+    this.selectedDate,
     this.hasUnreadNew = false,
     this.errorMessage,
   });
@@ -27,6 +29,7 @@ class RequestListState extends Equatable {
     RequestListStatus? status,
     List<RequestModel>? requests,
     Object? requestStatus = _kNoChange,
+    Object? selectedDate = _kNoChange,
     bool? hasUnreadNew,
     Object? errorMessage = _kNoChange,
   }) {
@@ -36,6 +39,9 @@ class RequestListState extends Equatable {
       requestStatus: requestStatus == _kNoChange
           ? this.requestStatus
           : requestStatus as RequestStatus?,
+      selectedDate: selectedDate == _kNoChange
+          ? this.selectedDate
+          : selectedDate as DateTime?,
       hasUnreadNew: hasUnreadNew ?? this.hasUnreadNew,
       errorMessage: errorMessage == _kNoChange
           ? this.errorMessage
@@ -48,6 +54,7 @@ class RequestListState extends Equatable {
     status,
     requests,
     requestStatus,
+    selectedDate,
     hasUnreadNew,
     errorMessage,
   ];

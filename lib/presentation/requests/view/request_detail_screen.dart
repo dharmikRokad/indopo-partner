@@ -154,15 +154,38 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                       // Patient Header Info
                       Row(
                         children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: AppColors.blue2,
-                            child: Text(
-                              req.patientInitials,
-                              style: TextStyles.headingBold.copyWith(
-                                fontSize: 22,
-                              ),
-                            ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: (req.patientProfilePicture != null &&
+                                    req.patientProfilePicture!.isNotEmpty)
+                                ? Image.network(
+                                    req.patientProfilePicture!,
+                                    width: 56,
+                                    height: 56,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: AppColors.blue2,
+                                      child: Text(
+                                        req.patientInitials,
+                                        style: TextStyles.headingBold.copyWith(
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: AppColors.blue2,
+                                    child: Text(
+                                      req.patientInitials,
+                                      style: TextStyles.headingBold.copyWith(
+                                        fontSize: 22,
+                                      ),
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -393,6 +416,55 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                                     fontSize: 14,
                                     color: Colors.white,
                                   ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (req.appointmentDate != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.blue2.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.event_available_rounded,
+                                    color: AppColors.blue1,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Appointment Schedule',
+                                    style: TextStyles.bodyMedium.copyWith(
+                                      fontSize: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                req.appointmentTime != null &&
+                                        req.appointmentTime!.isNotEmpty
+                                    ? '${req.appointmentDate!.day}/${req.appointmentDate!.month}/${req.appointmentDate!.year} • ${req.appointmentTime}'
+                                    : '${req.appointmentDate!.day}/${req.appointmentDate!.month}/${req.appointmentDate!.year}',
+                                style: TextStyles.headingSemiBold.copyWith(
+                                  fontSize: 13,
+                                  color: AppColors.blue1,
                                 ),
                               ),
                             ],

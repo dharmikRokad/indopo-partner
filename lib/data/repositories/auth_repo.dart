@@ -153,7 +153,7 @@ class AuthRepository {
         ApiEndpoints.forgotPassword,
         data: {
           'email': email.trim(),
-          // 'redirectTo': 'indopo-partner://reset-password',
+          'redirectTo': 'indopo-partner://reset-password',
         },
       );
 
@@ -175,12 +175,17 @@ class AuthRepository {
   /// Reset password using the recovery access token from deep link.
   Future<String> resetPassword({
     required String accessToken,
+    required String email,
     required String newPassword,
   }) async {
     try {
       final response = await _apiClient.post(
         ApiEndpoints.resetPassword,
-        data: {'password': newPassword},
+        data: {
+          'newPassword': newPassword,
+          'email': email,
+          'accessToken': accessToken,
+        },
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
