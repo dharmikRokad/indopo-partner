@@ -194,6 +194,9 @@ class NotificationModel {
       attachmentList = [metadata!['prescriptionUrl'].toString()];
     }
 
+    final String? prescriptionNotes =
+        metadata?['notes'] ?? metadata?['description'];
+
     final tokenNo =
         metadata?['tokenNumber']?.toString() ??
         metadata?['token_number']?.toString() ??
@@ -209,10 +212,12 @@ class NotificationModel {
       patientAge: (metadata?['patientAge'] is int)
           ? metadata!['patientAge'] as int
           : 30,
+      patientProfilePicture:
+          metadata?['patientProfilePicture']?.toString() ?? '',
       patientGender: metadata?['patientGender']?.toString() ?? 'Other',
       patientContact:
           patient?.email ?? metadata?['patientPhone']?.toString() ?? '',
-      description: message,
+      description: prescriptionNotes ?? message,
       attachments: attachmentList,
       timestamp: createdAt,
       status: reqStatus,
