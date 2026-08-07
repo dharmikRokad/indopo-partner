@@ -88,6 +88,8 @@ class BecomePartnerSubmitted extends AuthEvent {
   final String orgName;
   final String orgAddress;
   final PartnerType partnerType;
+  final double? lat;
+  final double? long;
 
   const BecomePartnerSubmitted({
     required this.name,
@@ -96,6 +98,8 @@ class BecomePartnerSubmitted extends AuthEvent {
     required this.orgName,
     required this.orgAddress,
     required this.partnerType,
+    this.lat,
+    this.long,
   });
 
   @override
@@ -106,5 +110,7 @@ class BecomePartnerSubmitted extends AuthEvent {
     orgName,
     orgAddress,
     partnerType,
+    lat,
+    long,
   ];
 }

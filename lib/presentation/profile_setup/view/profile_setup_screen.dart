@@ -496,7 +496,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
             const SizedBox(height: 20),
             _buildTextField(
               controller: _clinicNameController,
-              label: 'Clinic Name',
+              label: role.orgNameTitle,
               hint: 'Heart Care Clinic',
               validator: (v) => Validators.validateRequired(v, 'Clinic name'),
             ),
@@ -528,8 +528,8 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
             const SizedBox(height: 20),
             _buildTextField(
               controller: _clinicNameController,
-              label: 'Clinic / Hospital Name',
-              hint: 'City Health Hospital',
+              label: role.orgNameTitle,
+              hint: 'City Health Medical',
               validator: (v) => Validators.validateRequired(v, 'Hospital name'),
             ),
           ],
@@ -545,7 +545,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
             const SizedBox(height: 20),
             _buildTextField(
               controller: _nameController,
-              label: 'Laboratory Name',
+              label: role.orgNameTitle,
               hint: 'Apex Diagnostics Lab',
               validator: (v) =>
                   Validators.validateRequired(v, 'Laboratory name'),
@@ -579,7 +579,7 @@ class _ProfileSetupContentState extends State<_ProfileSetupContent> {
             const SizedBox(height: 20),
             _buildTextField(
               controller: _nameController,
-              label: 'Center Name',
+              label: role.orgNameTitle,
               hint: 'Precision Imaging Center',
               validator: (v) => Validators.validateRequired(v, 'Center name'),
             ),

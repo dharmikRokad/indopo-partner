@@ -189,8 +189,10 @@ class NotificationModel {
     if (metadata?['attachments'] is List) {
       attachmentList = (metadata!['attachments'] as List)
           .map((e) => e.toString())
+          .where((e) => e.isNotEmpty)
           .toList();
-    } else if (metadata?['prescriptionUrl'] != null) {
+    } else if (metadata?['prescriptionUrl'] != null &&
+        metadata!['prescriptionUrl'].toString().isNotEmpty) {
       attachmentList = [metadata!['prescriptionUrl'].toString()];
     }
 
@@ -212,8 +214,7 @@ class NotificationModel {
       patientAge: (metadata?['patientAge'] is int)
           ? metadata!['patientAge'] as int
           : 30,
-      patientProfilePicture:
-          metadata?['patientProfilePicture']?.toString() ?? '',
+      patientProfilePicture: metadata?['patientPhotoUrl']?.toString() ?? '',
       patientGender: metadata?['patientGender']?.toString() ?? 'Other',
       patientContact:
           patient?.email ?? metadata?['patientPhone']?.toString() ?? '',

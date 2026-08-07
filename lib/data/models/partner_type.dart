@@ -14,6 +14,13 @@ extension PartnerTypeExtension on PartnerType {
     }
   }
 
+  String get orgNameTitle => switch (this) {
+    PartnerType.doctor => 'Clinic Name',
+    PartnerType.pharmacy => 'Pharmacy Name',
+    PartnerType.laboratory => 'Laboratory Name',
+    PartnerType.imagingCenter => 'Imaging Center Name',
+  };
+
   String get apiValue {
     switch (this) {
       case PartnerType.doctor:

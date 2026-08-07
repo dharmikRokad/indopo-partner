@@ -212,6 +212,8 @@ class AuthRepository {
     required String orgName,
     required String orgAddress,
     required PartnerType partnerType,
+    double? lat,
+    double? long,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -223,6 +225,8 @@ class AuthRepository {
           'orgName': orgName.trim(),
           'orgAddress': orgAddress.trim(),
           'partnerType': partnerType.apiValue,
+          'lat': lat,
+          'long': long,
         },
       );
 

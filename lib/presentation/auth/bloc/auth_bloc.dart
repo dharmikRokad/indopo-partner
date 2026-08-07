@@ -261,6 +261,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         orgName: event.orgName,
         orgAddress: event.orgAddress,
         partnerType: event.partnerType,
+        lat: event.lat,
+        long: event.long,
       );
       emit(
         state.copyWith(

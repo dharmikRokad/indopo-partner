@@ -124,8 +124,10 @@ class RequestModel {
         ? json['patient'] as Map<String, dynamic>
         : null;
 
-    final patientPic = patientObj?['profilePicture']?.toString() ??
+    final patientPic =
+        patientObj?['profilePicture']?.toString() ??
         patientObj?['profile_picture']?.toString() ??
+        patientObj?['patientPhotoUrl']?.toString() ??
         patientObj?['avatar']?.toString() ??
         patientObj?['image']?.toString() ??
         json['patientProfilePicture']?.toString() ??
@@ -133,14 +135,16 @@ class RequestModel {
         json['profilePicture']?.toString() ??
         json['profile_picture']?.toString();
 
-    final pName = patientObj?['full_name']?.toString() ??
+    final pName =
+        patientObj?['full_name']?.toString() ??
         patientObj?['fullName']?.toString() ??
         patientObj?['name']?.toString() ??
         json['patientName']?.toString() ??
         json['patient_name']?.toString() ??
         'Unknown Patient';
 
-    final pContact = patientObj?['phoneNumber']?.toString() ??
+    final pContact =
+        patientObj?['phoneNumber']?.toString() ??
         patientObj?['phone_number']?.toString() ??
         patientObj?['phone']?.toString() ??
         json['patientPhone']?.toString() ??
@@ -148,17 +152,17 @@ class RequestModel {
         json['patientContact']?.toString() ??
         '';
 
-    final pAge = patientObj?['age'] as int? ??
-        json['patientAge'] as int? ??
-        30;
+    final pAge = patientObj?['age'] as int? ?? json['patientAge'] as int? ?? 30;
 
-    final pGender = patientObj?['gender']?.toString() ??
+    final pGender =
+        patientObj?['gender']?.toString() ??
         json['patientGender']?.toString() ??
         'Other';
 
     return RequestModel(
       id: json['id'] as String? ?? '',
-      patientId: json['patientId'] as String? ??
+      patientId:
+          json['patientId'] as String? ??
           json['patient_id'] as String? ??
           patientObj?['id']?.toString(),
       notificationId:

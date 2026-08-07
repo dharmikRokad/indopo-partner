@@ -86,6 +86,8 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
         orgName: _orgNameController.text.trim(),
         orgAddress: _orgAddressController.text.trim(),
         partnerType: _selectedRole!,
+        lat: _selectedLat,
+        long: _selectedLong,
       ),
     );
   }
@@ -329,10 +331,8 @@ class _BecomePartnerBottomSheetState extends State<BecomePartnerBottomSheet> {
                           initialLat: _selectedLat,
                           initialLong: _selectedLong,
                           onLocationChanged: (address, lat, long) {
-                            setState(() {
-                              _selectedLat = lat;
-                              _selectedLong = long;
-                            });
+                            _selectedLat = lat;
+                            _selectedLong = long;
                           },
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {

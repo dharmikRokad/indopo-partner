@@ -396,7 +396,7 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                     ),
                   ],
                 ),
-                if (request.description.isNotEmpty) ...[
+                if (request.description.trim().isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -418,8 +418,8 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
-                if (request.attachments.isNotEmpty)
+                if (request.attachments.isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   GestureDetector(
                     onTap: () => _showPrescriptionSheet(
                       context,
@@ -476,32 +476,20 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                         ),
                       ],
                     ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.blue3,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.receipt_rounded,
-                          color: AppColors.blue1,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Prescription Image / Document Available',
-                          style: TextStyle(fontSize: 13, color: Colors.white),
-                        ),
-                      ],
+                  ),
+                ],
+                if (request.description.trim().isEmpty &&
+                    request.attachments.isEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'No additional notes or prescription image provided',
+                    style: TextStyles.labelRegular.copyWith(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
+                ],
               ],
             ),
           ),

@@ -920,11 +920,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         _buildTextField(
           controller: _clinicNameController,
-          label: role == PartnerType.doctor
-              ? 'Clinic Name'
-              : (role == PartnerType.pharmacy
-                    ? 'Clinic / Hospital Name'
-                    : 'Organization Name'),
+          label: role.orgNameTitle,
           hint: 'Enter organization/clinic name',
           validator: (v) => Validators.validateRequired(
             v,
