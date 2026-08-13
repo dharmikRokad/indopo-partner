@@ -90,6 +90,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _consultationFeeController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    final authState = context.read<AuthBloc>().state;
+    if (authState.status == AuthBlocStatus.authenticated &&
+        authState.partner != null) {
+      _initFormFields(authState.partner!, isEditing: false);
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _specializationController.dispose();
@@ -154,13 +164,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   TimeOfDay? _parseTimeString(String? timeStr) {
-    if (timeStr == null || timeStr.isEmpty) return null;
-    final parts = timeStr.split(':');
-    if (parts.length == 2) {
-      final hour = int.tryParse(parts[0]);
-      final minute = int.tryParse(parts[1]);
+    if (timeStr == null || timeStr.trim().isEmpty) return null;
+    final trimmed = timeStr.trim();
+
+    // 1. ISO 8601 or DateTime string
+    if (trimmed.contains('T')) {
+      final dt = DateTime.tryParse(trimmed);
+      if (dt != null) {
+        return TimeOfDay(hour: dt.hour, minute: dt.minute);
+      }
+    }
+
+    // 2. Check for 12-hour AM/PM markers
+    final isAm = RegExp(r'am', caseSensitive: false).hasMatch(trimmed);
+    final isPm = RegExp(r'pm', caseSensitive: false).hasMatch(trimmed);
+
+    // 3. Remove any alphabetic characters (AM, PM, etc.) and trim
+    final clean = trimmed.replaceAll(RegExp(r'[a-zA-Z]'), '').trim();
+    final parts = clean.split(':');
+
+    if (parts.isNotEmpty) {
+      int? hour = int.tryParse(parts[0].trim());
+      int? minute = parts.length > 1 ? int.tryParse(parts[1].trim()) : 0;
+
       if (hour != null && minute != null) {
-        return TimeOfDay(hour: hour, minute: minute);
+        if (isPm && hour < 12) {
+          hour += 12;
+        } else if (isAm && hour == 12) {
+          hour = 0;
+        }
+        if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+          return TimeOfDay(hour: hour, minute: minute);
+        }
       }
     }
     return null;
@@ -395,292 +430,332 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .join()
         .toUpperCase();
 
-    return BlocBuilder<ValueCubit<ProfileScreenState>, ProfileScreenState>(
-      bloc: _stateCubit,
-      builder: (context, state) {
-        return Scaffold(
-          backgroundColor: AppColors.blue3,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: Text(
-              state.isEditing ? 'Edit Profile' : 'Profile',
-              style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
-            ),
-            actions: [
-              if (!state.isEditing)
-                IconButton(
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    color: AppColors.error,
-                  ),
-                  onPressed: () async {
-                    final shouldLogout = await LogoutConfirmationDialog.show(
-                      context,
-                    );
-                    if (shouldLogout == true && context.mounted) {
-                      context.read<AuthBloc>().add(LogoutRequested());
-                    }
-                  },
-                ),
-            ],
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 16.0,
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, authState) {
+        if (authState.status == AuthBlocStatus.authenticated &&
+            authState.partner != null &&
+            !_stateCubit.state.isEditing) {
+          _initFormFields(authState.partner!, isEditing: false);
+        }
+      },
+      child: BlocBuilder<ValueCubit<ProfileScreenState>, ProfileScreenState>(
+        bloc: _stateCubit,
+        builder: (context, state) {
+          return Scaffold(
+            backgroundColor: AppColors.blue3,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Text(
+                state.isEditing ? 'Edit Profile' : 'Profile',
+                style: TextStyles.headingSemiBold.copyWith(fontSize: 20),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header Card
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.blue2.withValues(alpha: 0.3),
-                      ),
+              actions: [
+                if (!state.isEditing)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.error,
                     ),
-                    child: Column(
-                      children: [
-                        Stack(
-                          children: [
-                            GestureDetector(
-                              onTap: () =>
-                                  _showImagePickerModal(context, partner),
-                              child: CircleAvatar(
-                                radius: 44,
-                                backgroundColor: AppColors.blue2,
-                                backgroundImage: state.selectedImageFile != null
-                                    ? FileImage(state.selectedImageFile!)
-                                          as ImageProvider
-                                    : (partner.profilePicture != null &&
-                                              partner.profilePicture!.isNotEmpty
-                                          ? NetworkImage(
-                                              partner.profilePicture!,
-                                            )
-                                          : null),
-                                child:
-                                    (state.selectedImageFile == null &&
-                                        (partner.profilePicture == null ||
-                                            partner.profilePicture!.isEmpty))
-                                    ? Text(
-                                        initials.isEmpty ? 'P' : initials,
-                                        style: TextStyles.headingBold.copyWith(
-                                          fontSize: 28,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            ),
+                    onPressed: () async {
+                      final shouldLogout = await LogoutConfirmationDialog.show(
+                        context,
+                      );
+                      if (shouldLogout == true && context.mounted) {
+                        context.read<AuthBloc>().add(LogoutRequested());
+                      }
+                    },
+                  ),
+              ],
+            ),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 16.0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header Card
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.blue2.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Stack(
+                        children: [
+                          if (!state.isEditing)
                             Positioned(
-                              bottom: 0,
+                              top: 0,
                               right: 0,
-                              child: GestureDetector(
-                                onTap: () =>
-                                    _showImagePickerModal(context, partner),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.blue1,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.surface,
-                                      width: 2,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    _initFormFields(partner, isEditing: true);
+                                  },
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.blue2.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: AppColors.blue1.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.edit_rounded,
+                                      color: AppColors.blue1,
+                                      size: 18,
                                     ),
                                   ),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.white,
-                                    size: 14,
-                                  ),
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          displayName,
-                          style: TextStyles.headingBold.copyWith(fontSize: 22),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          partner.email,
-                          style: TextStyles.labelRegular.copyWith(fontSize: 14),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.blue2.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.blue1,
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                partner.role.icon,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                partner.role.displayName,
-                                style: TextStyles.bodyMedium.copyWith(
-                                  color: AppColors.blue1,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Content based on Mode
-                  state.isEditing
-                      ? Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildEditFields(partner.role, state),
-                              const SizedBox(height: 28),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: state.isLoading
-                                          ? null
-                                          : () => _stateCubit.update(
-                                              state.copyWith(isEditing: false),
+                          Center(
+                            child: Column(
+                              children: [
+                                Stack(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => _showImagePickerModal(
+                                        context,
+                                        partner,
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 44,
+                                        backgroundColor: AppColors.blue2,
+                                        backgroundImage:
+                                            state.selectedImageFile != null
+                                            ? FileImage(
+                                                    state.selectedImageFile!,
+                                                  )
+                                                  as ImageProvider
+                                            : (partner.profilePicture != null &&
+                                                      partner
+                                                          .profilePicture!
+                                                          .isNotEmpty
+                                                  ? NetworkImage(
+                                                      partner.profilePicture!,
+                                                    )
+                                                  : null),
+                                        child:
+                                            (state.selectedImageFile == null &&
+                                                (partner.profilePicture ==
+                                                        null ||
+                                                    partner
+                                                        .profilePicture!
+                                                        .isEmpty))
+                                            ? Text(
+                                                initials.isEmpty
+                                                    ? 'P'
+                                                    : initials,
+                                                style: TextStyles.headingBold
+                                                    .copyWith(fontSize: 28),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: GestureDetector(
+                                        onTap: () => _showImagePickerModal(
+                                          context,
+                                          partner,
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.blue1,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: AppColors.surface,
+                                              width: 2,
                                             ),
-                                      style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(
-                                          color: AppColors.textMuted,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 16,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                                          ),
+                                          child: const Icon(
+                                            Icons.camera_alt,
+                                            color: Colors.white,
+                                            size: 14,
                                           ),
                                         ),
                                       ),
-                                      child: Text(
-                                        'Cancel',
-                                        style: TextStyles.headingSemiBold
-                                            .copyWith(
-                                              color: AppColors.textMuted,
-                                            ),
-                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  displayName,
+                                  style: TextStyles.headingBold.copyWith(
+                                    fontSize: 22,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  partner.email,
+                                  style: TextStyles.labelRegular.copyWith(
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.blue2.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: AppColors.blue1,
+                                      width: 1,
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Container(
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            AppColors.blue1,
-                                            AppColors.blue2,
-                                          ],
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        partner.role.icon,
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        partner.role.displayName,
+                                        style: TextStyles.bodyMedium.copyWith(
+                                          color: AppColors.blue1,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
                                         ),
                                       ),
-                                      child: ElevatedButton(
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Content based on Mode
+                    state.isEditing
+                        ? Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildEditFields(partner.role, state),
+                                const SizedBox(height: 28),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
                                         onPressed: state.isLoading
                                             ? null
-                                            : () => _saveProfile(partner),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.transparent,
-                                          shadowColor: Colors.transparent,
+                                            : () => _stateCubit.update(
+                                                state.copyWith(
+                                                  isEditing: false,
+                                                ),
+                                              ),
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(
+                                            color: AppColors.textMuted,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
                                           ),
                                         ),
-                                        child: state.isLoading
-                                            ? const SizedBox(
-                                                width: 24,
-                                                height: 24,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      color: Colors.white,
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : Text(
-                                                'Save Changes',
-                                                style: TextStyles.headingBold
-                                                    .copyWith(fontSize: 16),
+                                        child: Text(
+                                          'Cancel',
+                                          style: TextStyles.headingSemiBold
+                                              .copyWith(
+                                                color: AppColors.textMuted,
                                               ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildViewFields(partner),
-                            const SizedBox(height: 28),
-                            Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
-                                  colors: [AppColors.blue1, AppColors.blue2],
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Container(
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              AppColors.blue1,
+                                              AppColors.blue2,
+                                            ],
+                                          ),
+                                        ),
+                                        child: ElevatedButton(
+                                          onPressed: state.isLoading
+                                              ? null
+                                              : () => _saveProfile(partner),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            shadowColor: Colors.transparent,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: state.isLoading
+                                              ? const SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : Text(
+                                                  'Save',
+                                                  style: TextStyles.headingBold
+                                                      .copyWith(fontSize: 16),
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  _initFormFields(partner, isEditing: true);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Edit Profile',
-                                  style: TextStyles.headingBold.copyWith(
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [_buildViewFields(partner)],
+                          ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

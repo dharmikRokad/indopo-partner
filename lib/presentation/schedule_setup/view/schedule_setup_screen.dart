@@ -111,13 +111,38 @@ class _ScheduleSetupScreenState extends State<ScheduleSetupScreen> {
   }
 
   TimeOfDay? _parseTimeString(String? timeStr) {
-    if (timeStr == null || timeStr.isEmpty) return null;
-    final parts = timeStr.split(':');
-    if (parts.length == 2) {
-      final hour = int.tryParse(parts[0]);
-      final minute = int.tryParse(parts[1]);
+    if (timeStr == null || timeStr.trim().isEmpty) return null;
+    final trimmed = timeStr.trim();
+
+    // 1. ISO 8601 or DateTime string
+    if (trimmed.contains('T')) {
+      final dt = DateTime.tryParse(trimmed);
+      if (dt != null) {
+        return TimeOfDay(hour: dt.hour, minute: dt.minute);
+      }
+    }
+
+    // 2. Check for 12-hour AM/PM markers
+    final isAm = RegExp(r'am', caseSensitive: false).hasMatch(trimmed);
+    final isPm = RegExp(r'pm', caseSensitive: false).hasMatch(trimmed);
+
+    // 3. Remove any alphabetic characters (AM, PM, etc.) and trim
+    final clean = trimmed.replaceAll(RegExp(r'[a-zA-Z]'), '').trim();
+    final parts = clean.split(':');
+
+    if (parts.isNotEmpty) {
+      int? hour = int.tryParse(parts[0].trim());
+      int? minute = parts.length > 1 ? int.tryParse(parts[1].trim()) : 0;
+
       if (hour != null && minute != null) {
-        return TimeOfDay(hour: hour, minute: minute);
+        if (isPm && hour < 12) {
+          hour += 12;
+        } else if (isAm && hour == 12) {
+          hour = 0;
+        }
+        if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+          return TimeOfDay(hour: hour, minute: minute);
+        }
       }
     }
     return null;

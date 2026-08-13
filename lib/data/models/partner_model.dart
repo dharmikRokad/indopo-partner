@@ -67,10 +67,21 @@ class PartnerModel {
       services: (json['services'] as List? ?? [])
           .map((e) => ServiceModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      openTime: json['openTime'] as String?,
-      closeTime: json['closeTime'] as String?,
+      openTime: json['openTime'] as String? ??
+          json['open_time'] as String? ??
+          details['openTime'] as String? ??
+          details['open_time'] as String?,
+      closeTime: json['closeTime'] as String? ??
+          json['close_time'] as String? ??
+          details['closeTime'] as String? ??
+          details['close_time'] as String?,
       workingDays: _normalizeWorkingDays(
-        (json['workingDays'] as List?)?.map((e) => e.toString()).toList(),
+        ((json['workingDays'] ??
+                json['working_days'] ??
+                details['workingDays'] ??
+                details['working_days']) as List?)
+            ?.map((e) => e.toString())
+            .toList(),
       ),
       lat: (json['lat'] as num?)?.toDouble(),
       long: (json['long'] as num?)?.toDouble(),
@@ -154,10 +165,39 @@ class PartnerModel {
       isProfileConfigured: isConfigured,
       details: details,
       services: services,
-      openTime: json['openTime'] as String?,
-      closeTime: json['closeTime'] as String?,
+      openTime: json['openTime'] as String? ??
+          json['open_time'] as String? ??
+          (json['doctorProfile'] is Map
+              ? (json['doctorProfile']['openTime'] as String? ??
+                  json['doctorProfile']['open_time'] as String?)
+              : null) ??
+          (json['details'] is Map
+              ? (json['details']['openTime'] as String? ??
+                  json['details']['open_time'] as String?)
+              : null),
+      closeTime: json['closeTime'] as String? ??
+          json['close_time'] as String? ??
+          (json['doctorProfile'] is Map
+              ? (json['doctorProfile']['closeTime'] as String? ??
+                  json['doctorProfile']['close_time'] as String?)
+              : null) ??
+          (json['details'] is Map
+              ? (json['details']['closeTime'] as String? ??
+                  json['details']['close_time'] as String?)
+              : null),
       workingDays: _normalizeWorkingDays(
-        (json['workingDays'] as List?)?.map((e) => e.toString()).toList(),
+        ((json['workingDays'] ??
+                json['working_days'] ??
+                (json['doctorProfile'] is Map
+                    ? (json['doctorProfile']['workingDays'] ??
+                        json['doctorProfile']['working_days'])
+                    : null) ??
+                (json['details'] is Map
+                    ? (json['details']['workingDays'] ??
+                        json['details']['working_days'])
+                    : null)) as List?)
+            ?.map((e) => e.toString())
+            .toList(),
       ),
       lat: json['lat'] is String
           ? double.parse(json['lat'])
