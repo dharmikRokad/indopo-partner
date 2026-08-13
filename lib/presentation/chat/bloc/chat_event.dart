@@ -12,11 +12,18 @@ abstract class ChatEvent extends Equatable {
 class InitChatStream extends ChatEvent {
   final String chatId;
   final String partnerId;
+  final String? partnerName;
+  final String? patientId;
 
-  const InitChatStream({required this.chatId, required this.partnerId});
+  const InitChatStream({
+    required this.chatId,
+    required this.partnerId,
+    this.partnerName,
+    this.patientId,
+  });
 
   @override
-  List<Object?> get props => [chatId, partnerId];
+  List<Object?> get props => [chatId, partnerId, partnerName, patientId];
 }
 
 /// Internal event fired on each stream emission.
@@ -34,13 +41,23 @@ class SendMessage extends ChatEvent {
   final String content;
   final String? imageUrl;
   final bool isPrescription;
+  final String? partnerName;
+  final String? patientId;
 
   const SendMessage({
     required this.content,
     this.imageUrl,
     this.isPrescription = false,
+    this.partnerName,
+    this.patientId,
   });
 
   @override
-  List<Object?> get props => [content, imageUrl, isPrescription];
+  List<Object?> get props => [
+    content,
+    imageUrl,
+    isPrescription,
+    partnerName,
+    patientId,
+  ];
 }

@@ -12,6 +12,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   String? _chatId;
   String? _partnerId;
+  String? _partnerName;
+  String? _patientId;
 
   ChatBloc({required SupabaseChatRepository repo})
     : _repo = repo,
@@ -27,6 +29,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     _chatId = event.chatId;
     _partnerId = event.partnerId;
+    _partnerName = event.partnerName;
+    _patientId = event.patientId;
 
     emit(state.copyWith(status: ChatStatus.loading));
     await _messagesSubscription?.cancel();
@@ -70,6 +74,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         content: event.content,
         imageUrl: event.imageUrl,
         isPrescription: event.isPrescription,
+        partnerName: event.partnerName ?? _partnerName,
+        patientId: event.patientId ?? _patientId,
       );
     } catch (e) {
       debugPrint('[ChatBloc] SendMessage error: $e');

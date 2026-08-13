@@ -266,7 +266,7 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
 
       if (!mounted) return;
       context.push(
-        '${AppRoutes.chat.replaceAll(':id', chatId)}?appointmentId=${widget.request.id}',
+        '${AppRoutes.chat.replaceAll(':id', chatId)}?appointmentId=${widget.request.id}&patientId=${widget.request.patientId ?? ''}&patientName=${Uri.encodeComponent(widget.request.patientName)}',
       );
     } catch (e) {
       if (mounted) {

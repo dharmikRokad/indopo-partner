@@ -16,6 +16,8 @@ class ThreadChatScreen extends StatefulWidget {
   final String? prescriptionUrl;
   final String? notes;
   final String? patientName;
+  final String? partnerName;
+  final String? patientId;
 
   const ThreadChatScreen({
     super.key,
@@ -24,6 +26,8 @@ class ThreadChatScreen extends StatefulWidget {
     this.prescriptionUrl,
     this.notes,
     this.patientName,
+    this.partnerName,
+    this.patientId,
   });
 
   @override
@@ -72,9 +76,17 @@ class _ThreadChatScreenState extends State<ThreadChatScreen> {
   void _sendReply(BuildContext context) {
     final text = _replyController.text.trim();
     if (text.isEmpty) return;
+    final authState = context.read<AuthBloc>().state;
+    final partnerName = widget.partnerName ?? authState.partner?.name;
     _replyController.clear();
     _focusNode.requestFocus();
-    context.read<ThreadBloc>().add(SendThreadReply(content: text));
+    context.read<ThreadBloc>().add(
+          SendThreadReply(
+            content: text,
+            partnerName: partnerName,
+            patientId: widget.patientId,
+          ),
+        );
     // The Supabase stream will surface the new message automatically
     _scrollToBottom(delayMs: 300);
   }

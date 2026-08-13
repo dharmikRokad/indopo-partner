@@ -13,15 +13,25 @@ class InitThreadStream extends ThreadEvent {
   final String chatId;
   final String parentMessageId;
   final String partnerId;
+  final String? partnerName;
+  final String? patientId;
 
   const InitThreadStream({
     required this.chatId,
     required this.parentMessageId,
     required this.partnerId,
+    this.partnerName,
+    this.patientId,
   });
 
   @override
-  List<Object?> get props => [chatId, parentMessageId, partnerId];
+  List<Object?> get props => [
+    chatId,
+    parentMessageId,
+    partnerId,
+    partnerName,
+    patientId,
+  ];
 }
 
 /// Internal event fired on each stream emission.
@@ -38,9 +48,16 @@ class ThreadStreamUpdated extends ThreadEvent {
 class SendThreadReply extends ThreadEvent {
   final String content;
   final String? imageUrl;
+  final String? partnerName;
+  final String? patientId;
 
-  const SendThreadReply({required this.content, this.imageUrl});
+  const SendThreadReply({
+    required this.content,
+    this.imageUrl,
+    this.partnerName,
+    this.patientId,
+  });
 
   @override
-  List<Object?> get props => [content, imageUrl];
+  List<Object?> get props => [content, imageUrl, partnerName, patientId];
 }

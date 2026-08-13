@@ -98,13 +98,17 @@ class _RequestDetailContentState extends State<_RequestDetailContent> {
                 'Appointment confirmed successfully',
               );
               final targetId = state.chatId ?? widget.id;
+              final pId = state.request?.patientId ?? '';
+              final pName = state.request?.patientName ?? 'Patient';
               context.replace(
-                '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}',
+                '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}&patientId=$pId&patientName=${Uri.encodeComponent(pName)}',
               );
             } else if (state.actionType == 'start_chat') {
               final targetId = state.chatId ?? widget.id;
+              final pId = state.request?.patientId ?? '';
+              final pName = state.request?.patientName ?? 'Patient';
               context.replace(
-                '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}',
+                '${AppRoutes.chat.replaceAll(':id', targetId)}?appointmentId=${widget.id}&patientId=$pId&patientName=${Uri.encodeComponent(pName)}',
               );
             }
           } else if (state.status == RequestDetailStatus.failure) {

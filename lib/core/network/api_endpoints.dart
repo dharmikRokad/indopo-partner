@@ -22,6 +22,7 @@ class ApiEndpoints {
   // Notification Endpoints
   static const String notificationsList = '/notifications';
   static String notificationRead(String id) => '/notifications/$id/read';
+  static const String pushNotificationUser = '/notifications/push/user';
 
   // Prescription Chat & Thread Endpoints
   static const String prescriptionThreadInit = '/chat/prescription-thread';

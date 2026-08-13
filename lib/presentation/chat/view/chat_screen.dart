@@ -18,18 +18,27 @@ import 'thread_chat_screen.dart';
 class ChatScreen extends StatelessWidget {
   /// [id] is the chat room ID.
   final String id;
+  final String? patientId;
+  final String? patientName;
 
-  const ChatScreen({super.key, required this.id});
+  const ChatScreen({
+    super.key,
+    required this.id,
+    this.patientId,
+    this.patientName,
+  });
 
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
     String partnerId = '';
+    String? partnerName;
     bool isMedicalPartner = false;
 
     if (authState.status == AuthBlocStatus.authenticated &&
         authState.partner != null) {
       partnerId = authState.partner!.id;
+      partnerName = authState.partner!.name;
       final role = authState.partner!.role;
       isMedicalPartner =
           role == PartnerType.doctor || role == PartnerType.pharmacy;
@@ -38,10 +47,20 @@ class ChatScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) =>
           ChatBloc(repo: context.read<SupabaseChatRepository>())
-            ..add(InitChatStream(chatId: id, partnerId: partnerId)),
+            ..add(
+              InitChatStream(
+                chatId: id,
+                partnerId: partnerId,
+                partnerName: partnerName,
+                patientId: patientId,
+              ),
+            ),
       child: _ChatContent(
         chatId: id,
         partnerId: partnerId,
+        partnerName: partnerName,
+        patientId: patientId,
+        patientName: patientName,
         isMedicalPartner: isMedicalPartner,
       ),
     );
@@ -51,11 +70,17 @@ class ChatScreen extends StatelessWidget {
 class _ChatContent extends StatefulWidget {
   final String chatId;
   final String partnerId;
+  final String? partnerName;
+  final String? patientId;
+  final String? patientName;
   final bool isMedicalPartner;
 
   const _ChatContent({
     required this.chatId,
     required this.partnerId,
+    this.partnerName,
+    this.patientId,
+    this.patientName,
     required this.isMedicalPartner,
   });
 
@@ -197,6 +222,9 @@ class _ChatContentState extends State<_ChatContent> {
                             return _PrescriptionInquiryCard(
                               chatId: widget.chatId,
                               partnerId: widget.partnerId,
+                              partnerName: widget.partnerName,
+                              patientId: widget.patientId,
+                              patientName: widget.patientName,
                               rootMessage: msg,
                             );
                           },
@@ -234,11 +262,17 @@ class _ChatContentState extends State<_ChatContent> {
 class _PrescriptionInquiryCard extends StatelessWidget {
   final String chatId;
   final String partnerId;
+  final String? partnerName;
+  final String? patientId;
+  final String? patientName;
   final ChatMessage rootMessage;
 
   const _PrescriptionInquiryCard({
     required this.chatId,
     required this.partnerId,
+    this.partnerName,
+    this.patientId,
+    this.patientName,
     required this.rootMessage,
   });
 
@@ -277,11 +311,16 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                           chatId: chatId,
                           parentMessageId: rootMessage.id,
                           partnerId: partnerId,
+                          partnerName: partnerName,
+                          patientId: patientId,
                         ),
                       ),
                 child: ThreadChatScreen(
                   parentMessageId: rootMessage.id,
                   chatId: chatId,
+                  partnerName: partnerName,
+                  patientId: patientId,
+                  patientName: patientName,
                   prescriptionUrl: imageUrl,
                   notes: notes.isNotEmpty ? notes : null,
                 ),

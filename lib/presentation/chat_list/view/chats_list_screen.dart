@@ -182,9 +182,9 @@ class _ChatListTile extends StatelessWidget {
           context.read<SupabaseChatRepository>().markPartnerChatsUnreadAsRead(
             room.id,
           );
-          await GoRouter.of(
-            context,
-          ).push(AppRoutes.chat.replaceAll(':id', room.id));
+          await GoRouter.of(context).push(
+            '${AppRoutes.chat.replaceAll(':id', room.id)}?patientId=${room.patientId}&patientName=${Uri.encodeComponent(room.patientName)}',
+          );
           // Stream update will automatically reflect the reset count
         },
         borderRadius: BorderRadius.circular(16),

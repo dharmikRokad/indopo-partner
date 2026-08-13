@@ -262,6 +262,8 @@ class SupabaseChatRepository {
     String? imageUrl,
     String? parentMessageId,
     bool isPrescription = false,
+    String? partnerName,
+    String? patientId,
   }) async {
     final String? validParentId =
         (parentMessageId != null && parentMessageId.trim().isNotEmpty)
@@ -340,9 +342,93 @@ class SupabaseChatRepository {
             })
             .eq('id', chatId);
       }
+
+      // 4. Send push notification to target patient when partner sends a message
+      if (senderRole == 'PARTNER') {
+        final String? targetPatientId =
+            (patientId != null && patientId.isNotEmpty)
+                ? patientId
+                : chatRow?['patient_id']?.toString();
+
+        if (targetPatientId != null && targetPatientId.isNotEmpty) {
+          final String title =
+              (partnerName != null && partnerName.trim().isNotEmpty)
+                  ? partnerName.trim()
+                  : (chatRow?['partner_name']?.toString() ??
+                      'Pharmacy Partner');
+
+          // Limit title to max 200 chars and body to max 1000 chars as per API spec
+          final safeTitle =
+              title.length > 200 ? title.substring(0, 200) : title;
+          final safeBody =
+              content.length > 1000 ? content.substring(0, 1000) : content;
+
+          final Map<String, String> dataPayload = {
+            'chatId': chatId,
+            'type': 'chat',
+            if (validParentId != null) 'parentMessageId': validParentId,
+          };
+
+          // Safe, best-effort dispatch (does not throw)
+          await sendPushNotification(
+            userId: targetPatientId,
+            role: 'patient',
+            title: safeTitle,
+            body: safeBody,
+            imageUrl: imageUrl,
+            data: dataPayload,
+          );
+        }
+      }
     } catch (e) {
       debugPrint('[SupabaseChatRepository] sendMessage error: $e');
       rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Push Notification
+  // ---------------------------------------------------------------------------
+
+  /// Sends a push notification to a user (patient or partner) by userId and role.
+  Future<bool> sendPushNotification({
+    required String userId,
+    required String role, // 'patient' | 'partner'
+    required String title,
+    required String body,
+    String? imageUrl,
+    Map<String, String>? data,
+  }) async {
+    try {
+      debugPrint(
+        '[SupabaseChatRepository] Sending push notification to $role ($userId): $title - $body',
+      );
+      final response = await _apiClient.post(
+        ApiEndpoints.pushNotificationUser,
+        data: {
+          'userId': userId,
+          'role': role,
+          'title': title,
+          'body': body,
+          if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+          if (data != null && data.isNotEmpty) 'data': data,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint(
+          '[SupabaseChatRepository] Push notification sent successfully: ${response.data}',
+        );
+        return true;
+      } else {
+        debugPrint(
+          '[SupabaseChatRepository] Push notification response status: ${response.statusCode}, data: ${response.data}',
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[SupabaseChatRepository] sendPushNotification error: $e');
+      return false;
     }
   }
 

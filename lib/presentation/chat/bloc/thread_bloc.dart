@@ -13,6 +13,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   String? _chatId;
   String? _parentMessageId;
   String? _partnerId;
+  String? _partnerName;
+  String? _patientId;
 
   ThreadBloc({required SupabaseChatRepository repo})
     : _repo = repo,
@@ -29,6 +31,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     _chatId = event.chatId;
     _parentMessageId = event.parentMessageId;
     _partnerId = event.partnerId;
+    _partnerName = event.partnerName;
+    _patientId = event.patientId;
 
     emit(state.copyWith(status: ThreadStatus.loading));
     await _repliesSubscription?.cancel();
@@ -77,6 +81,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
         content: event.content,
         imageUrl: event.imageUrl,
         parentMessageId: _parentMessageId,
+        partnerName: event.partnerName ?? _partnerName,
+        patientId: event.patientId ?? _patientId,
       );
       // The stream subscription will automatically emit the updated list
     } catch (e) {
