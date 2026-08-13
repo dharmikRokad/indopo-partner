@@ -93,13 +93,7 @@ class AppRouter {
           return AppRoutes.profileSetup;
         } else {
           // Check if working days and times are set
-          final hasSchedule =
-              partner.workingDays != null &&
-              partner.workingDays!.isNotEmpty &&
-              partner.openTime != null &&
-              partner.openTime!.isNotEmpty &&
-              partner.closeTime != null &&
-              partner.closeTime!.isNotEmpty;
+          final hasSchedule = partner.hasSchedule;
 
           if (!hasSchedule) {
             if (currentLoc == AppRoutes.scheduleSetup) {

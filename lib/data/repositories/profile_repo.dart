@@ -52,9 +52,9 @@ class ProfileRepository {
           '',
       'orgAddress': partner.orgAddress ?? details['address'] ?? '',
       'services': partner.services.map((e) => e.toJson()).toList(),
-      'openTime': partner.openTime,
-      'closeTime': partner.closeTime,
-      'workingDays': partner.workingDays,
+      'weeklySchedule': partner.weeklySchedule?.map(
+        (k, v) => MapEntry(k, v.toJson()),
+      ),
       'lat': partner.lat,
       'long': partner.long,
     };
@@ -99,9 +99,7 @@ class ProfileRepository {
           details: mergedDetails,
           services: servicesToKeep,
           isProfileConfigured: true,
-          openTime: apiPartner.openTime ?? partner.openTime,
-          closeTime: apiPartner.closeTime ?? partner.closeTime,
-          workingDays: apiPartner.workingDays ?? partner.workingDays,
+          weeklySchedule: apiPartner.weeklySchedule ?? partner.weeklySchedule,
           lat: apiPartner.lat ?? partner.lat,
           long: apiPartner.long ?? partner.long,
           orgAddress: apiPartner.orgAddress ?? partner.orgAddress,

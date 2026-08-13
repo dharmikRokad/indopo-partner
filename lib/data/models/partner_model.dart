@@ -1,3 +1,4 @@
+import 'day_schedule_model.dart';
 import 'partner_type.dart';
 import 'service_model.dart';
 
@@ -8,9 +9,7 @@ class PartnerModel {
   final bool isProfileConfigured;
   final Map<String, dynamic> details;
   final List<ServiceModel> services;
-  final String? openTime;
-  final String? closeTime;
-  final List<String>? workingDays;
+  final Map<String, DaySchedule>? weeklySchedule;
   final double? lat;
   final double? long;
   final String? orgAddress;
@@ -25,6 +24,9 @@ class PartnerModel {
       details['center_name'] as String? ??
       email;
 
+  bool get hasSchedule =>
+      (weeklySchedule != null && weeklySchedule!.isNotEmpty);
+
   PartnerModel({
     required this.id,
     required this.email,
@@ -32,9 +34,7 @@ class PartnerModel {
     required this.isProfileConfigured,
     this.details = const {},
     this.services = const [],
-    this.openTime,
-    this.closeTime,
-    this.workingDays,
+    this.weeklySchedule,
     this.lat,
     this.long,
     this.orgAddress,
@@ -58,6 +58,14 @@ class PartnerModel {
         details['profile_picture'] as String? ??
         details['profilePicture'] as String?;
 
+    final rawWeeklySchedule =
+        json['weeklySchedule'] ??
+        json['weekly_schedule'] ??
+        details['weeklySchedule'] ??
+        details['weekly_schedule'];
+
+    final parsedWeeklySchedule = _parseWeeklySchedule(rawWeeklySchedule);
+
     return PartnerModel(
       id: json['id'] as String? ?? '',
       email: json['email'] as String? ?? '',
@@ -67,22 +75,7 @@ class PartnerModel {
       services: (json['services'] as List? ?? [])
           .map((e) => ServiceModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      openTime: json['openTime'] as String? ??
-          json['open_time'] as String? ??
-          details['openTime'] as String? ??
-          details['open_time'] as String?,
-      closeTime: json['closeTime'] as String? ??
-          json['close_time'] as String? ??
-          details['closeTime'] as String? ??
-          details['close_time'] as String?,
-      workingDays: _normalizeWorkingDays(
-        ((json['workingDays'] ??
-                json['working_days'] ??
-                details['workingDays'] ??
-                details['working_days']) as List?)
-            ?.map((e) => e.toString())
-            .toList(),
-      ),
+      weeklySchedule: parsedWeeklySchedule,
       lat: (json['lat'] as num?)?.toDouble(),
       long: (json['long'] as num?)?.toDouble(),
       orgAddress: orgAddressStr,
@@ -158,6 +151,20 @@ class PartnerModel {
         json['avatar'] as String? ??
         json['doctorProfile']?['profilePicture'] as String?;
 
+    final rawWeeklySchedule =
+        json['weeklySchedule'] ??
+        json['weekly_schedule'] ??
+        (json['doctorProfile'] is Map
+            ? (json['doctorProfile']['weeklySchedule'] ??
+                json['doctorProfile']['weekly_schedule'])
+            : null) ??
+        (json['details'] is Map
+            ? (json['details']['weeklySchedule'] ??
+                json['details']['weekly_schedule'])
+            : null);
+
+    final parsedWeeklySchedule = _parseWeeklySchedule(rawWeeklySchedule);
+
     return PartnerModel(
       id: json['id'] as String? ?? '',
       email: json['email'] as String? ?? '',
@@ -165,40 +172,7 @@ class PartnerModel {
       isProfileConfigured: isConfigured,
       details: details,
       services: services,
-      openTime: json['openTime'] as String? ??
-          json['open_time'] as String? ??
-          (json['doctorProfile'] is Map
-              ? (json['doctorProfile']['openTime'] as String? ??
-                  json['doctorProfile']['open_time'] as String?)
-              : null) ??
-          (json['details'] is Map
-              ? (json['details']['openTime'] as String? ??
-                  json['details']['open_time'] as String?)
-              : null),
-      closeTime: json['closeTime'] as String? ??
-          json['close_time'] as String? ??
-          (json['doctorProfile'] is Map
-              ? (json['doctorProfile']['closeTime'] as String? ??
-                  json['doctorProfile']['close_time'] as String?)
-              : null) ??
-          (json['details'] is Map
-              ? (json['details']['closeTime'] as String? ??
-                  json['details']['close_time'] as String?)
-              : null),
-      workingDays: _normalizeWorkingDays(
-        ((json['workingDays'] ??
-                json['working_days'] ??
-                (json['doctorProfile'] is Map
-                    ? (json['doctorProfile']['workingDays'] ??
-                        json['doctorProfile']['working_days'])
-                    : null) ??
-                (json['details'] is Map
-                    ? (json['details']['workingDays'] ??
-                        json['details']['working_days'])
-                    : null)) as List?)
-            ?.map((e) => e.toString())
-            .toList(),
-      ),
+      weeklySchedule: parsedWeeklySchedule,
       lat: json['lat'] is String
           ? double.parse(json['lat'])
           : (json['lat'] as num?)?.toDouble(),
@@ -221,9 +195,7 @@ class PartnerModel {
       'is_profile_configured': isProfileConfigured,
       'details': details,
       'services': services.map((e) => e.toJson()).toList(),
-      'openTime': openTime,
-      'closeTime': closeTime,
-      'workingDays': workingDays,
+      'weeklySchedule': weeklySchedule?.map((k, v) => MapEntry(k, v.toJson())),
       'lat': lat,
       'long': long,
       'orgAddress': orgAddress,
@@ -240,9 +212,7 @@ class PartnerModel {
     bool? isProfileConfigured,
     Map<String, dynamic>? details,
     List<ServiceModel>? services,
-    String? openTime,
-    String? closeTime,
-    List<String>? workingDays,
+    Map<String, DaySchedule>? weeklySchedule,
     double? lat,
     double? long,
     String? orgAddress,
@@ -257,9 +227,7 @@ class PartnerModel {
       isProfileConfigured: isProfileConfigured ?? this.isProfileConfigured,
       details: details ?? this.details,
       services: services ?? this.services,
-      openTime: openTime ?? this.openTime,
-      closeTime: closeTime ?? this.closeTime,
-      workingDays: workingDays ?? this.workingDays,
+      weeklySchedule: weeklySchedule ?? this.weeklySchedule,
       lat: lat ?? this.lat,
       long: long ?? this.long,
       orgAddress: orgAddress ?? this.orgAddress,
@@ -269,31 +237,22 @@ class PartnerModel {
     );
   }
 
-  static List<String>? _normalizeWorkingDays(List<String>? days) {
-    if (days == null) return null;
-    return days
-        .map((day) {
-          final clean = day.trim().toUpperCase();
-          switch (clean) {
-            case 'MONDAY':
-              return 'MON';
-            case 'TUESDAY':
-              return 'TUE';
-            case 'WEDNESDAY':
-              return 'WED';
-            case 'THURSDAY':
-              return 'THU';
-            case 'FRIDAY':
-              return 'FRI';
-            case 'SATURDAY':
-              return 'SAT';
-            case 'SUNDAY':
-              return 'SUN';
-            default:
-              return clean;
-          }
-        })
-        .toSet()
-        .toList();
+  static Map<String, DaySchedule>? _parseWeeklySchedule(dynamic rawSchedule) {
+    if (rawSchedule is Map && rawSchedule.isNotEmpty) {
+      final schedule = <String, DaySchedule>{};
+      rawSchedule.forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          final normalizedKey = normalizeDayName(key.toString());
+          schedule[normalizedKey] = DaySchedule.fromJson(value);
+        } else if (value is Map) {
+          final normalizedKey = normalizeDayName(key.toString());
+          schedule[normalizedKey] = DaySchedule.fromJson(
+            Map<String, dynamic>.from(value),
+          );
+        }
+      });
+      if (schedule.isNotEmpty) return schedule;
+    }
+    return null;
   }
 }

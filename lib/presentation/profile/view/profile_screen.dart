@@ -10,6 +10,7 @@ import '../../../core/presentation/widgets/address_autocomplete_field.dart';
 import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/models/day_schedule_model.dart';
 import '../../../data/models/partner_model.dart';
 import '../../../data/models/partner_type.dart';
 import '../../../data/repositories/profile_repo.dart';
@@ -17,15 +18,14 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../../core/presentation/bloc/value_cubit.dart';
+import '../../../core/presentation/widgets/weekly_schedule_editor.dart';
 
 class ProfileScreenState {
   final bool isEditing;
   final bool isLoading;
   final File? selectedImageFile;
   final List<String> selectedModalities;
-  final List<String> selectedDays;
-  final TimeOfDay? openTime;
-  final TimeOfDay? closeTime;
+  final Map<String, DaySchedule> weeklySchedule;
   final double? lat;
   final double? long;
 
@@ -34,9 +34,7 @@ class ProfileScreenState {
     this.isLoading = false,
     this.selectedImageFile,
     this.selectedModalities = const [],
-    this.selectedDays = const [],
-    this.openTime,
-    this.closeTime,
+    this.weeklySchedule = const {},
     this.lat,
     this.long,
   });
@@ -46,9 +44,7 @@ class ProfileScreenState {
     bool? isLoading,
     File? selectedImageFile,
     List<String>? selectedModalities,
-    List<String>? selectedDays,
-    TimeOfDay? openTime,
-    TimeOfDay? closeTime,
+    Map<String, DaySchedule>? weeklySchedule,
     double? lat,
     double? long,
   }) {
@@ -57,9 +53,7 @@ class ProfileScreenState {
       isLoading: isLoading ?? this.isLoading,
       selectedImageFile: selectedImageFile ?? this.selectedImageFile,
       selectedModalities: selectedModalities ?? this.selectedModalities,
-      selectedDays: selectedDays ?? this.selectedDays,
-      openTime: openTime ?? this.openTime,
-      closeTime: closeTime ?? this.closeTime,
+      weeklySchedule: weeklySchedule ?? this.weeklySchedule,
       lat: lat ?? this.lat,
       long: long ?? this.long,
     );
@@ -142,69 +136,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
       selectedModalities.addAll(modalities.map((e) => e.toString()));
     }
 
-    final selectedDays = <String>[];
-    if (partner.workingDays != null) {
-      selectedDays.addAll(partner.workingDays!);
+    Map<String, DaySchedule> schedule = {};
+    if (partner.weeklySchedule != null && partner.weeklySchedule!.isNotEmpty) {
+      schedule = Map<String, DaySchedule>.from(partner.weeklySchedule!);
+    } else {
+      for (final day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
+        schedule[day] = const DaySchedule(open: '09:00', close: '17:00');
+      }
     }
-    final openTime = _parseTimeString(partner.openTime);
-    final closeTime = _parseTimeString(partner.closeTime);
 
     _stateCubit.update(
       ProfileScreenState(
         isEditing: isEditing,
         isLoading: _stateCubit.state.isLoading,
         selectedModalities: selectedModalities,
-        selectedDays: selectedDays,
-        openTime: openTime,
-        closeTime: closeTime,
+        weeklySchedule: schedule,
         lat: partner.lat,
         long: partner.long,
       ),
     );
   }
 
-  TimeOfDay? _parseTimeString(String? timeStr) {
-    if (timeStr == null || timeStr.trim().isEmpty) return null;
-    final trimmed = timeStr.trim();
-
-    // 1. ISO 8601 or DateTime string
-    if (trimmed.contains('T')) {
-      final dt = DateTime.tryParse(trimmed);
-      if (dt != null) {
-        return TimeOfDay(hour: dt.hour, minute: dt.minute);
-      }
+  String? _validateSchedule(Map<String, DaySchedule> schedule) {
+    if (schedule.isEmpty) {
+      return 'Please select at least one active working day';
     }
 
-    // 2. Check for 12-hour AM/PM markers
-    final isAm = RegExp(r'am', caseSensitive: false).hasMatch(trimmed);
-    final isPm = RegExp(r'pm', caseSensitive: false).hasMatch(trimmed);
+    double timeToMinutes(String timeStr) {
+      final parts = timeStr.trim().split(':');
+      final h = int.tryParse(parts[0]) ?? 0;
+      final m = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+      return h * 60.0 + m;
+    }
 
-    // 3. Remove any alphabetic characters (AM, PM, etc.) and trim
-    final clean = trimmed.replaceAll(RegExp(r'[a-zA-Z]'), '').trim();
-    final parts = clean.split(':');
+    for (final entry in schedule.entries) {
+      final day = entry.key;
+      final daySched = entry.value;
 
-    if (parts.isNotEmpty) {
-      int? hour = int.tryParse(parts[0].trim());
-      int? minute = parts.length > 1 ? int.tryParse(parts[1].trim()) : 0;
+      final openMin = timeToMinutes(daySched.open);
+      final closeMin = timeToMinutes(daySched.close);
 
-      if (hour != null && minute != null) {
-        if (isPm && hour < 12) {
-          hour += 12;
-        } else if (isAm && hour == 12) {
-          hour = 0;
+      if (openMin >= closeMin) {
+        return '$day: Open time (${daySched.open}) must be earlier than close time (${daySched.close})';
+      }
+
+      final hasBreakStart =
+          daySched.breakStart != null && daySched.breakStart!.trim().isNotEmpty;
+      final hasBreakEnd =
+          daySched.breakEnd != null && daySched.breakEnd!.trim().isNotEmpty;
+
+      if (hasBreakStart != hasBreakEnd) {
+        return '$day: Both break start and break end must be provided';
+      }
+
+      if (hasBreakStart && hasBreakEnd) {
+        final breakStartMin = timeToMinutes(daySched.breakStart!);
+        final breakEndMin = timeToMinutes(daySched.breakEnd!);
+
+        if (breakStartMin <= openMin) {
+          return '$day: Break start (${daySched.breakStart}) must be after open time (${daySched.open})';
         }
-        if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
-          return TimeOfDay(hour: hour, minute: minute);
+        if (breakEndMin >= closeMin) {
+          return '$day: Break end (${daySched.breakEnd}) must be before close time (${daySched.close})';
+        }
+        if (breakStartMin >= breakEndMin) {
+          return '$day: Break start (${daySched.breakStart}) must be before break end (${daySched.breakEnd})';
         }
       }
     }
     return null;
-  }
-
-  String _formatTimeOfDay(TimeOfDay time) {
-    final hours = time.hour.toString().padLeft(2, '0');
-    final minutes = time.minute.toString().padLeft(2, '0');
-    return '$hours:$minutes';
   }
 
   Future<void> _pickProfileImage(
@@ -313,26 +313,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final currentState = _stateCubit.state;
 
-    if (currentState.selectedDays.isEmpty) {
-      AppSnackBar.showWarning(
-        context,
-        'Please select at least one working day',
-      );
-      return;
-    }
-    if (currentState.openTime == null || currentState.closeTime == null) {
-      AppSnackBar.showWarning(
-        context,
-        'Please select opening and closing times',
-      );
-      return;
-    }
-    if (currentState.openTime!.hour + currentState.openTime!.minute / 60.0 >=
-        currentState.closeTime!.hour + currentState.closeTime!.minute / 60.0) {
-      AppSnackBar.showWarning(
-        context,
-        'Opening time must be earlier than closing time',
-      );
+    final validationError = _validateSchedule(currentState.weeklySchedule);
+    if (validationError != null) {
+      AppSnackBar.showWarning(context, validationError);
       return;
     }
 
@@ -379,9 +362,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final updatedPartner = partner.copyWith(
         details: details,
         isProfileConfigured: true,
-        workingDays: currentState.selectedDays,
-        openTime: _formatTimeOfDay(currentState.openTime!),
-        closeTime: _formatTimeOfDay(currentState.closeTime!),
+        weeklySchedule: currentState.weeklySchedule,
         lat: currentState.lat,
         long: currentState.long,
         orgAddress: _addressController.text.trim(),
@@ -865,25 +846,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildSectionTitle('Working Hours'),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
-            children: [
-              _buildInfoRow(
-                'Working Days',
-                partner.workingDays?.join(', ') ?? 'Not specified',
-              ),
-              const Divider(color: AppColors.blue3, height: 24),
-              _buildInfoRow(
-                'Open / Close Time',
-                partner.openTime != null && partner.closeTime != null
-                    ? '${partner.openTime} - ${partner.closeTime}'
-                    : 'Not specified',
-              ),
-            ],
+            children: kDaysOfWeek.map((day) {
+              final schedule = partner.weeklySchedule?[day];
+              final isLast = day == kDaysOfWeek.last;
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: schedule != null
+                                    ? AppColors.blue1
+                                    : AppColors.textMuted.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              day,
+                              style: TextStyles.labelRegular.copyWith(
+                                fontSize: 14,
+                                color: schedule != null
+                                    ? Colors.white
+                                    : AppColors.textMuted,
+                                fontWeight: schedule != null
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (schedule != null)
+                          Text(
+                            schedule.toString(),
+                            style: TextStyles.bodyMedium.copyWith(
+                              fontSize: 13,
+                              color: AppColors.blue1,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.blue3,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Closed',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (!isLast) const Divider(color: AppColors.blue3, height: 10),
+                ],
+              );
+            }).toList(),
           ),
         ),
         if (partner.role == PartnerType.laboratory ||
@@ -1042,87 +1081,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 24),
 
-        Text(
-          'Working Days',
-          style: TextStyles.headingSemiBold.copyWith(
-            fontSize: 14,
-            color: AppColors.blue1,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((
-              day,
-            ) {
-              final isSelected = state.selectedDays.contains(day);
-              return FilterChip(
-                label: Text(day),
-                selected: isSelected,
-                selectedColor: AppColors.blue2,
-                checkmarkColor: Colors.white,
-                backgroundColor: AppColors.blue3,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.textMuted,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected
-                        ? AppColors.blue1
-                        : AppColors.blue2.withValues(alpha: 0.3),
-                  ),
-                ),
-                onSelected: (selected) {
-                  final list = List<String>.from(state.selectedDays);
-                  if (selected) {
-                    list.add(day);
-                  } else {
-                    list.remove(day);
-                  }
-                  _stateCubit.update(state.copyWith(selectedDays: list));
-                },
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        Text(
-          'Working Hours',
-          style: TextStyles.headingSemiBold.copyWith(
-            fontSize: 14,
-            color: AppColors.blue1,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildTimeSelector(
-                label: 'Opening Time',
-                time: state.openTime,
-                onTap: () => _selectTime(isOpenTime: true),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildTimeSelector(
-                label: 'Closing Time',
-                time: state.closeTime,
-                onTap: () => _selectTime(isOpenTime: false),
-              ),
-            ),
-          ],
+        WeeklyScheduleEditor(
+          initialSchedule: state.weeklySchedule,
+          onScheduleChanged: (updated) {
+            _stateCubit.update(state.copyWith(weeklySchedule: updated));
+          },
         ),
       ],
     );
@@ -1201,82 +1164,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           validator: validator,
-        ),
-      ],
-    );
-  }
-
-  Future<void> _selectTime({required bool isOpenTime}) async {
-    final initialTime = isOpenTime
-        ? (_stateCubit.state.openTime ?? const TimeOfDay(hour: 9, minute: 0))
-        : (_stateCubit.state.closeTime ?? const TimeOfDay(hour: 18, minute: 0));
-
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-      builder: (BuildContext context, Widget? child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            timePickerTheme: const TimePickerThemeData(
-              backgroundColor: AppColors.surface,
-              hourMinuteTextColor: Colors.white,
-              dayPeriodTextColor: Colors.white,
-              dialHandColor: AppColors.blue1,
-              dialBackgroundColor: AppColors.blue3,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      if (isOpenTime) {
-        _stateCubit.update(_stateCubit.state.copyWith(openTime: picked));
-      } else {
-        _stateCubit.update(_stateCubit.state.copyWith(closeTime: picked));
-      }
-    }
-  }
-
-  Widget _buildTimeSelector({
-    required String label,
-    required TimeOfDay? time,
-    required VoidCallback onTap,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyles.headingSemiBold.copyWith(fontSize: 14)),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.blue2.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  time != null ? time.format(context) : 'Select Time',
-                  style: TextStyle(
-                    color: time != null ? Colors.white : AppColors.textMuted,
-                    fontSize: 15,
-                  ),
-                ),
-                const Icon(
-                  Icons.access_time_rounded,
-                  color: AppColors.blue1,
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
         ),
       ],
     );
