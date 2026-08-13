@@ -41,23 +41,32 @@ class SupabaseChatRepository {
   /// optionally marks a notification as read.
   Future<String> openPrescriptionChat({
     required String patientId,
-    required String prescriptionUrl,
+    String? prescriptionUrl,
     String? notes,
     String? partnerId,
     String? notificationId,
   }) async {
     String? chatId;
 
+    final hasUrl = prescriptionUrl != null && prescriptionUrl.trim().isNotEmpty;
+    final hasNotes = notes != null && notes.trim().isNotEmpty;
+
     // 1. Try initPrescriptionThread backend REST API
     if (patientId.isNotEmpty) {
       try {
+        final body = <String, dynamic>{
+          'patientId': patientId,
+        };
+        if (hasUrl) {
+          body['prescriptionUrl'] = prescriptionUrl.trim();
+        }
+        if (hasNotes) {
+          body['notes'] = notes.trim();
+        }
+
         final response = await _apiClient.post(
           ApiEndpoints.prescriptionThreadInit,
-          data: {
-            'patientId': patientId,
-            'prescriptionUrl': prescriptionUrl,
-            'notes': notes,
-          },
+          data: body,
         );
         if (response.statusCode == 200 && response.data != null) {
           final resData = response.data['data'] as Map<String, dynamic>;
@@ -90,7 +99,37 @@ class SupabaseChatRepository {
       }
     }
 
-    // 3. Mark notification as read
+    // 3. Ensure a root prescription inquiry message exists so thread can be opened
+    if (chatId != null && chatId.isNotEmpty && (hasUrl || hasNotes)) {
+      try {
+        final existing = await _supabase
+            .from('messages')
+            .select('id')
+            .eq('chat_id', chatId)
+            .isFilter('parent_message_id', null)
+            .limit(1);
+
+        if (existing.isEmpty) {
+          final effectiveContent = hasNotes
+              ? notes.trim()
+              : '📷 Prescription Inquiry';
+          await sendMessage(
+            chatId: chatId,
+            senderId: patientId,
+            senderRole: 'PATIENT',
+            content: effectiveContent,
+            imageUrl: hasUrl ? prescriptionUrl.trim() : null,
+            isPrescription: true,
+          );
+        }
+      } catch (e) {
+        debugPrint(
+          '[SupabaseChatRepository] openPrescriptionChat ensure root message error: $e',
+        );
+      }
+    }
+
+    // 4. Mark notification as read
     if (notificationId != null && notificationId.isNotEmpty) {
       try {
         await _apiClient.patch(ApiEndpoints.notificationRead(notificationId));

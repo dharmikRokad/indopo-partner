@@ -258,7 +258,7 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
         patientId: widget.request.patientId ?? '',
         prescriptionUrl: widget.request.attachments.isNotEmpty
             ? widget.request.attachments.first
-            : '',
+            : null,
         notes: widget.request.description,
         partnerId: partnerId,
         notificationId: widget.request.notificationId ?? widget.request.id,

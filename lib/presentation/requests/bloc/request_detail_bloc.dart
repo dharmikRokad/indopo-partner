@@ -66,7 +66,7 @@ class RequestDetailBloc extends Bloc<RequestDetailEvent, RequestDetailState> {
               event.prescriptionUrl ??
               (currentRequest?.attachments.isNotEmpty == true
                   ? currentRequest!.attachments.first
-                  : ''),
+                  : null),
           notes: event.notes ?? currentRequest?.description,
           partnerId: event.partnerId,
           notificationId:

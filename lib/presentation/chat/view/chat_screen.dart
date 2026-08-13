@@ -428,6 +428,41 @@ class _PrescriptionInquiryCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
+              ] else if (notes.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.blue3,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.blue2.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.notes_rounded,
+                        color: AppColors.blue1,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          notes,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyles.bodyRegular.copyWith(
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
               const Divider(height: 1, color: AppColors.blue3),
               const SizedBox(height: 8),
