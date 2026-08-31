@@ -77,14 +77,29 @@ class NotificationOverlayWrapper extends StatelessWidget {
       return;
     }
 
-    // 2. Prescription Inquiry / Pharmacy Partner
+    // 2. Lab Order Request / Laboratory Partner
+    final String? orderId =
+        metadata['orderId']?.toString() ?? metadata['order_id']?.toString();
+
+    if (notification.type == NotificationType.labOrderRequest ||
+        metadata['type']?.toString() == 'LAB_ORDER_REQUEST' ||
+        partnerRole == PartnerType.laboratory) {
+      if (orderId != null && orderId.isNotEmpty) {
+        context.push(AppRoutes.labOrderDetail.replaceAll(':id', orderId));
+      } else {
+        context.go(AppRoutes.requestList);
+      }
+      return;
+    }
+
+    // 3. Prescription Inquiry / Pharmacy Partner
     if (notification.type == NotificationType.prescriptionInquiry ||
         partnerRole == PartnerType.pharmacy) {
       context.go(AppRoutes.requestList);
       return;
     }
 
-    // 3. Doctor/Lab/Imaging partner appointment requests/details
+    // 4. Doctor/Imaging partner appointment requests/details
     if (appointmentId != null &&
         appointmentId.isNotEmpty &&
         appointmentId != notification.id) {

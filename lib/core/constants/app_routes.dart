@@ -10,4 +10,5 @@ class AppRoutes {
   static const String services = '/services';
   static const String scheduleSetup = '/schedule-setup';
   static const String resetPassword = '/reset-password';
+  static const String labOrderDetail = '/lab-orders/:id';
 }

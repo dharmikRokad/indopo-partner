@@ -24,6 +24,11 @@ class ApiEndpoints {
   static String notificationRead(String id) => '/notifications/$id/read';
   static const String pushNotificationUser = '/notifications/push/user';
 
+  // Lab Partner Endpoints
+  static const String labOrdersList = '/partner-auth/lab-orders';
+  static String acceptLabOrder(String orderId) =>
+      '/partner-auth/lab-orders/$orderId/accept';
+
   // Prescription Chat & Thread Endpoints
   static const String prescriptionThreadInit = '/chat/prescription-thread';
   static const String myChats = '/chat/my-chats';

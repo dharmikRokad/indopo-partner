@@ -5,6 +5,7 @@ import '../../../data/models/partner_type.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../chat_list/view/chats_list_screen.dart';
+import '../../lab_orders/view/lab_orders_screen.dart';
 import '../../profile/view/profile_screen.dart';
 import '../../requests/view/medical_requests_screen.dart';
 import '../../requests/view/request_list_screen.dart';
@@ -36,23 +37,41 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
     final partner = authState.partner!;
     final isMedical = partner.role == PartnerType.pharmacy;
+    final isLab = partner.role == PartnerType.laboratory;
 
     // Dynamically build screens & items based on role
     final List<Widget> screens = [
-      isMedical ? const MedicalRequestsScreen() : const RequestListScreen(),
+      if (isLab)
+        const LabOrdersScreen()
+      else if (isMedical)
+        const MedicalRequestsScreen()
+      else
+        const RequestListScreen(),
       if (isMedical) const ChatsListScreen(),
       const ProfileScreen(),
     ];
 
+    IconData getFirstTabIcon({required bool active}) {
+      if (isLab) {
+        return active ? Icons.science_rounded : Icons.science_outlined;
+      }
+      if (isMedical) {
+        return active ? Icons.medication_rounded : Icons.medication_outlined;
+      }
+      return active ? Icons.assignment_rounded : Icons.assignment_outlined;
+    }
+
+    String getFirstTabLabel() {
+      if (isLab) return 'Lab Orders';
+      if (isMedical) return 'Prescriptions';
+      return 'Requests';
+    }
+
     final List<BottomNavigationBarItem> items = [
       BottomNavigationBarItem(
-        icon: Icon(
-          isMedical ? Icons.medication_outlined : Icons.assignment_outlined,
-        ),
-        activeIcon: Icon(
-          isMedical ? Icons.medication_rounded : Icons.assignment_rounded,
-        ),
-        label: isMedical ? 'Prescriptions' : 'Requests',
+        icon: Icon(getFirstTabIcon(active: false)),
+        activeIcon: Icon(getFirstTabIcon(active: true)),
+        label: getFirstTabLabel(),
       ),
       if (isMedical)
         const BottomNavigationBarItem(

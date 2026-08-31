@@ -13,6 +13,8 @@ import '../../data/models/request_model.dart';
 import '../../presentation/home/view/main_layout_screen.dart';
 import '../../presentation/splash/view/splash_view.dart';
 import '../../presentation/services/view/services_screen.dart';
+import '../../presentation/lab_orders/view/lab_order_detail_screen.dart';
+import '../../data/models/lab_order_model.dart';
 import '../constants/app_routes.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -171,6 +173,14 @@ class AppRouter {
               (state.extra is String ? state.extra as String : null);
           final email = state.uri.queryParameters['email'];
           return ResetPasswordScreen(token: token, email: email);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.labOrderDetail,
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final dispatch = state.extra as LabDispatchModel?;
+          return LabOrderDetailScreen(orderId: id, dispatch: dispatch);
         },
       ),
     ],

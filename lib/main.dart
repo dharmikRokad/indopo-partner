@@ -14,6 +14,7 @@ import 'core/theme/app_theme.dart';
 import 'data/repositories/app_config_repo.dart';
 import 'data/repositories/auth_repo.dart';
 import 'data/repositories/dropdown_repo.dart';
+import 'data/repositories/lab_order_repository.dart';
 import 'data/repositories/profile_repo.dart';
 import 'data/repositories/request_repo.dart';
 import 'data/repositories/service_repo.dart';
@@ -78,6 +79,7 @@ void main() async {
   final dropdownRepository = DropdownRepository(apiClient);
   final appConfigRepository = AppConfigRepository();
   final supabaseChatRepository = SupabaseChatRepository(apiClient: apiClient);
+  final labOrderRepository = LabOrderRepository(apiClient);
 
   // Trigger dropdown values load immediately when the user opens the app
   dropdownRepository.fetchDropdownValues();
@@ -96,6 +98,9 @@ void main() async {
         ),
         RepositoryProvider<SupabaseChatRepository>.value(
           value: supabaseChatRepository,
+        ),
+        RepositoryProvider<LabOrderRepository>.value(
+          value: labOrderRepository,
         ),
       ],
       child: const IndopoPartnerApp(),

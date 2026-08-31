@@ -6,6 +6,7 @@ enum NotificationType {
   appointmentCancelled('APPOINTMENT_CANCELLED'),
   reviewRequest('REVIEW_REQUEST'),
   prescriptionInquiry('PRESCRIPTION_INQUIRY'),
+  labOrderRequest('LAB_ORDER_REQUEST'),
   general('GENERAL');
 
   final String value;
@@ -23,6 +24,8 @@ enum NotificationType {
         return NotificationType.reviewRequest;
       case 'PRESCRIPTION_INQUIRY':
         return NotificationType.prescriptionInquiry;
+      case 'LAB_ORDER_REQUEST':
+        return NotificationType.labOrderRequest;
       case 'GENERAL':
       default:
         return NotificationType.general;
