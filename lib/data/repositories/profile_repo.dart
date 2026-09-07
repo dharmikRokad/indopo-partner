@@ -38,6 +38,10 @@ class ProfileRepository {
     final details = partner.details;
     final role = partner.role;
 
+    final addressToSave = partner.orgAddress?.isNotEmpty == true
+        ? partner.orgAddress!
+        : (details['address'] as String? ?? '');
+
     final Map<String, dynamic> body = {
       'name':
           details['full_name'] ??
@@ -50,7 +54,7 @@ class ProfileRepository {
           details['clinic_name'] ??
           details['clinic_hospital_name'] ??
           '',
-      'orgAddress': partner.orgAddress ?? details['address'] ?? '',
+      'orgAddress': addressToSave,
       'services': partner.services.map((e) => e.toJson()).toList(),
       'weeklySchedule': partner.weeklySchedule?.map(
         (k, v) => MapEntry(k, v.toJson()),
@@ -64,6 +68,15 @@ class ProfileRepository {
         'qualification': details['specialization'] ?? '',
         'licenseNumber': details['reg_number'] ?? '',
         'consultationFee': details['consultation_fee'] ?? 0.0,
+      };
+    } else if (role == PartnerType.laboratory || role == PartnerType.imagingCenter) {
+      body['contactPerson'] = details['contact_person'] ?? '';
+      body['doctorProfile'] = {
+        'licenseNumber': details['accreditation_number'] ?? details['reg_number'] ?? '',
+      };
+    } else if (role == PartnerType.pharmacy) {
+      body['doctorProfile'] = {
+        'licenseNumber': details['reg_number'] ?? '',
       };
     }
 
@@ -90,6 +103,12 @@ class ProfileRepository {
         final mergedDetails = Map<String, dynamic>.from(partner.details)
           ..addAll(apiPartner.details);
 
+        final finalAddress = (apiPartner.orgAddress != null && apiPartner.orgAddress!.isNotEmpty)
+            ? apiPartner.orgAddress!
+            : addressToSave;
+
+        mergedDetails['address'] = finalAddress;
+
         // Keep local services if the api response does not contain them
         final servicesToKeep = apiPartner.services.isNotEmpty
             ? apiPartner.services
@@ -102,7 +121,7 @@ class ProfileRepository {
           weeklySchedule: apiPartner.weeklySchedule ?? partner.weeklySchedule,
           lat: apiPartner.lat ?? partner.lat,
           long: apiPartner.long ?? partner.long,
-          orgAddress: apiPartner.orgAddress ?? partner.orgAddress,
+          orgAddress: finalAddress,
           profilePicture: apiPartner.profilePicture ?? partner.profilePicture,
         );
       }

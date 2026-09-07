@@ -124,8 +124,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         partner.details['clinic_hospital_name'] ??
         '';
     _contactPersonController.text = partner.details['contact_person'] ?? '';
-    _addressController.text =
-        partner.orgAddress ?? partner.details['address'] ?? '';
+    final initialAddress = (partner.orgAddress != null && partner.orgAddress!.isNotEmpty)
+        ? partner.orgAddress!
+        : (partner.details['address'] as String? ?? '');
+    _addressController.text = initialAddress;
     _phoneController.text = partner.details['phone'] ?? '';
     _consultationFeeController.text =
         (partner.details['consultation_fee'] ?? 0.0).toString();
@@ -322,12 +324,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _stateCubit.update(_stateCubit.state.copyWith(isLoading: true));
 
     try {
-      final details = <String, dynamic>{
-        'address': _addressController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'visual_profile':
-            partner.details['visual_profile'] ?? 'Simulated_Image_Path.jpg',
-      };
+      final details = Map<String, dynamic>.from(partner.details);
+      details['address'] = _addressController.text.trim();
+      details['phone'] = _phoneController.text.trim();
+      details['visual_profile'] =
+          partner.details['visual_profile'] ?? 'Simulated_Image_Path.jpg';
 
       switch (partner.role) {
         case PartnerType.doctor:
@@ -349,13 +350,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           details['lab_name'] = _nameController.text.trim();
           details['accreditation_number'] = _regNumController.text.trim();
           details['contact_person'] = _contactPersonController.text.trim();
-          details['org_name'] = _clinicNameController.text.trim();
+          details['org_name'] = _nameController.text.trim();
           break;
         case PartnerType.imagingCenter:
           details['center_name'] = _nameController.text.trim();
           details['accreditation_number'] = _regNumController.text.trim();
           details['modalities'] = partner.details['modalities'];
-          details['org_name'] = _clinicNameController.text.trim();
+          details['org_name'] = _nameController.text.trim();
           break;
       }
 
@@ -925,7 +926,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }).toList(),
           ),
         ),
-        if (partner.role == PartnerType.laboratory ||
+        if (/* partner.role == PartnerType.laboratory || */
             partner.role == PartnerType.imagingCenter) ...[
           const SizedBox(height: 24),
           _buildSectionTitle('Services'),
@@ -1032,20 +1033,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
 
-        _buildTextField(
-          controller: _clinicNameController,
-          label: role.orgNameTitle,
-          hint: 'Enter organization/clinic name',
-          validator: (v) => Validators.validateRequired(
-            v,
-            role == PartnerType.doctor
-                ? 'Clinic name'
-                : (role == PartnerType.pharmacy
-                      ? 'Practice name'
-                      : 'Organization name'),
+        if (role == PartnerType.doctor || role == PartnerType.pharmacy) ...[
+          _buildTextField(
+            controller: _clinicNameController,
+            label: role.orgNameTitle,
+            hint: 'Enter organization/clinic name',
+            validator: (v) => Validators.validateRequired(
+              v,
+              role == PartnerType.doctor ? 'Clinic name' : 'Practice name',
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
+        ],
 
         if (role == PartnerType.laboratory) ...[
           _buildTextField(

@@ -59,4 +59,35 @@ class LabOrderRepository {
       rethrow;
     }
   }
+
+  /// Reject / pass / expire a dispatched lab order by orderId.
+  Future<String> rejectLabOrder(String orderId) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.rejectLabOrder(orderId),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final message = response.data['message']?.toString() ??
+            'Order status changed to EXPIRED.';
+        return message;
+      }
+      throw Exception('Failed to reject order.');
+    } on DioException catch (e) {
+      String errorMsg = 'Failed to reject order.';
+      if (e.response?.data != null && e.response?.data is Map) {
+        final resMap = e.response!.data as Map<String, dynamic>;
+        if (resMap['message'] != null) {
+          errorMsg = resMap['message'].toString();
+        }
+      } else if (e.message != null) {
+        errorMsg = e.message!;
+      }
+      print('[LabOrderRepository] rejectLabOrder Dio error: $errorMsg');
+      throw Exception(errorMsg);
+    } catch (e) {
+      print('[LabOrderRepository] rejectLabOrder error: $e');
+      rethrow;
+    }
+  }
 }

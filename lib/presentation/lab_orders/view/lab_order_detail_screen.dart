@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../data/models/lab_order_model.dart';
@@ -16,6 +18,49 @@ class LabOrderDetailScreen extends StatelessWidget {
     required this.orderId,
     this.dispatch,
   });
+
+  Future<void> _shareReportViaWhatsApp(
+    BuildContext context,
+    LabOrderModel order,
+  ) async {
+    final rawPhone = order.patientPhone.isNotEmpty
+        ? order.patientPhone
+        : (order.patient?.phone ?? '');
+    final cleanPhone = rawPhone.replaceAll(RegExp(r'[^\d]'), '');
+
+    if (cleanPhone.isEmpty) {
+      AppSnackBar.showWarning(
+        context,
+        'Patient phone number is not available for WhatsApp.',
+      );
+      return;
+    }
+
+    final messageText =
+        'Hello ${order.patientName},\n\n'
+        'Here is your diagnostic lab report for Order #${order.id} (${order.itemsSummary}).\n\n'
+        'Thank you for choosing our laboratory services!';
+
+    final encodedMessage = Uri.encodeComponent(messageText);
+    final whatsappUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMessage');
+
+    try {
+      final launched = await launchUrl(
+        whatsappUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && context.mounted) {
+        AppSnackBar.showError(
+          context,
+          'Could not open WhatsApp. Please ensure WhatsApp is installed.',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'Failed to launch WhatsApp: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +136,8 @@ class LabOrderDetailScreen extends StatelessWidget {
 
         final order = activeDispatch.order;
         final isPendingWindow = activeDispatch.isWindowActive;
+        final isAccepted = activeDispatch.dispatchStatus == LabDispatchStatus.accepted ||
+            order.status == LabOrderStatus.accepted;
         final isAccepting = state.acceptingOrderId == order.id;
 
         return Scaffold(
@@ -128,12 +175,12 @@ class LabOrderDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 1. Status & Timer Banner
-                      _buildBanner(activeDispatch),
+                      _LabOrderBanner(dispatch: activeDispatch),
 
                       const SizedBox(height: 16),
 
                       // 2. Patient Details Card
-                      _buildPatientCard(order),
+                      _buildPatientCard(order, isAccepted: isAccepted, context: context),
 
                       const SizedBox(height: 16),
 
@@ -233,6 +280,44 @@ class LabOrderDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                )
+              else if (isAccepted)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.surface.withValues(alpha: 0.8),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _shareReportViaWhatsApp(context, order),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
+                        label: const Text(
+                          'Share Report via WhatsApp',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -241,98 +326,11 @@ class LabOrderDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBanner(LabDispatchModel dispatch) {
-    if (dispatch.dispatchStatus == LabDispatchStatus.accepted) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.green.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.green.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: AppColors.green),
-            const SizedBox(width: 10),
-            const Text(
-              'Order Accepted by your laboratory!',
-              style: TextStyle(
-                color: AppColors.green,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final isPendingWindow = dispatch.isWindowActive;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isPendingWindow
-            ? AppColors.amber.withValues(alpha: 0.15)
-            : AppColors.red.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isPendingWindow
-              ? AppColors.amber.withValues(alpha: 0.3)
-              : AppColors.red.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isPendingWindow ? Icons.timer_rounded : Icons.timer_off_rounded,
-            color: isPendingWindow ? AppColors.amber : AppColors.red,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isPendingWindow
-                      ? '5-Minute Acceptance Window Active'
-                      : 'Acceptance Window Expired',
-                  style: TextStyle(
-                    color: isPendingWindow ? AppColors.amber : AppColors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isPendingWindow
-                      ? 'Respond before window expires to fulfill this order.'
-                      : 'This order has moved to another lab or expired.',
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isPendingWindow)
-            Text(
-              dispatch.formattedRemainingTime,
-              style: TextStyle(
-                color: AppColors.amber,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPatientCard(LabOrderModel order) {
+  Widget _buildPatientCard(
+    LabOrderModel order, {
+    bool isAccepted = false,
+    required BuildContext context,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -382,12 +380,54 @@ class LabOrderDetailScreen extends StatelessWidget {
                     ),
                     if (order.patientPhone.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(
-                        order.patientPhone,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            order.patientPhone,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (isAccepted) ...[
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () => _shareReportViaWhatsApp(context, order),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF25D366).withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      size: 12,
+                                      color: Color(0xFF25D366),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'WhatsApp',
+                                      style: TextStyle(
+                                        color: Color(0xFF25D366),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ],
@@ -531,7 +571,7 @@ class LabOrderDetailScreen extends StatelessWidget {
               ),
               Text(
                 '₹${item.itemTotal.toStringAsFixed(2)}',
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.green,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -596,7 +636,7 @@ class LabOrderDetailScreen extends StatelessWidget {
               ),
               Text(
                 '₹${order.totalAmount.toStringAsFixed(2)}',
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.green,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -604,6 +644,149 @@ class LabOrderDetailScreen extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LabOrderBanner extends StatefulWidget {
+  final LabDispatchModel dispatch;
+
+  const _LabOrderBanner({required this.dispatch});
+
+  @override
+  State<_LabOrderBanner> createState() => _LabOrderBannerState();
+}
+
+class _LabOrderBannerState extends State<_LabOrderBanner> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimerIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LabOrderBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dispatch.dispatchId != widget.dispatch.dispatchId ||
+        oldWidget.dispatch.notifiedAt != widget.dispatch.notifiedAt) {
+      _startTimerIfNeeded();
+    }
+  }
+
+  void _startTimerIfNeeded() {
+    _timer?.cancel();
+    if (widget.dispatch.isWindowActive) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() {});
+        if (!widget.dispatch.isWindowActive) {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dispatch = widget.dispatch;
+    if (dispatch.dispatchStatus == LabDispatchStatus.accepted) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.green.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.green.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: AppColors.green),
+            SizedBox(width: 10),
+            Text(
+              'Order Accepted by your laboratory!',
+              style: TextStyle(
+                color: AppColors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final isPendingWindow = dispatch.isWindowActive;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isPendingWindow
+            ? AppColors.amber.withValues(alpha: 0.15)
+            : AppColors.red.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isPendingWindow
+              ? AppColors.amber.withValues(alpha: 0.3)
+              : AppColors.red.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isPendingWindow ? Icons.timer_rounded : Icons.timer_off_rounded,
+            color: isPendingWindow ? AppColors.amber : AppColors.red,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPendingWindow
+                      ? '5-Minute Acceptance Window Active'
+                      : 'Acceptance Window Expired',
+                  style: TextStyle(
+                    color: isPendingWindow ? AppColors.amber : AppColors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isPendingWindow
+                      ? 'Respond before window expires to fulfill this order.'
+                      : 'This order has moved to another lab or expired.',
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isPendingWindow)
+            Text(
+              dispatch.formattedRemainingTime,
+              style: const TextStyle(
+                color: AppColors.amber,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
         ],
       ),
     );

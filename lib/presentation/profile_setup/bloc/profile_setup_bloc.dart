@@ -36,9 +36,11 @@ class ProfileSetupBloc extends Bloc<ProfileSetupEvent, ProfileSetupState> {
     );
 
     try {
+      final addressStr = event.details['address'] as String? ?? '';
       final updatedPartner = _currentPartner.copyWith(
         isProfileConfigured: true,
         details: event.details,
+        orgAddress: addressStr.isNotEmpty ? addressStr : _currentPartner.orgAddress,
       );
 
       final result = await _profileRepository.saveProfile(

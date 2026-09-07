@@ -91,46 +91,60 @@ class PartnerModel {
       json['partnerType'] as String? ?? json['role'] as String? ?? 'doctor',
     );
 
-    final orgAddressStr = json['orgAddress'] as String? ?? '';
+    final details = json['details'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(json['details'] as Map)
+        : <String, dynamic>{};
+
+    final orgAddressStr = json['orgAddress'] as String? ??
+        json['org_address'] as String? ??
+        details['address'] as String? ??
+        '';
 
     final name = json['name'] as String? ?? '';
     final orgName = json['orgName'] as String? ?? '';
 
-    final details = <String, dynamic>{
-      'phone': json['phone'] ?? '',
-      'address': orgAddressStr,
-      'org_name': orgName,
-    };
+    details['phone'] = json['phone'] ?? details['phone'] ?? '';
+    details['address'] = orgAddressStr.isNotEmpty
+        ? orgAddressStr
+        : (details['address'] ?? '');
+    details['org_name'] = orgName.isNotEmpty ? orgName : (details['org_name'] ?? '');
 
     if (role == PartnerType.doctor) {
-      details['full_name'] = name;
-      details['clinic_name'] = orgName;
+      details['full_name'] = name.isNotEmpty ? name : (details['full_name'] ?? '');
+      details['clinic_name'] = orgName.isNotEmpty ? orgName : (details['clinic_name'] ?? '');
       final docProfile = json['doctorProfile'] as Map<String, dynamic>?;
       if (docProfile != null) {
         details['specialization'] =
             docProfile['specialization'] ??
             docProfile['speciality']?['name'] ??
+            details['specialization'] ??
             '';
-        details['reg_number'] = docProfile['licenseNumber'] ?? '';
+        details['reg_number'] = docProfile['licenseNumber'] ?? details['reg_number'] ?? '';
         details['consultation_fee'] = docProfile['consultationFee'] is String
             ? double.parse(docProfile['consultationFee'])
-            : (docProfile['consultationFee'] as num?)?.toDouble() ?? 0.0;
+            : (docProfile['consultationFee'] as num?)?.toDouble() ??
+                (details['consultation_fee'] as num?)?.toDouble() ??
+                0.0;
       }
     } else if (role == PartnerType.pharmacy) {
-      details['full_name'] = name;
-      details['clinic_hospital_name'] = orgName;
+      details['full_name'] = name.isNotEmpty ? name : (details['full_name'] ?? '');
+      details['clinic_hospital_name'] = orgName.isNotEmpty ? orgName : (details['clinic_hospital_name'] ?? '');
     } else if (role == PartnerType.laboratory) {
-      details['lab_name'] = name;
-      details['contact_person'] = json['contactPerson'] ?? '';
+      details['lab_name'] = name.isNotEmpty ? name : (details['lab_name'] ?? '');
+      details['contact_person'] = json['contactPerson'] as String? ??
+          json['contact_person'] as String? ??
+          json['contactPersonName'] as String? ??
+          details['contact_person'] ??
+          '';
       final docProfile = json['doctorProfile'] as Map<String, dynamic>?;
       if (docProfile != null) {
-        details['accreditation_number'] = docProfile['licenseNumber'] ?? '';
+        details['accreditation_number'] = docProfile['licenseNumber'] ?? details['accreditation_number'] ?? '';
       }
     } else if (role == PartnerType.imagingCenter) {
-      details['center_name'] = name;
+      details['center_name'] = name.isNotEmpty ? name : (details['center_name'] ?? '');
       final docProfile = json['doctorProfile'] as Map<String, dynamic>?;
       if (docProfile != null) {
-        details['accreditation_number'] = docProfile['licenseNumber'] ?? '';
+        details['accreditation_number'] = docProfile['licenseNumber'] ?? details['accreditation_number'] ?? '';
       }
     }
 

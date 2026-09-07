@@ -84,28 +84,41 @@ class LabOrderBloc extends Bloc<LabOrderEvent, LabOrderState> {
     }
   }
 
-  void _onRejectLabOrder(
+  Future<void> _onRejectLabOrder(
     RejectLabOrderEvent event,
     Emitter<LabOrderState> emit,
-  ) {
-    // Client-side local rejection: remove from pending or mark as skipped locally
-    final updated = state.dispatches.map((d) {
-      if (d.order.id == event.orderId) {
-        return LabDispatchModel(
-          dispatchId: d.dispatchId,
-          dispatchStatus: LabDispatchStatus.timedOut,
-          notifiedAt: d.notifiedAt,
-          respondedAt: DateTime.now(),
-          order: d.order,
-        );
-      }
-      return d;
-    }).toList();
-
+  ) async {
     emit(state.copyWith(
-      dispatches: updated,
-      actionSuccessMessage: 'Order dismissed',
+      actionSuccessMessage: null,
+      errorMessage: null,
     ));
+
+    try {
+      final message = await _repository.rejectLabOrder(event.orderId);
+
+      final updated = state.dispatches.map((d) {
+        if (d.order.id == event.orderId) {
+          return d.copyWith(
+            dispatchStatus: LabDispatchStatus.timedOut,
+            respondedAt: DateTime.now(),
+            order: d.order.copyWith(status: LabOrderStatus.expired),
+          );
+        }
+        return d;
+      }).toList();
+
+      emit(state.copyWith(
+        status: LabOrderBlocStatus.success,
+        dispatches: updated,
+        actionSuccessMessage: message,
+      ));
+    } catch (e) {
+      final errorStr = e.toString().replaceAll('Exception: ', '');
+      print('[LabOrderBloc] Reject failed: $errorStr');
+      emit(state.copyWith(
+        errorMessage: errorStr,
+      ));
+    }
   }
 
   void _onTimerTick(

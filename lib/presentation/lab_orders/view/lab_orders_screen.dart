@@ -4,6 +4,11 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/presentation/widgets/app_snackbar.dart';
 import '../../../data/models/lab_order_model.dart';
 import '../../../data/repositories/lab_order_repository.dart';
+import '../../../core/presentation/widgets/logout_confirmation_dialog.dart';
+import '../../../core/theme/text_styles.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_event.dart';
+import '../../auth/bloc/auth_state.dart';
 import '../bloc/lab_order_bloc.dart';
 import '../bloc/lab_order_event.dart';
 import '../bloc/lab_order_state.dart';
@@ -75,6 +80,9 @@ class _LabOrdersViewState extends State<_LabOrdersView>
       },
       builder: (context, state) {
         final pendingCount = state.pendingDispatches.length;
+        final authState = context.watch<AuthBloc>().state;
+        final partner = authState.partner;
+        final isAvailable = partner?.isAvailable ?? false;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -89,6 +97,49 @@ class _LabOrdersViewState extends State<_LabOrdersView>
                 fontWeight: FontWeight.bold,
               ),
             ),
+            actions: [
+              if (authState.status == AuthBlocStatus.authenticated && partner != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        isAvailable ? 'Active' : 'Away',
+                        style: TextStyles.labelRegular.copyWith(
+                          fontSize: 12,
+                          color: isAvailable ? Colors.green : AppColors.textMuted,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Switch(
+                        value: isAvailable,
+                        activeThumbColor: Colors.green,
+                        activeTrackColor: Colors.green.withValues(alpha: 0.3),
+                        inactiveThumbColor: AppColors.textMuted,
+                        inactiveTrackColor: AppColors.surface,
+                        onChanged: (val) {
+                          context.read<AuthBloc>().add(AvailabilityToggled(val));
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              IconButton(
+                icon: const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.error,
+                ),
+                onPressed: () async {
+                  final shouldLogout = await LogoutConfirmationDialog.show(
+                    context,
+                  );
+                  if (shouldLogout == true && context.mounted) {
+                    context.read<AuthBloc>().add(LogoutRequested());
+                  }
+                },
+              ),
+            ],
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: AppColors.blue1,

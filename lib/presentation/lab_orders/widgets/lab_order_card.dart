@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/lab_order_model.dart';
 
-class LabOrderCard extends StatelessWidget {
+class LabOrderCard extends StatefulWidget {
   final LabDispatchModel dispatch;
   final VoidCallback onTap;
   final VoidCallback? onAccept;
@@ -19,9 +20,59 @@ class LabOrderCard extends StatelessWidget {
   });
 
   @override
+  State<LabOrderCard> createState() => _LabOrderCardState();
+}
+
+class _LabOrderCardState extends State<LabOrderCard> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTickerIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant LabOrderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dispatch.dispatchId != widget.dispatch.dispatchId ||
+        oldWidget.dispatch.notifiedAt != widget.dispatch.notifiedAt ||
+        oldWidget.dispatch.dispatchStatus != widget.dispatch.dispatchStatus) {
+      _startTickerIfNeeded();
+    }
+  }
+
+  void _startTickerIfNeeded() {
+    _timer?.cancel();
+    if (widget.dispatch.isWindowActive) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() {});
+        if (!widget.dispatch.isWindowActive) {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final dispatch = widget.dispatch;
     final order = dispatch.order;
     final isPendingWindow = dispatch.isWindowActive;
+    final onTap = widget.onTap;
+    final onAccept = widget.onAccept;
+    final onReject = widget.onReject;
+    final isAccepting = widget.isAccepting;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -231,11 +282,11 @@ class LabOrderCard extends StatelessWidget {
                       if (isPendingWindow)
                         Text(
                           dispatch.formattedRemainingTime,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppColors.amber,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            fontFeatures: const [FontFeature.tabularFigures()],
+                            fontFeatures: [FontFeature.tabularFigures()],
                           ),
                         ),
                     ],
@@ -308,38 +359,44 @@ class LabOrderCard extends StatelessWidget {
     Color fg;
     String label;
 
-    switch (dispatch.dispatchStatus) {
-      case LabDispatchStatus.accepted:
-        bg = AppColors.green.withValues(alpha: 0.15);
-        fg = AppColors.green;
-        label = 'ACCEPTED';
-        break;
-      case LabDispatchStatus.notified:
-        if (dispatch.isWindowActive) {
-          bg = AppColors.amber.withValues(alpha: 0.15);
-          fg = AppColors.amber;
-          label = 'NOTIFIED';
-        } else {
+    if (dispatch.order.status == LabOrderStatus.expired) {
+      bg = AppColors.red.withValues(alpha: 0.15);
+      fg = AppColors.red;
+      label = 'EXPIRED';
+    } else {
+      switch (dispatch.dispatchStatus) {
+        case LabDispatchStatus.accepted:
+          bg = AppColors.green.withValues(alpha: 0.15);
+          fg = AppColors.green;
+          label = 'ACCEPTED';
+          break;
+        case LabDispatchStatus.notified:
+          if (dispatch.isWindowActive) {
+            bg = AppColors.amber.withValues(alpha: 0.15);
+            fg = AppColors.amber;
+            label = 'NOTIFIED';
+          } else {
+            bg = AppColors.red.withValues(alpha: 0.15);
+            fg = AppColors.red;
+            label = 'EXPIRED';
+          }
+          break;
+        case LabDispatchStatus.timedOut:
           bg = AppColors.red.withValues(alpha: 0.15);
           fg = AppColors.red;
-          label = 'TIMED OUT';
-        }
-        break;
-      case LabDispatchStatus.timedOut:
-        bg = AppColors.red.withValues(alpha: 0.15);
-        fg = AppColors.red;
-        label = 'TIMED OUT';
-        break;
-      case LabDispatchStatus.skipped:
-        bg = AppColors.textMuted.withValues(alpha: 0.15);
-        fg = AppColors.textMuted;
-        label = 'SKIPPED';
-        break;
-      case LabDispatchStatus.pending:
-        bg = AppColors.blue1.withValues(alpha: 0.15);
-        fg = AppColors.blue1;
-        label = 'QUEUED';
-        break;
+          label = 'EXPIRED';
+          break;
+        case LabDispatchStatus.skipped:
+          bg = AppColors.textMuted.withValues(alpha: 0.15);
+          fg = AppColors.textMuted;
+          label = 'SKIPPED';
+          break;
+        case LabDispatchStatus.pending:
+          bg = AppColors.blue1.withValues(alpha: 0.15);
+          fg = AppColors.blue1;
+          label = 'QUEUED';
+          break;
+      }
     }
 
     return Container(

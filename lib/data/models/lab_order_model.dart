@@ -252,6 +252,32 @@ class LabOrderModel {
       'patient': patient?.toJson(),
     };
   }
+
+  LabOrderModel copyWith({
+    String? id,
+    String? patientName,
+    String? patientPhone,
+    double? patientLat,
+    double? patientLong,
+    LabOrderStatus? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<LabOrderItemModel>? items,
+    LabOrderPatientModel? patient,
+  }) {
+    return LabOrderModel(
+      id: id ?? this.id,
+      patientName: patientName ?? this.patientName,
+      patientPhone: patientPhone ?? this.patientPhone,
+      patientLat: patientLat ?? this.patientLat,
+      patientLong: patientLong ?? this.patientLong,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      items: items ?? this.items,
+      patient: patient ?? this.patient,
+    );
+  }
 }
 
 class LabDispatchModel {
@@ -269,11 +295,29 @@ class LabDispatchModel {
     required this.order,
   });
 
+  LabDispatchModel copyWith({
+    String? dispatchId,
+    LabDispatchStatus? dispatchStatus,
+    DateTime? notifiedAt,
+    DateTime? respondedAt,
+    LabOrderModel? order,
+  }) {
+    return LabDispatchModel(
+      dispatchId: dispatchId ?? this.dispatchId,
+      dispatchStatus: dispatchStatus ?? this.dispatchStatus,
+      notifiedAt: notifiedAt ?? this.notifiedAt,
+      respondedAt: respondedAt ?? this.respondedAt,
+      order: order ?? this.order,
+    );
+  }
+
   /// Computes remaining seconds for the 5-minute (300 seconds) window based on [notifiedAt].
   int get remainingSeconds {
     if (notifiedAt == null) return 0;
-    final expiresAt = notifiedAt!.add(const Duration(minutes: 5));
-    final remainingMs = expiresAt.difference(DateTime.now()).inMilliseconds;
+    final notifiedUtc = notifiedAt!.toUtc();
+    final expiresAtUtc = notifiedUtc.add(const Duration(minutes: 5));
+    final remainingMs =
+        expiresAtUtc.difference(DateTime.now().toUtc()).inMilliseconds;
     return remainingMs > 0 ? (remainingMs / 1000).ceil() : 0;
   }
 
