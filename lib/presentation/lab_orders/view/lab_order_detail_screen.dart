@@ -219,65 +219,42 @@ class LabOrderDetailScreen extends StatelessWidget {
                     ),
                   ),
                   child: SafeArea(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              context.read<LabOrderBloc>().add(
-                                    RejectLabOrderEvent(order.id),
-                                  );
-                              Navigator.pop(context);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.textMuted,
-                              side: const BorderSide(color: AppColors.surface),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text('Reject / Pass'),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isAccepting
+                            ? null
+                            : () {
+                                context.read<LabOrderBloc>().add(
+                                      AcceptLabOrderEvent(order.id),
+                                    );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          elevation: 0,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: isAccepting
-                                ? null
-                                : () {
-                                    context.read<LabOrderBloc>().add(
-                                          AcceptLabOrderEvent(order.id),
-                                        );
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        child: isAccepting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Accept Order',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              elevation: 0,
-                            ),
-                            child: isAccepting
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Accept Order',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 )

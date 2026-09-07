@@ -293,11 +293,6 @@ class _LabOrdersViewState extends State<_LabOrdersView>
                           AcceptLabOrderEvent(dispatch.order.id),
                         );
                   },
-                  onReject: () {
-                    context.read<LabOrderBloc>().add(
-                          RejectLabOrderEvent(dispatch.order.id),
-                        );
-                  },
                 );
               },
             ),

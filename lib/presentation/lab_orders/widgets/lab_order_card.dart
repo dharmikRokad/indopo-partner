@@ -7,7 +7,6 @@ class LabOrderCard extends StatefulWidget {
   final LabDispatchModel dispatch;
   final VoidCallback onTap;
   final VoidCallback? onAccept;
-  final VoidCallback? onReject;
   final bool isAccepting;
 
   const LabOrderCard({
@@ -15,7 +14,6 @@ class LabOrderCard extends StatefulWidget {
     required this.dispatch,
     required this.onTap,
     this.onAccept,
-    this.onReject,
     this.isAccepting = false,
   });
 
@@ -71,7 +69,6 @@ class _LabOrderCardState extends State<LabOrderCard> {
     final isPendingWindow = dispatch.isWindowActive;
     final onTap = widget.onTap;
     final onAccept = widget.onAccept;
-    final onReject = widget.onReject;
     final isAccepting = widget.isAccepting;
 
     return Card(
@@ -294,57 +291,39 @@ class _LabOrderCardState extends State<LabOrderCard> {
                 ),
               ],
 
-              // Action Buttons (Accept / Reject)
+              // Action Button (Accept)
               if (isPendingWindow) ...[
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: onReject,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textMuted,
-                          side: const BorderSide(color: AppColors.surface),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text('Reject / Pass'),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isAccepting ? null : onAccept,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
+                      elevation: 0,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isAccepting ? null : onAccept,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                    child: isAccepting
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Accept Order',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
-                          elevation: 0,
-                        ),
-                        child: isAccepting
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Accept Order',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ],
