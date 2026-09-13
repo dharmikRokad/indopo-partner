@@ -26,3 +26,12 @@ class RequestReceived extends RequestListEvent {
   @override
   List<Object?> get props => [request];
 }
+
+class SetOpeningChatRequestId extends RequestListEvent {
+  final String? requestId;
+
+  const SetOpeningChatRequestId(this.requestId);
+
+  @override
+  List<Object?> get props => [requestId];
+}

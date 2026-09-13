@@ -29,6 +29,8 @@ enum LabDispatchStatus {
 enum LabOrderStatus {
   pending('PENDING'),
   accepted('ACCEPTED'),
+  reportSent('REPORT_SENT'),
+  completed('COMPLETED'),
   expired('EXPIRED'),
   cancelled('CANCELLED');
 
@@ -41,6 +43,10 @@ enum LabOrderStatus {
         return LabOrderStatus.pending;
       case 'ACCEPTED':
         return LabOrderStatus.accepted;
+      case 'REPORT_SENT':
+        return LabOrderStatus.reportSent;
+      case 'COMPLETED':
+        return LabOrderStatus.completed;
       case 'EXPIRED':
         return LabOrderStatus.expired;
       case 'CANCELLED':

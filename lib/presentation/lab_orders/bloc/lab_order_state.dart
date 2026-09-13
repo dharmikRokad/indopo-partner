@@ -7,6 +7,8 @@ class LabOrderState extends Equatable {
   final LabOrderBlocStatus status;
   final List<LabDispatchModel> dispatches;
   final String? acceptingOrderId;
+  final String? markingReportSentOrderId;
+  final Set<String> openedWhatsAppOrderIds;
   final String? actionSuccessMessage;
   final String? errorMessage;
 
@@ -14,6 +16,8 @@ class LabOrderState extends Equatable {
     this.status = LabOrderBlocStatus.initial,
     this.dispatches = const [],
     this.acceptingOrderId,
+    this.markingReportSentOrderId,
+    this.openedWhatsAppOrderIds = const {},
     this.actionSuccessMessage,
     this.errorMessage,
   });
@@ -28,8 +32,14 @@ class LabOrderState extends Equatable {
 
   List<LabDispatchModel> get acceptedDispatches {
     return dispatches.where((d) {
-      return d.dispatchStatus == LabDispatchStatus.accepted ||
-          d.order.status == LabOrderStatus.accepted;
+      return d.order.status == LabOrderStatus.accepted ||
+          d.order.status == LabOrderStatus.reportSent;
+    }).toList();
+  }
+
+  List<LabDispatchModel> get completedDispatches {
+    return dispatches.where((d) {
+      return d.order.status == LabOrderStatus.completed;
     }).toList();
   }
 
@@ -43,6 +53,8 @@ class LabOrderState extends Equatable {
     LabOrderBlocStatus? status,
     List<LabDispatchModel>? dispatches,
     String? acceptingOrderId,
+    String? markingReportSentOrderId,
+    Set<String>? openedWhatsAppOrderIds,
     String? actionSuccessMessage,
     String? errorMessage,
   }) {
@@ -50,6 +62,9 @@ class LabOrderState extends Equatable {
       status: status ?? this.status,
       dispatches: dispatches ?? this.dispatches,
       acceptingOrderId: acceptingOrderId,
+      markingReportSentOrderId: markingReportSentOrderId,
+      openedWhatsAppOrderIds:
+          openedWhatsAppOrderIds ?? this.openedWhatsAppOrderIds,
       actionSuccessMessage: actionSuccessMessage,
       errorMessage: errorMessage,
     );
@@ -57,10 +72,12 @@ class LabOrderState extends Equatable {
 
   @override
   List<Object?> get props => [
-        status,
-        dispatches,
-        acceptingOrderId,
-        actionSuccessMessage,
-        errorMessage,
-      ];
+    status,
+    dispatches,
+    acceptingOrderId,
+    markingReportSentOrderId,
+    openedWhatsAppOrderIds,
+    actionSuccessMessage,
+    errorMessage,
+  ];
 }

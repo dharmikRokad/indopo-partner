@@ -1,9 +1,8 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/lab_order_model.dart';
 
-class LabOrderCard extends StatefulWidget {
+class LabOrderCard extends StatelessWidget {
   final LabDispatchModel dispatch;
   final VoidCallback onTap;
   final VoidCallback? onAccept;
@@ -18,58 +17,13 @@ class LabOrderCard extends StatefulWidget {
   });
 
   @override
-  State<LabOrderCard> createState() => _LabOrderCardState();
-}
-
-class _LabOrderCardState extends State<LabOrderCard> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTickerIfNeeded();
-  }
-
-  @override
-  void didUpdateWidget(covariant LabOrderCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.dispatch.dispatchId != widget.dispatch.dispatchId ||
-        oldWidget.dispatch.notifiedAt != widget.dispatch.notifiedAt ||
-        oldWidget.dispatch.dispatchStatus != widget.dispatch.dispatchStatus) {
-      _startTickerIfNeeded();
-    }
-  }
-
-  void _startTickerIfNeeded() {
-    _timer?.cancel();
-    if (widget.dispatch.isWindowActive) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        setState(() {});
-        if (!widget.dispatch.isWindowActive) {
-          timer.cancel();
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final dispatch = widget.dispatch;
+    final dispatch = this.dispatch;
     final order = dispatch.order;
     final isPendingWindow = dispatch.isWindowActive;
-    final onTap = widget.onTap;
-    final onAccept = widget.onAccept;
-    final isAccepting = widget.isAccepting;
+    final onTap = this.onTap;
+    final onAccept = this.onAccept;
+    final isAccepting = this.isAccepting;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -342,6 +296,18 @@ class _LabOrderCardState extends State<LabOrderCard> {
       bg = AppColors.red.withValues(alpha: 0.15);
       fg = AppColors.red;
       label = 'EXPIRED';
+    } else if (dispatch.order.status == LabOrderStatus.reportSent) {
+      bg = AppColors.blue1.withValues(alpha: 0.15);
+      fg = AppColors.blue1;
+      label = 'REPORT SENT';
+    } else if (dispatch.order.status == LabOrderStatus.completed) {
+      bg = AppColors.green.withValues(alpha: 0.15);
+      fg = AppColors.green;
+      label = 'COMPLETED ✅';
+    } else if (dispatch.order.status == LabOrderStatus.cancelled) {
+      bg = AppColors.red.withValues(alpha: 0.15);
+      fg = AppColors.red;
+      label = 'CANCELLED';
     } else {
       switch (dispatch.dispatchStatus) {
         case LabDispatchStatus.accepted:

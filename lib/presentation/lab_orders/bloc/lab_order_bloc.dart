@@ -15,6 +15,8 @@ class LabOrderBloc extends Bloc<LabOrderEvent, LabOrderState> {
     on<FetchLabOrders>(_onFetchLabOrders);
     on<AcceptLabOrderEvent>(_onAcceptLabOrder);
     on<RejectLabOrderEvent>(_onRejectLabOrder);
+    on<MarkReportSentEvent>(_onMarkReportSent);
+    on<ReportWhatsAppOpenedEvent>(_onReportWhatsAppOpened);
     on<LabTimerTickEvent>(_onTimerTick);
 
     _startTicker();
@@ -119,6 +121,54 @@ class LabOrderBloc extends Bloc<LabOrderEvent, LabOrderState> {
         errorMessage: errorStr,
       ));
     }
+  }
+
+  Future<void> _onMarkReportSent(
+    MarkReportSentEvent event,
+    Emitter<LabOrderState> emit,
+  ) async {
+    emit(state.copyWith(
+      markingReportSentOrderId: event.orderId,
+      actionSuccessMessage: null,
+      errorMessage: null,
+    ));
+
+    try {
+      final message = await _repository.markReportSent(event.orderId);
+
+      // Update order status in local dispatches list
+      final updatedDispatches = state.dispatches.map((d) {
+        if (d.order.id == event.orderId) {
+          return d.copyWith(
+            order: d.order.copyWith(status: LabOrderStatus.reportSent),
+          );
+        }
+        return d;
+      }).toList();
+
+      emit(state.copyWith(
+        status: LabOrderBlocStatus.success,
+        dispatches: updatedDispatches,
+        markingReportSentOrderId: null,
+        actionSuccessMessage: message,
+      ));
+    } catch (e) {
+      final errorStr = e.toString().replaceAll('Exception: ', '');
+      print('[LabOrderBloc] Mark report sent failed: $errorStr');
+      emit(state.copyWith(
+        markingReportSentOrderId: null,
+        errorMessage: errorStr,
+      ));
+    }
+  }
+
+  void _onReportWhatsAppOpened(
+    ReportWhatsAppOpenedEvent event,
+    Emitter<LabOrderState> emit,
+  ) {
+    final updatedSet = Set<String>.from(state.openedWhatsAppOrderIds)
+      ..add(event.orderId);
+    emit(state.copyWith(openedWhatsAppOrderIds: updatedSet));
   }
 
   void _onTimerTick(

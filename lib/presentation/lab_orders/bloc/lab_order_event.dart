@@ -31,6 +31,22 @@ class RejectLabOrderEvent extends LabOrderEvent {
   List<Object?> get props => [orderId];
 }
 
+class MarkReportSentEvent extends LabOrderEvent {
+  final String orderId;
+  const MarkReportSentEvent(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class ReportWhatsAppOpenedEvent extends LabOrderEvent {
+  final String orderId;
+  const ReportWhatsAppOpenedEvent(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
 class LabTimerTickEvent extends LabOrderEvent {
   const LabTimerTickEvent();
 }

@@ -180,7 +180,7 @@ class _LabOrdersViewState extends State<_LabOrdersView>
                   ),
                 ),
                 const Tab(text: 'Accepted'),
-                const Tab(text: 'History'),
+                const Tab(text: 'Completed'),
               ],
             ),
           ),
@@ -209,13 +209,13 @@ class _LabOrdersViewState extends State<_LabOrdersView>
                       acceptingOrderId: state.acceptingOrderId,
                     ),
 
-                    // Tab 3: History Orders
+                    // Tab 3: Completed Orders
                     _buildOrdersList(
                       context,
-                      dispatches: state.historyDispatches,
-                      emptyMessage: 'No order history',
+                      dispatches: state.completedDispatches,
+                      emptyMessage: 'No completed lab orders yet',
                       emptySubtitle:
-                          'Past timed out, skipped, or cancelled orders will appear here.',
+                          'Completed or past lab orders will appear here.',
                       acceptingOrderId: state.acceptingOrderId,
                     ),
                   ],

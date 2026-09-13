@@ -230,20 +230,13 @@ class _MedicalRequestsContent extends StatelessWidget {
   }
 }
 
-class _MedicalRequestCard extends StatefulWidget {
+class _MedicalRequestCard extends StatelessWidget {
   final RequestModel request;
 
   const _MedicalRequestCard({required this.request});
 
-  @override
-  State<_MedicalRequestCard> createState() => _MedicalRequestCardState();
-}
-
-class _MedicalRequestCardState extends State<_MedicalRequestCard> {
-  bool _isLoadingChat = false;
-
-  Future<void> _handleGoToChat() async {
-    setState(() => _isLoadingChat = true);
+  Future<void> _handleGoToChat(BuildContext context) async {
+    context.read<RequestListBloc>().add(SetOpeningChatRequestId(request.id));
 
     try {
       final authState = context.read<AuthBloc>().state;
@@ -255,31 +248,37 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
 
       final supabaseRepo = context.read<SupabaseChatRepository>();
       final chatId = await supabaseRepo.openPrescriptionChat(
-        patientId: widget.request.patientId ?? '',
-        prescriptionUrl: widget.request.attachments.isNotEmpty
-            ? widget.request.attachments.first
+        patientId: request.patientId ?? '',
+        prescriptionUrl: request.attachments.isNotEmpty
+            ? request.attachments.first
             : null,
-        notes: widget.request.description,
+        notes: request.description,
         partnerId: partnerId,
-        notificationId: widget.request.notificationId ?? widget.request.id,
+        notificationId: request.notificationId ?? request.id,
       );
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       context.push(
-        '${AppRoutes.chat.replaceAll(':id', chatId)}?appointmentId=${widget.request.id}&patientId=${widget.request.patientId ?? ''}&patientName=${Uri.encodeComponent(widget.request.patientName)}',
+        '${AppRoutes.chat.replaceAll(':id', chatId)}?appointmentId=${request.id}&patientId=${request.patientId ?? ''}&patientName=${Uri.encodeComponent(request.patientName)}',
       );
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         AppSnackBar.showError(context, 'Failed to open chat: $e');
       }
     } finally {
-      if (mounted) setState(() => _isLoadingChat = false);
+      if (context.mounted) {
+        context
+            .read<RequestListBloc>()
+            .add(const SetOpeningChatRequestId(null));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final request = widget.request;
+    final isLoadingChat = context.select<RequestListBloc, bool>(
+      (bloc) => bloc.state.openingChatRequestId == request.id,
+    );
     final formattedTime =
         '${request.timestamp.day}/${request.timestamp.month}/${request.timestamp.year} ${request.timestamp.hour.toString().padLeft(2, '0')}:${request.timestamp.minute.toString().padLeft(2, '0')}';
 
@@ -521,8 +520,8 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isLoadingChat ? null : _handleGoToChat,
-                    icon: _isLoadingChat
+                    onPressed: isLoadingChat ? null : () => _handleGoToChat(context),
+                    icon: isLoadingChat
                         ? const SizedBox(
                             width: 16,
                             height: 16,
@@ -532,7 +531,7 @@ class _MedicalRequestCardState extends State<_MedicalRequestCard> {
                             ),
                           )
                         : const Icon(Icons.chat_bubble_rounded, size: 16),
-                    label: Text(_isLoadingChat ? 'Opening...' : 'Go to Chat'),
+                    label: Text(isLoadingChat ? 'Opening...' : 'Go to Chat'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.blue1,
                       foregroundColor: Colors.white,

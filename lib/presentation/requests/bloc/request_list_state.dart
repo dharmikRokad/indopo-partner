@@ -12,6 +12,7 @@ class RequestListState extends Equatable {
   final DateTime? selectedDate;
   final bool hasUnreadNew;
   final String? errorMessage;
+  final String? openingChatRequestId;
 
   const RequestListState({
     this.status = RequestListStatus.initial,
@@ -20,6 +21,7 @@ class RequestListState extends Equatable {
     this.selectedDate,
     this.hasUnreadNew = false,
     this.errorMessage,
+    this.openingChatRequestId,
   });
 
   factory RequestListState.initial() =>
@@ -32,6 +34,7 @@ class RequestListState extends Equatable {
     Object? selectedDate = _kNoChange,
     bool? hasUnreadNew,
     Object? errorMessage = _kNoChange,
+    Object? openingChatRequestId = _kNoChange,
   }) {
     return RequestListState(
       status: status ?? this.status,
@@ -46,6 +49,9 @@ class RequestListState extends Equatable {
       errorMessage: errorMessage == _kNoChange
           ? this.errorMessage
           : errorMessage as String?,
+      openingChatRequestId: openingChatRequestId == _kNoChange
+          ? this.openingChatRequestId
+          : openingChatRequestId as String?,
     );
   }
 
@@ -57,5 +63,6 @@ class RequestListState extends Equatable {
     selectedDate,
     hasUnreadNew,
     errorMessage,
+    openingChatRequestId,
   ];
 }

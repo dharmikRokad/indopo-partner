@@ -12,6 +12,9 @@ class RequestListBloc extends Bloc<RequestListEvent, RequestListState> {
     : super(RequestListState.initial()) {
     on<FetchRequests>(_onFetchRequests);
     on<RequestReceived>(_onRequestReceived);
+    on<SetOpeningChatRequestId>((event, emit) {
+      emit(state.copyWith(openingChatRequestId: event.requestId));
+    });
   }
 
   Future<void> _onFetchRequests(

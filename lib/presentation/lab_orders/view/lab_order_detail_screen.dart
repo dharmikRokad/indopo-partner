@@ -49,7 +49,13 @@ class LabOrderDetailScreen extends StatelessWidget {
         whatsappUri,
         mode: LaunchMode.externalApplication,
       );
-      if (!launched && context.mounted) {
+      if (launched) {
+        if (context.mounted) {
+          context
+              .read<LabOrderBloc>()
+              .add(ReportWhatsAppOpenedEvent(order.id));
+        }
+      } else if (context.mounted) {
         AppSnackBar.showError(
           context,
           'Could not open WhatsApp. Please ensure WhatsApp is installed.',
@@ -138,7 +144,10 @@ class LabOrderDetailScreen extends StatelessWidget {
         final isPendingWindow = activeDispatch.isWindowActive;
         final isAccepted = activeDispatch.dispatchStatus == LabDispatchStatus.accepted ||
             order.status == LabOrderStatus.accepted;
+        final isReportSent = order.status == LabOrderStatus.reportSent;
+        final isCompleted = order.status == LabOrderStatus.completed;
         final isAccepting = state.acceptingOrderId == order.id;
+        final isMarkingSent = state.markingReportSentOrderId == order.id;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -271,27 +280,202 @@ class LabOrderDetailScreen extends StatelessWidget {
                     ),
                   ),
                   child: SafeArea(
-                    child: SizedBox(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!state.openedWhatsAppOrderIds.contains(order.id)) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _shareReportViaWhatsApp(context, order),
+                              icon: const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                'Send Report via WhatsApp',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextButton(
+                            onPressed: () {
+                              context
+                                  .read<LabOrderBloc>()
+                                  .add(ReportWhatsAppOpenedEvent(order.id));
+                            },
+                            child: const Text(
+                              'Already sent report? Mark Sent',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 12,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: isMarkingSent
+                                  ? null
+                                  : () {
+                                      context.read<LabOrderBloc>().add(
+                                            MarkReportSentEvent(order.id),
+                                          );
+                                    },
+                              icon: isMarkingSent
+                                  ? const SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                      color: Colors.white,
+                                    ),
+                              label: Text(
+                                isMarkingSent ? 'Marking Sent...' : 'Mark Sent',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.blue1,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextButton.icon(
+                            onPressed: () => _shareReportViaWhatsApp(context, order),
+                            icon: const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 14,
+                              color: Color(0xFF25D366),
+                            ),
+                            label: const Text(
+                              'Resend via WhatsApp',
+                              style: TextStyle(
+                                color: Color(0xFF25D366),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              else if (isReportSent)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.surface.withValues(alpha: 0.8),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Container(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _shareReportViaWhatsApp(context, order),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
-                        label: const Text(
-                          'Share Report via WhatsApp',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.blue1.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.blue1.withValues(alpha: 0.3),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.hourglass_top_rounded,
+                            color: AppColors.blue1,
+                            size: 18,
                           ),
-                          elevation: 2,
+                          SizedBox(width: 8),
+                          Text(
+                            'Report Sent — Waiting for patient confirmation...',
+                            style: TextStyle(
+                              color: AppColors.blue1,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (isCompleted)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.surface.withValues(alpha: 0.8),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.green.withValues(alpha: 0.3),
                         ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.green,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Completed ✅',
+                            style: TextStyle(
+                              color: AppColors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -627,59 +811,83 @@ class LabOrderDetailScreen extends StatelessWidget {
   }
 }
 
-class _LabOrderBanner extends StatefulWidget {
+class _LabOrderBanner extends StatelessWidget {
   final LabDispatchModel dispatch;
 
   const _LabOrderBanner({required this.dispatch});
 
   @override
-  State<_LabOrderBanner> createState() => _LabOrderBannerState();
-}
-
-class _LabOrderBannerState extends State<_LabOrderBanner> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimerIfNeeded();
-  }
-
-  @override
-  void didUpdateWidget(covariant _LabOrderBanner oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.dispatch.dispatchId != widget.dispatch.dispatchId ||
-        oldWidget.dispatch.notifiedAt != widget.dispatch.notifiedAt) {
-      _startTimerIfNeeded();
-    }
-  }
-
-  void _startTimerIfNeeded() {
-    _timer?.cancel();
-    if (widget.dispatch.isWindowActive) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        setState(() {});
-        if (!widget.dispatch.isWindowActive) {
-          timer.cancel();
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final dispatch = widget.dispatch;
-    if (dispatch.dispatchStatus == LabDispatchStatus.accepted) {
+    final dispatch = this.dispatch;
+    if (dispatch.order.status == LabOrderStatus.reportSent) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.blue1.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.blue1.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.mark_chat_read_rounded, color: AppColors.blue1),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Report Sent',
+                    style: TextStyle(
+                      color: AppColors.blue1,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Waiting for patient confirmation...',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (dispatch.order.status == LabOrderStatus.completed) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.green.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.green.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: AppColors.green),
+            SizedBox(width: 10),
+            Text(
+              'Order Completed ✅',
+              style: TextStyle(
+                color: AppColors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (dispatch.dispatchStatus == LabDispatchStatus.accepted ||
+        dispatch.order.status == LabOrderStatus.accepted) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),

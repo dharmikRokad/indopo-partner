@@ -30,6 +30,8 @@ class ApiEndpoints {
       '/partner-auth/lab-orders/$orderId/accept';
   static String rejectLabOrder(String orderId) =>
       '/partner-auth/lab-orders/$orderId/reject';
+  static String markReportSent(String orderId) =>
+      '/partner-auth/lab-orders/$orderId/report-sent';
 
   // Prescription Chat & Thread Endpoints
   static const String prescriptionThreadInit = '/chat/prescription-thread';
